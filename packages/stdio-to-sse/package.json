@@ -3,10 +3,18 @@
   "version": "0.0.1",
   "type": "module",
   "module": "src/index.ts",
+  "react-native": "./src/index.native.ts",
+  "browser": "./src/index.native.ts",
+  "exports": {
+    ".": {
+      "react-native": "./src/index.native.ts",
+      "browser": "./src/index.native.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": "./src/client.ts",
+    "./server": "./src/server.ts"
+  },
   "scripts": {
     "test": "bun test"
-  },
-  "exports": {
-    ".": "./src/index.ts"
   }
 }

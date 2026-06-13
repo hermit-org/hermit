@@ -41,8 +41,15 @@ export class StdioSseClient {
       );
     }
 
-    if (!response.body) {
-      // No response body means there are no SSE frames to yield.
+    // React Native's fetch polyfill does not expose a streaming response body,
+    // and some environments may not have a global TextDecoder. Fall back to
+    // reading the whole response as text and then parsing the SSE frames.
+    if (!response.body || typeof TextDecoder === "undefined") {
+      const text = await response.text();
+      const { data } = parseSse(text);
+      for (const item of data) {
+        yield item;
+      }
       return;
     }
 
