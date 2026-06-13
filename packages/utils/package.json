@@ -1,0 +1,9 @@
+{
+  "name": "@hermit/utils",
+  "version": "0.0.1",
+  "module": "src/index.ts",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

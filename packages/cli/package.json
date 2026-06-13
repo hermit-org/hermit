@@ -1,0 +1,17 @@
+{
+  "name": "@hermit/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "module": "src/index.ts",
+  "bin": {
+    "hermit": "./src/index.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@hermit/types": "workspace:*",
+    "@hermit/utils": "workspace:*",
+    "commander": "^13.0.0"
+  }
+}

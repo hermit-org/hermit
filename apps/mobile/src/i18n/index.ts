@@ -1,0 +1,31 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import * as RNLocalize from "react-native-localize";
+import en from "./locales/en.json";
+import zh from "./locales/zh.json";
+
+export const resources = {
+  en: { translation: en },
+  zh: { translation: zh },
+} as const;
+
+export type Language = keyof typeof resources;
+
+const fallback: Language = "en";
+
+const deviceLanguage = RNLocalize.getLocales()[0]?.languageCode as Language | undefined;
+const initialLanguage = deviceLanguage && resources[deviceLanguage] ? deviceLanguage : fallback;
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: initialLanguage,
+    fallbackLng: fallback,
+    interpolation: {
+      escapeValue: false,
+    },
+    compatibilityJSON: "v3",
+  });
+
+export default i18n;

@@ -1,0 +1,10 @@
+{
+  "title": "Hermit Mobile",
+  "userId": "User ID: {{id}}",
+  "userName": "User Name: {{name}}",
+  "switchLanguage": "Switch Language",
+  "language": {
+    "en": "English",
+    "zh": "Chinese"
+  }
+}

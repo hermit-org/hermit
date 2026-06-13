@@ -1,0 +1,10 @@
+{
+  "title": "Hermit 移动端",
+  "userId": "用户 ID: {{id}}",
+  "userName": "用户名称: {{name}}",
+  "switchLanguage": "切换语言",
+  "language": {
+    "en": "英文",
+    "zh": "中文"
+  }
+}
