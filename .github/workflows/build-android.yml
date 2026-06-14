@@ -54,6 +54,11 @@ jobs:
             --directory HermitMobile
           cp -r /tmp/HermitMobile/android "$GITHUB_WORKSPACE/apps/mobile/android"
 
+      - name: Patch AndroidManifest for camera permission
+        run: |
+          MANIFEST="$GITHUB_WORKSPACE/apps/mobile/android/app/src/main/AndroidManifest.xml"
+          sed -i '/<manifest /a \\n    <uses-permission android:name="android.permission.CAMERA" />' "$MANIFEST"
+
       - name: Build Android release APK
         working-directory: apps/mobile/android
         env:

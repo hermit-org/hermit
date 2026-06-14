@@ -6,7 +6,7 @@ import type { Gateway } from "../types";
 interface GatewayState {
   gateways: Gateway[];
   activeGatewayId: string | null;
-  addGateway: (gateway: Omit<Gateway, "id" | "createdAt" | "updatedAt">) => void;
+  addGateway: (gateway: Omit<Gateway, "id" | "createdAt" | "updatedAt">) => Gateway;
   updateGateway: (id: string, patch: Partial<Omit<Gateway, "id" | "createdAt">>) => void;
   removeGateway: (id: string) => void;
   setActiveGateway: (id: string | null) => void;
@@ -47,6 +47,7 @@ export const useGatewayStore = create<GatewayState>()(
           gateways: [...state.gateways, newGateway],
           activeGatewayId: state.activeGatewayId ?? newGateway.id,
         }));
+        return newGateway;
       },
 
       updateGateway(id, patch) {

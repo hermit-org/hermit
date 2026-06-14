@@ -13,6 +13,10 @@
     "@hermit/types": "workspace:*",
     "@hermit/utils": "workspace:*",
     "@hermit/stdio-to-sse": "workspace:*",
-    "commander": "^13.0.0"
+    "commander": "^13.0.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5"
   }
 }

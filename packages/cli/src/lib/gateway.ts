@@ -14,6 +14,12 @@ import { encodeSse, encodeSseKeepAlive } from "@hermit/stdio-to-sse";
  * This is protocol-agnostic at the transport level: it bridges bytes between
  * stdio and SSE. The CLI adds ACP/MCP-specific routing, pairing, and auth.
  */
+export interface ConnectionPayload {
+  url: string;
+  sendUrl: string;
+  token: string;
+}
+
 export interface AcpGatewayServerOptions {
   command: string;
   args?: string[];
@@ -21,12 +27,14 @@ export interface AcpGatewayServerOptions {
   hostname?: string;
   endpoint?: string;
   sendEndpoint?: string;
+  qrEndpoint?: string;
   cors?: boolean;
   heartbeatInterval?: number;
   onRequest?: (
     req: IncomingMessage,
     res: ServerResponse,
   ) => boolean | Promise<boolean>;
+  getQrPayload?: () => ConnectionPayload | null | Promise<ConnectionPayload | null>;
 }
 
 export interface AcpGatewayServerState {
@@ -71,12 +79,14 @@ export class AcpGatewayServer {
       hostname = "0.0.0.0",
       endpoint = "/",
       sendEndpoint = "/send",
+      qrEndpoint = "/qr",
       cors = true,
       heartbeatInterval = 30000,
     } = this.options;
 
     const normalizedEndpoint = endpoint === "/" ? "/" : endpoint.replace(/\/$/, "");
     const normalizedSendEndpoint = sendEndpoint.replace(/\/$/, "");
+    const normalizedQrEndpoint = qrEndpoint.replace(/\/$/, "");
 
     this.started = true;
 
@@ -113,6 +123,11 @@ export class AcpGatewayServer {
 
           if (req.method === "POST" && req.url === normalizedSendEndpoint) {
             await this.handleSendRequest(req, res, cors);
+            return;
+          }
+
+          if (req.method === "GET" && req.url === normalizedQrEndpoint) {
+            await this.handleQrRequest(req, res, cors);
             return;
           }
 
@@ -233,6 +248,38 @@ export class AcpGatewayServer {
     await this.writeToStdin(body);
 
     this.sendJson(res, 200, { ok: true }, cors);
+  }
+
+  private async handleQrRequest(
+    _req: IncomingMessage,
+    res: ServerResponse,
+    cors: boolean,
+  ): Promise<void> {
+    if (!this.options.getQrPayload) {
+      this.sendJson(res, 404, { ok: false, error: "QR payload not configured" }, cors);
+      return;
+    }
+
+    const payload = await Promise.resolve(this.options.getQrPayload());
+    if (!payload) {
+      this.sendJson(res, 404, { ok: false, error: "QR payload not available" }, cors);
+      return;
+    }
+
+    const { generateQrBuffer } = await import("./qr");
+    const buffer = await generateQrBuffer(payload);
+
+    const headers: Record<string, string> = {
+      "Content-Type": "image/png",
+      "Content-Length": String(buffer.length),
+      "Cache-Control": "no-store",
+    };
+    if (cors) {
+      headers["Access-Control-Allow-Origin"] = "*";
+    }
+
+    res.writeHead(200, headers);
+    res.end(buffer);
   }
 
   private writeToStdin(chunk: Buffer): Promise<void> {

@@ -65,8 +65,18 @@ export function ServerListScreen(): React.JSX.Element {
     navigation.navigate("SessionList", { gatewayId: gateway.id });
   };
 
+  const handleScanQr = () => {
+    navigation.navigate("QrScanner");
+  };
+
   return (
     <View style={localStyles.container}>
+      <View style={localStyles.headerRow}>
+        <Text style={localStyles.headerTitle}>Gateways</Text>
+        <TouchableOpacity style={localStyles.scanButton} onPress={handleScanQr}>
+          <Text style={localStyles.scanButtonText}>Scan QR</Text>
+        </TouchableOpacity>
+      </View>
       <View style={localStyles.form}>
         <TextInput
           style={localStyles.input}
@@ -133,6 +143,28 @@ const localStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e5e5",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  scanButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  scanButtonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
   form: {
     padding: 16,

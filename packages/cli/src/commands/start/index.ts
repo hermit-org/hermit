@@ -1,11 +1,15 @@
 import { Command } from "commander";
-import { AcpGatewayServer } from "../../lib/gateway";
+import { AcpGatewayServer, type ConnectionPayload } from "../../lib/gateway";
 import { loadConfig, type HermitConfig } from "../../lib/config";
 import {
   validatePairingCode,
   isTokenAuthorized,
+  generateToken,
+  authorizeToken,
 } from "../../lib/pairing";
+import { generateQrTerminal, encodeConnectionPayload } from "../../lib/qr";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { networkInterfaces } from "node:os";
 
 function extractBearer(req: IncomingMessage): string | undefined {
   const auth = req.headers.authorization ?? "";
@@ -42,21 +46,43 @@ function sendJson(
   res.end(JSON.stringify(payload));
 }
 
+function getLanAddress(port: number): string {
+  const interfaces = networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    for (const iface of entries ?? []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return `http://${iface.address}:${port}`;
+      }
+    }
+  }
+  return `http://localhost:${port}`;
+}
+
 async function startServer(config: HermitConfig): Promise<void> {
   const { agent, gateway } = config;
 
   const sseEndpoint = gateway!.endpoint || "/";
   const sendEndpoint = sseEndpoint === "/" ? "/send" : `${sseEndpoint}/send`;
+  const port = gateway!.port ?? 8787;
+
+  // Create a persistent bearer token for QR/auto-connect.
+  const token = generateToken();
+  await authorizeToken(token);
 
   const server = new AcpGatewayServer({
     command: agent!.command,
     args: agent!.args,
-    port: gateway!.port,
+    port,
     hostname: gateway!.hostname,
     endpoint: sseEndpoint,
     sendEndpoint,
     cors: gateway!.cors,
     heartbeatInterval: gateway!.heartbeatInterval,
+    getQrPayload: (): ConnectionPayload => {
+      const url = getLanAddress(port) + sseEndpoint;
+      const sendUrl = getLanAddress(port) + sendEndpoint;
+      return { url, sendUrl, token };
+    },
     onRequest: async (req, res) => {
       // CORS preflight for the pairing endpoint.
       if (gateway!.cors && req.method === "OPTIONS" && req.url === "/pair") {
@@ -99,11 +125,20 @@ async function startServer(config: HermitConfig): Promise<void> {
   });
 
   const { url, stop } = await server.start();
+  const qrPayload: ConnectionPayload = {
+    url: getLanAddress(port) + sseEndpoint,
+    sendUrl: getLanAddress(port) + sendEndpoint,
+    token,
+  };
 
   console.log(`Hermit gateway listening at ${url}`);
   console.log(`Send endpoint: ${sendEndpoint}`);
   console.log(`Agent: ${agent!.command} ${(agent!.args ?? []).join(" ")}`);
-  console.log("Press Ctrl+C to stop");
+  console.log("\nScan the QR code with Hermit mobile app to connect:");
+  console.log(await generateQrTerminal(qrPayload));
+  console.log("\nOr paste this connection string:");
+  console.log(encodeConnectionPayload(qrPayload));
+  console.log("\nPress Ctrl+C to stop");
 
   process.once("SIGINT", async () => {
     console.log("\nShutting down...");
