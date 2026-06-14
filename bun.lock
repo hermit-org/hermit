@@ -5,6 +5,7 @@
     "": {
       "name": "hermit",
       "devDependencies": {
+        "@babel/runtime": "^7.25.0",
         "@types/bun": "latest",
         "@types/node": "latest",
       },
@@ -13,6 +14,7 @@
       "name": "@hermit/mobile",
       "version": "0.0.1",
       "dependencies": {
+        "@babel/runtime": "^7.25.0",
         "@hermit/stdio-to-sse_rn": "workspace:*",
         "@hermit/types": "workspace:*",
         "@hermit/utils": "workspace:*",

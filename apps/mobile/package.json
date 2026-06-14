@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@babel/runtime": "^7.25.0",
     "@hermit/stdio-to-sse_rn": "workspace:*",
     "@hermit/types": "workspace:*",
     "@hermit/utils": "workspace:*",

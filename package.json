@@ -6,6 +6,7 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@babel/runtime": "^7.25.0",
     "@types/bun": "latest",
     "@types/node": "latest"
   },
