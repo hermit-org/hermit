@@ -45,6 +45,15 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Generate Android project
+        run: |
+          cd /tmp
+          npx @react-native-community/cli@15.1.3 init HermitMobile \
+            --version 0.76.0 \
+            --skip-install \
+            --directory HermitMobile
+          cp -r /tmp/HermitMobile/android "$GITHUB_WORKSPACE/apps/mobile/android"
+
       - name: Build Android release APK
         working-directory: apps/mobile/android
         env:
