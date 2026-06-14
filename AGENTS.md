@@ -6,12 +6,14 @@ This file is written for AI coding agents. It describes the actual structure, to
 
 ## Project overview
 
-Hermit is a small Bun-based monorepo containing:
+Hermit is a Bun-based monorepo that bridges a local ACP (Agent Client Protocol) agent to a React Native mobile app via Server-Sent Events (SSE).
 
-- A shared TypeScript library of domain types (`@hermit/types`).
-- A shared TypeScript utility library (`@hermit/utils`).
-- A command-line interface written for the Bun runtime (`@hermit/cli`).
-- A React Native mobile application (`@hermit/mobile`).
+- `@hermit/types` — shared TypeScript domain types.
+- `@hermit/utils` — shared TypeScript helpers.
+- `@hermit/stdio-to-sse` — Node.js server library that exposes a local stdio ACP agent as an SSE gateway.
+- `@hermit/stdio-to-sse_rn` — React Native transport library that turns an SSE endpoint into a stdio-like readable stream.
+- `@hermit/cli` — Bun CLI that starts the gateway and manages mobile pairing.
+- `@hermit/mobile` — React Native app that connects to gateways, manages sessions, and renders streaming chat.
 
 The repository uses Bun workspaces with the root `package.json` declaring `apps/*` and `packages/*` as workspaces.
 
@@ -23,12 +25,16 @@ The repository uses Bun workspaces with the root `package.json` declaring `apps/
 - **Workspace model:** Bun workspaces via `workspaces` in root `package.json`.
 - **Language:** TypeScript, with strict mode enabled.
 - **Module system:**
-  - Packages (`@hermit/cli`, `@hermit/types`, `@hermit/utils`) are ESM (`"type": "module"`).
+  - Packages (`@hermit/cli`, `@hermit/types`, `@hermit/utils`, `@hermit/stdio-to-sse`, `@hermit/stdio-to-sse_rn`) are ESM (`"type": "module"`).
   - The React Native app uses CommonJS for its Metro config and entry file (`metro.config.js`, `index.js`).
 - **Mobile framework:** React Native `0.76.0` with React `18.3.1`.
+- **Navigation:** `@react-navigation/native` + `@react-navigation/native-stack`.
+- **State persistence:** Zustand + `zustand/middleware` persisted to `react-native-mmkv`.
 - **CLI framework:** `commander` `^13.0.0`.
+- **Mobile Markdown:** `react-native-markdown-display`.
+- **Mobile SSE:** `react-native-sse`.
 - **Bundler for mobile:** Metro, configured to watch `../../packages` so workspace packages can be imported by the app.
-- **Test runner:** Jest (referenced by `apps/mobile/package.json` `test` script).
+- **Test runner:** Bun test for packages; Jest referenced by `apps/mobile/package.json`.
 
 ---
 
@@ -36,34 +42,58 @@ The repository uses Bun workspaces with the root `package.json` declaring `apps/
 
 ```
 hermit/
-├── package.json              # Root workspace manifest; only devDependencies
+├── package.json              # Root workspace manifest
 ├── tsconfig.json             # Shared TypeScript config (strict, ESNext, bundler resolution)
 ├── bun.lock                  # Bun lockfile
 ├── apps/
 │   └── mobile/               # React Native app: @hermit/mobile
 │       ├── package.json
-│       ├── tsconfig.json     # Extends root tsconfig
+│       ├── tsconfig.json
 │       ├── metro.config.js   # Watches ../../packages for workspace imports
-│       ├── app.json          # App name: HermitMobile
-│       ├── index.js          # AppRegistry entry
-│       └── App.tsx           # Root React component
+│       ├── app.json
+│       ├── index.js
+│       ├── App.tsx
+│       └── src/
+│           ├── types/        # Gateway, Session, Message, JSON-RPC/ACP types
+│           ├── acp/          # ACP client, JSON-RPC framing, React hooks
+│           ├── stores/       # Zustand + MMKV stores (gateways, sessions, settings)
+│           ├── navigation/   # React Navigation root navigator
+│           ├── screens/      # ServerList, SessionList, Chat
+│           └── components/   # MarkdownRenderer, CodeBlock, ChatMessage, StreamingText
 └── packages/
     ├── cli/                  # @hermit/cli — Bun CLI
     │   ├── package.json
     │   └── src/
     │       ├── index.ts
-    │       └── commands/
-    │           ├── index.ts          # Auto-loads commands recursively
-    │           ├── post.ts
-    │           └── start/
-    │               ├── index.ts
-    │               └── web.ts
-    ├── types/                # @hermit/types — shared interfaces
+    │       ├── commands/
+    │       │   ├── index.ts          # Auto-loads commands recursively
+    │       │   ├── pair.ts           # Generate pairing code
+    │       │   └── start/
+    │       │       └── index.ts      # Start ACP gateway
+    │       └── lib/
+    │           ├── config.ts         # hermit.config.json loading
+    │           ├── pairing.ts        # Pairing code / bearer token logic
+    │           └── gateway.ts        # AcpGatewayServer (persistent stdio ↔ SSE)
+    ├── stdio-to-sse/         # Node.js stdio ↔ SSE bridge (protocol-agnostic)
     │   ├── package.json
-    │   └── src/index.ts      # exports User, Post
-    └── utils/                # @hermit/utils — shared helpers
-        ├── package.json
-        └── src/index.ts      # exports formatId, clamp
+    │   └── src/
+    │       ├── index.ts
+    │       ├── index.native.ts       # RN-safe re-export (client + sse utilities)
+    │       ├── sse.ts                # SSE encode/decode + JSON-RPC line framing
+    │       ├── server.ts             # StdioSseServer (request/response mode)
+    │       ├── client.ts             # StdioSseClient (SSE consumer with retries)
+    │       └── *.test.ts
+    ├── stdio-to-sse_rn/      # React Native SSE transport
+    │   ├── package.json
+    │   └── src/
+    │       ├── index.ts
+    │       ├── types.ts              # Connection state + events
+    │       ├── connection.ts         # RnSseConnection (auto-reconnect, heartbeat)
+    │       ├── framing.ts            # UTF-8 safe JSON-RPC line framing
+    │       ├── http.ts               # POST helper for gateway /send
+    │       └── stdio.ts              # createStdioLikeSse() helper
+    ├── types/                # @hermit/types
+    └── utils/                # @hermit/utils
 ```
 
 ---
@@ -78,27 +108,31 @@ bun install
 
 ### Type-check the whole repository
 
-No build script is defined. Type-check across the monorepo via the shared `tsconfig.json`:
-
 ```bash
 bunx tsc --noEmit
 ```
 
-### Run the CLI
+### Run package tests
 
-The CLI is executed directly by Bun. The binary name is `hermit`.
+```bash
+bun test packages/stdio-to-sse/src
+bun test packages/stdio-to-sse_rn/src/framing.test.ts
+```
+
+### Run the CLI
 
 ```bash
 # Show help
 bun packages/cli/src/index.ts --help
 
-# Run the post command
-bun packages/cli/src/index.ts post
+# Generate a pairing code
+bun packages/cli/src/index.ts pair
 
-# Run start subcommands
-bun packages/cli/src/index.ts start --help
-bun packages/cli/src/index.ts start web
+# Start the ACP gateway
+bun packages/cli/src/index.ts start
 ```
+
+The CLI reads `hermit.config.json` from the current working directory. Default agent command: `npx codex --acp`.
 
 ### Run the mobile app
 
@@ -117,7 +151,7 @@ bun run android
 bun run ios
 ```
 
-Metro is configured to resolve workspace packages under `../../packages`, so `@hermit/types` and `@hermit/utils` can be imported directly in `App.tsx`.
+Metro watches `../../packages`, so all workspace packages resolve directly.
 
 ---
 
@@ -126,10 +160,13 @@ Metro is configured to resolve workspace packages under `../../packages`, so `@h
 - **TypeScript strict mode** is enabled in the root `tsconfig.json` (`"strict": true`).
 - **ESM packages** use `"type": "module"` and export from `src/index.ts`.
 - **React Native app** uses JSX with `jsx: react-native` and imports shared packages as workspace dependencies (`workspace:*`).
-- **CLI command discovery:** Each command file (or `index.ts` inside a command directory) exports a `command` object that is an instance of `commander.Command`. The loader in `packages/cli/src/commands/index.ts` scans the `commands` directory recursively and attaches discovered commands.
+- **CLI command discovery:** Each command file (or `index.ts` inside a command directory) exports a `command` object that is an instance of `commander.Command`.
 - **Shared package exports:**
-  - `@hermit/types` currently exports `User` and `Post` interfaces.
-  - `@hermit/utils` currently exports `formatId` and `clamp` helpers.
+  - `@hermit/types` exports `User`, `Post`.
+  - `@hermit/utils` exports `formatId`, `clamp`.
+- **Environment isolation:**
+  - `@hermit/stdio-to-sse` is Node-only (server, gateway).
+  - `@hermit/stdio-to-sse_rn` is RN/browser-only and must not import Node built-ins.
 - **File naming:** Source files use lowercase names (`post.ts`, `web.ts`, `index.ts`).
 - **Comments and documentation** are minimal in source files; the project’s working language is English.
 
@@ -139,19 +176,17 @@ No ESLint, Prettier, or formatting configuration files were found in the reposit
 
 ## Testing instructions
 
-- The only test-related script is in `apps/mobile/package.json`:
-  ```bash
-  cd apps/mobile && bun run test   # runs jest
-  ```
-- No project-level test files (`.test.*` or `.spec.*`) exist in `apps/` or `packages/` at this time.
-- To add tests, place them next to the code they test or in a `__tests__` directory. Jest is already a transitive dependency through React Native tooling.
+- Package tests use Bun's built-in test runner.
+- Mobile tests use Jest (transitive dependency via React Native).
+- To add tests, place them next to the code they test or in a `__tests__` directory.
 
 ---
 
 ## Security considerations
 
-- The CLI executable (`packages/cli/src/index.ts`) has a Bun shebang (`#!/usr/bin/env bun`) and dynamically imports command modules from disk. Do not run the CLI with untrusted files present in the command directory.
-- No secret files (`.env`, key stores, etc.) were found in the repository. If secrets are needed later, store them outside version control.
+- The CLI executable (`packages/cli/src/index.ts`) has a Bun shebang and dynamically imports command modules from disk. Do not run the CLI with untrusted files present in the command directory.
+- The gateway requires a valid bearer token for the SSE and `/send` endpoints. Tokens are issued via `hermit pair` and stored in `~/.hermit/authorized-tokens.json`.
+- No secret files (`.env`, key stores, etc.) were found in the repository. Store tokens and pairing codes outside version control.
 - Standard React Native and Node.js security practices apply: validate external input, keep native dependencies up to date, and avoid logging sensitive data.
 
 ---

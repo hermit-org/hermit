@@ -2,8 +2,10 @@
 
 # Hermit
 
-Hermit is a small Bun-based monorepo containing shared packages, a Bun CLI, and
-a React Native mobile app.
+Hermit is a Bun-based monorepo that bridges a local stdio-based agent to a React
+Native mobile app via Server-Sent Events (SSE). It is designed around the ACP
+(Agent Client Protocol) remote/gateway scenario, but the transport layers remain
+protocol-agnostic.
 
 ## Packages & Apps
 
@@ -11,9 +13,10 @@ a React Native mobile app.
 |-----------|------|-------------|
 | `@hermit/types` | `packages/types` | Shared TypeScript domain types |
 | `@hermit/utils` | `packages/utils` | Shared TypeScript utility helpers |
-| `@hermit/cli` | `packages/cli` | Bun CLI built with `commander`, auto-loads commands from `src/commands` |
-| `@hermit/stdio-to-sse` | `packages/stdio-to-sse` | Protocol-agnostic stdio ↔ HTTP POST/SSE bridge, runs on Node.js 18+ or Bun |
-| `@hermit/mobile` | `apps/mobile` | React Native mobile app with i18n support |
+| `@hermit/stdio-to-sse` | `packages/stdio-to-sse` | Protocol-agnostic stdio ↔ HTTP POST/SSE bridge (Node.js/Bun) |
+| `@hermit/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE transport with stdio-like interface |
+| `@hermit/cli` | `packages/cli` | Bun CLI that starts the ACP gateway and manages pairing |
+| `@hermit/mobile` | `apps/mobile` | React Native app: gateway list, sessions, streaming chat |
 
 ## Tech Stack
 
@@ -21,7 +24,7 @@ a React Native mobile app.
 - **Workspace Model:** Bun workspaces (`apps/*`, `packages/*`)
 - **Language:** TypeScript with strict mode
 - **CLI:** `commander`
-- **Mobile:** React Native `0.76.0`, React `18.3.1`, `react-i18next`
+- **Mobile:** React Native `0.76.0`, React `18.3.1`, `@react-navigation/native`, Zustand, MMKV
 - **Testing:** `bun:test`
 
 ## Getting Started
@@ -38,39 +41,178 @@ Type-check the whole monorepo:
 bunx tsc --noEmit
 ```
 
-## CLI
+Run package tests:
 
 ```bash
-# Show help
-bun packages/cli/src/index.ts --help
+bun test packages/stdio-to-sse/src
+bun test packages/stdio-to-sse_rn/src/framing.test.ts
+bun test packages/cli/src/lib/gateway.test.ts
+```
 
-# Run commands
+## Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          CLI Host (Node.js)                         │
+│  ┌─────────────┐      ┌─────────────────────┐      ┌────────────┐  │
+│  │ Local Agent │◄────►│ @hermit/stdio-to-sse│◄────►│  HTTP/SSE  │  │
+│  │ (stdio)     │stdio │  (transport bridge) │      │  Gateway   │  │
+│  └─────────────┘      └─────────────────────┘      │  :8787     │  │
+└────────────────────────────────────────────────────┼────────────────┘
+                                                     │
+                                                     │ Wi-Fi / LAN
+                                                     ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Mobile Device (React Native)                    │
+│  ┌─────────────┐      ┌──────────────────────┐     ┌─────────────┐ │
+│  │  UI Screens │◄────►│   @hermit/mobile     │◄───►│ @hermit/    │ │
+│  │ ServerList  │      │   ACP client + UI    │     │ stdio-to-   │ │
+│  │ SessionList │      │                      │     │ sse_rn      │ │
+│  │    Chat     │      │                      │     │             │ │
+│  └─────────────┘      └──────────────────────┘     └──────┬──────┘ │
+│                                                           │        │
+│                              ┌────────────────────────────┘        │
+│                              ▼                                      │
+│                       react-native-sse (EventSource)                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## CLI Usage
+
+The CLI reads `hermit.config.json` from the current working directory. A minimal
+config:
+
+```json
+{
+  "agent": { "command": "npx", "args": ["codex", "--acp"] },
+  "gateway": {
+    "port": 8787,
+    "hostname": "0.0.0.0",
+    "endpoint": "/",
+    "heartbeatInterval": 30000,
+    "cors": true
+  }
+}
+```
+
+### Pair a mobile device
+
+```bash
+bun packages/cli/src/index.ts pair
+```
+
+Output:
+
+```
+Hermit pairing initiated.
+Pairing code : 123456
+Bearer token : tok_...
+```
+
+Enter the pairing code in the mobile app. The token is stored in
+`~/.hermit/authorized-tokens.json`.
+
+### Start the gateway
+
+```bash
 bun packages/cli/src/index.ts start
-bun packages/cli/src/index.ts post
-bun packages/cli/src/index.ts start web
 ```
 
-Commands are auto-discovered from `packages/cli/src/commands`. See
-[`packages/cli/README.md`](./packages/cli/README.md) for details.
+The gateway exposes:
 
-## stdio-to-sse
+- `GET/POST /` — SSE stream of the agent stdout (requires bearer token)
+- `POST /send` — write request body to the agent stdin (requires bearer token)
+- `POST /pair` — exchange a pairing code for a bearer token
 
-`@hermit/stdio-to-sse` bridges a stdio program to an HTTP POST → SSE endpoint.
-It is intentionally protocol-agnostic and works on both Node.js 18+ and Bun.
+## stdio-to-sse (Node.js)
 
-```bash
-cd packages/stdio-to-sse
-bun test
+Protocol-agnostic stdio ↔ SSE bridge. Two server modes are provided:
+
+### Request/response mode
+
+One HTTP POST spawns one child process and returns its stdout as SSE:
+
+```ts
+import { StdioSseServer, StdioSseClient } from "@hermit/stdio-to-sse";
+
+const server = new StdioSseServer({
+  command: "cat",
+  port: 8080,
+});
+const { url, stop } = await server.start();
+
+const client = new StdioSseClient({ url });
+for await (const line of client.send("hello\nworld")) {
+  console.log(line);
+}
+await stop();
 ```
 
-See [`packages/stdio-to-sse/README.md`](./packages/stdio-to-sse/README.md).
+### Persistent gateway mode
 
-## Mobile
+Used by the CLI. A single child process stays alive; clients read via SSE and
+write via `POST /send`:
+
+```ts
+import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+
+const server = new AcpGatewayServer({
+  command: "npx",
+  args: ["codex", "--acp"],
+  port: 8787,
+  sendEndpoint: "/send",
+});
+const { url, stop } = await server.start();
+```
+
+## stdio-to-sse_rn (React Native)
+
+RN transport that turns an SSE endpoint into a stdio-like readable stream.
+
+```ts
+import {
+  RnSseConnection,
+  createStdioLikeSse,
+  sendMessage,
+} from "@hermit/stdio-to-sse_rn";
+
+// Low-level connection
+const conn = new RnSseConnection({
+  url: "http://192.168.1.5:8787",
+  headers: { Authorization: "Bearer tok_..." },
+});
+conn.addEventListener((event) => console.log(event.type, event));
+await conn.connect();
+
+for await (const line of conn) {
+  console.log("SSE line:", line);
+}
+```
+
+### stdio-like abstraction
+
+```ts
+const stdio = createStdioLikeSse({
+  url: "http://192.168.1.5:8787",
+  sendUrl: "http://192.168.1.5:8787/send",
+  headers: { Authorization: "Bearer tok_..." },
+});
+
+// read stdout lines
+for await (const line of stdio.stdout) {
+  console.log(line);
+}
+
+// write to stdin
+await stdio.stdin.write('{"jsonrpc":"2.0","method":"ping"}\n');
+```
+
+## Mobile App
 
 ```bash
 cd apps/mobile
 
-# Start Metro
+# Install native dependencies first (CocoaPods / Gradle as usual)
 bun run start
 
 # Run on Android / iOS
@@ -78,8 +220,15 @@ bun run android
 bun run ios
 ```
 
-The Metro config watches `../../packages` so shared workspace packages can be
-imported directly.
+The app has three screens:
+
+1. **Server List** — add/edit/delete gateway addresses and bearer tokens.
+2. **Session List** — browse and create chat sessions for a gateway.
+3. **Chat** — connect via SSE, send messages, render streaming Markdown and code
+   blocks.
+
+Add a gateway using the CLI host's IP (e.g. `http://192.168.1.5:8787`) and the
+token from `hermit pair`.
 
 ## Repository Layout
 
@@ -92,6 +241,7 @@ hermit/
 ├── packages/
 │   ├── cli/
 │   ├── stdio-to-sse/
+│   ├── stdio-to-sse_rn/
 │   ├── types/
 │   └── utils/
 └── apps/

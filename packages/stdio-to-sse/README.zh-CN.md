@@ -129,8 +129,26 @@ const { data, remainder } = parseSse(frame);
 
 每个 HTTP 请求都会独立启动一个子进程，因此请求之间是相互隔离的。
 
+## 持久化 Gateway 模式
+
+如果需要长期运行的 Agent（ACP / MCP / JSON-RPC 会话），请使用 CLI 提供的
+`AcpGatewayServer`。它会保持一个子进程长期存活，并分别暴露 SSE（`/`）和 stdin
+（`/send`）端点：
+
+```ts
+import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+
+const server = new AcpGatewayServer({
+  command: "npx",
+  args: ["codex", "--acp"],
+  port: 8787,
+});
+const { url, stop } = await server.start();
+```
+
 ## 注意事项
 
 - 子进程应及时刷新 stdout；缓冲输出会延迟 SSE 帧的到达。
-- `stderr` 目前会被捕获并丢弃。如需日志，请在启动的命令内部自行重定向。
+- `StdioSseServer` 会捕获 `stderr` 但直接丢弃。CLI 的 Gateway 则会将 `stderr`
+  作为 SSE `error` 帧转发。
 - 生产环境中请将该桥接服务置于 HTTPS 之后；本库不提供身份验证功能。

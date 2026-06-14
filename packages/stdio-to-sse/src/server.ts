@@ -1,7 +1,7 @@
-import { createServer, type Server } from "node:http";
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
-import { encodeSse } from "./sse";
+import { encodeSse, encodeSseKeepAlive } from "./sse";
 
 /**
  * Configuration for `StdioSseServer`.
@@ -26,6 +26,23 @@ export interface StdioSseServerOptions {
   cors?: boolean;
   /** Maximum time in milliseconds to wait for the child process (default: no timeout). */
   timeout?: number;
+  /**
+   * Heartbeat interval in milliseconds (default: `30000`).
+   *
+   * The server emits SSE comment frames at this interval to keep the HTTP
+   * connection alive through proxies and detect half-open sockets.
+   */
+  heartbeatInterval?: number;
+  /**
+   * Optional hook called for every incoming request before the default
+   * endpoint logic runs. Return `true` (or a promise resolving to `true`) to
+   * indicate that the request has been fully handled and default routing
+   * should be skipped.
+   */
+  onRequest?: (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ) => boolean | Promise<boolean>;
 }
 
 /** State returned after the server starts successfully. */
@@ -41,7 +58,11 @@ export interface StdioSseServerState {
  * and streams the child process stdout back as SSE.
  *
  * This class is intentionally protocol-agnostic: it does not parse JSON-RPC,
- * MCP, ACP, or any other message format. It simply bridges bytes.
+ * MCP, ACP, or any other message format. It simply bridges bytes. However, it
+ * does provide transport-level guarantees required by these protocols:
+ *   - UTF-8 integrity of request and response bodies.
+ *   - Line-delimited framing of stdout (one SSE data frame per line).
+ *   - SSE keep-alive heartbeats to survive proxies and idle timeouts.
  *
  * Implementation is based on Node.js built-in modules so the package can run
  * under Node.js as well as Bun.
@@ -63,6 +84,7 @@ export class StdioSseServer {
       endpoint = "/",
       cors = true,
       timeout,
+      heartbeatInterval = 30000,
     } = this.options;
 
     // Normalize the endpoint path so matching is consistent.
@@ -71,8 +93,14 @@ export class StdioSseServer {
 
     return new Promise((resolve, reject) => {
       this.server = createServer(async (req, res) => {
+        if (this.options.onRequest) {
+          const handled = await this.options.onRequest(req, res);
+          if (handled) return;
+        }
+
         let proc: ChildProcess | undefined;
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        let heartbeatId: ReturnType<typeof setInterval> | undefined;
         let finished = false;
 
         const finish = (): void => {
@@ -82,6 +110,11 @@ export class StdioSseServer {
           if (timeoutId) {
             clearTimeout(timeoutId);
             timeoutId = undefined;
+          }
+
+          if (heartbeatId) {
+            clearInterval(heartbeatId);
+            heartbeatId = undefined;
           }
 
           if (!res.writableEnded) {
@@ -99,7 +132,7 @@ export class StdioSseServer {
             res.writeHead(204, {
               "Access-Control-Allow-Origin": "*",
               "Access-Control-Allow-Methods": "POST, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type",
+              "Access-Control-Allow-Headers": "Content-Type, Authorization",
             });
             res.end();
             return;
@@ -140,6 +173,15 @@ export class StdioSseServer {
 
           res.writeHead(200, headers);
 
+          // Emit periodic SSE comment frames to keep the connection alive.
+          if (heartbeatInterval > 0) {
+            heartbeatId = setInterval(() => {
+              if (!res.writableEnded) {
+                res.write(encodeSseKeepAlive());
+              }
+            }, heartbeatInterval);
+          }
+
           // If the client disconnects, terminate the child process to avoid
           // orphan processes and wasted resources.
           res.once("close", () => {
@@ -168,6 +210,8 @@ export class StdioSseServer {
           }
 
           // Read stdout line-by-line and re-emit each line as an SSE frame.
+          // `createInterface` handles UTF-8 boundary preservation internally,
+          // so multi-byte characters split across stdout chunks are not cut.
           const rl = createInterface({
             input: proc.stdout!,
             crlfDelay: Infinity,
@@ -221,7 +265,7 @@ export class StdioSseServer {
 
 function readRequestBody(
   req: import("node:http").IncomingMessage,
-): Promise<string> {
+): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
 
@@ -230,7 +274,7 @@ function readRequestBody(
     });
 
     req.on("end", () => {
-      resolve(Buffer.concat(chunks).toString("utf-8"));
+      resolve(Buffer.concat(chunks));
     });
 
     req.on("error", reject);

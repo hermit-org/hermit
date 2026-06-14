@@ -136,11 +136,28 @@ const { data, remainder } = parseSse(frame);
 
 Each HTTP request gets its own child process, so requests are isolated.
 
+## Persistent gateway mode
+
+For long-lived agents (ACP / MCP / JSON-RPC sessions), use the CLI's
+`AcpGatewayServer` instead. It keeps a single child process alive and exposes
+separate SSE (`/`) and stdin (`/send`) endpoints:
+
+```ts
+import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+
+const server = new AcpGatewayServer({
+  command: "npx",
+  args: ["codex", "--acp"],
+  port: 8787,
+});
+const { url, stop } = await server.start();
+```
+
 ## Notes
 
 - The child process should flush its stdout promptly; buffered output will
   delay SSE frames.
-- `stderr` is captured but currently discarded. If you need logs, redirect
-  them inside the spawned command.
-- Keep the bridge behind HTTPS in production; it does not provide
+- `StdioSseServer` captures `stderr` but currently discards it. The CLI gateway
+  forwards `stderr` as SSE `error` frames instead.
+- Keep the bridge behind HTTPS in production; this library does not provide
   authentication.

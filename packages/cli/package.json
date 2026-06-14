@@ -12,6 +12,7 @@
   "dependencies": {
     "@hermit/types": "workspace:*",
     "@hermit/utils": "workspace:*",
+    "@hermit/stdio-to-sse": "workspace:*",
     "commander": "^13.0.0"
   }
 }

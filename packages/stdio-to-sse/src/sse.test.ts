@@ -93,4 +93,16 @@ describe("parseSse", () => {
     expect(data).toEqual(["payload"]);
     expect(remainder).toBe("");
   });
+
+  test("handles CRLF terminators", () => {
+    const { data, remainder } = parseSse("data: hello\r\n\r\ndata: world\r\n\r\n");
+    expect(data).toEqual(["hello", "world"]);
+    expect(remainder).toBe("");
+  });
+
+  test("ignores comment frames", () => {
+    const { data, remainder } = parseSse(":keep-alive\n\ndata: hello\n\n");
+    expect(data).toEqual(["hello"]);
+    expect(remainder).toBe("");
+  });
 });

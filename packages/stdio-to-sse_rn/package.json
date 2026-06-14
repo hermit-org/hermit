@@ -1,0 +1,20 @@
+{
+  "name": "@hermit/stdio-to-sse_rn",
+  "version": "0.0.1",
+  "type": "module",
+  "module": "src/index.ts",
+  "react-native": "src/index.ts",
+  "browser": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "react-native-sse": "^1.0.0"
+  },
+  "devDependencies": {
+    "react-native-sse": "^1.0.0"
+  },
+  "scripts": {
+    "test": "bun test"
+  }
+}
