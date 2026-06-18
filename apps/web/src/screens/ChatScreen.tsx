@@ -82,11 +82,11 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const [input, setInput] = useState("");
   const [turn, setTurn] = useState<TurnState>(EMPTY_TURN);
   const [meta, setMeta] = useState<SessionMeta>({ modes: null, commands: [] });
-  // Initialise from the persisted session so reopening a chat resumes the
-  // existing ACP session instead of creating a new one.
-  const [acpSessionId, setAcpSessionId] = useState<string | null>(
-    session?.acpSessionId ?? null,
-  );
+  // Starts as null so the effect below can run to resume/create the
+  // session on the agent side. The stored `acpSessionId` is read inside
+  // the effect (NOT here) — otherwise the guard would skip the
+  // `session/resume` call entirely.
+  const [acpSessionId, setAcpSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agentInfo, setAgentInfo] = useState<ImplementationInfo | null>(null);
