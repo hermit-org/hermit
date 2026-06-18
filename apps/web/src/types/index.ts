@@ -4,6 +4,8 @@
  * Mirrors the mobile app's domain model so both clients share the same shape.
  */
 
+import type { ConfigOption } from "@hermit/acp";
+
 export interface Gateway {
   id: string;
   name: string;
@@ -23,6 +25,9 @@ export interface Session {
   /** The agent-side ACP session ID, persisted so the conversation can be
    * resumed (via `session/resume`) instead of recreated on reconnect. */
   acpSessionId?: string;
+  /** Agent-reported config options (model, mode, thinking, …). Persisted so
+   * the status chips survive a reopen where `session/load` returns null. */
+  configOptions?: ConfigOption[];
 }
 
 export type MessageRole = "user" | "assistant" | "system";

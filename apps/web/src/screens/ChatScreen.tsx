@@ -73,7 +73,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const localMessages = useSessionStore((state) =>
     state.getSessionMessages(sessionId),
   );
-  const { addMessage, setSessionAcpId } = useSessionStore();
+  const { addMessage, setSessionAcpId, setSessionConfig } = useSessionStore();
 
   const gateway = useGatewayStore((state: { gateways: Gateway[] }) =>
     state.gateways.find((g) => g.id === session?.gatewayId),
@@ -91,7 +91,11 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const [error, setError] = useState<string | null>(null);
   const [agentInfo, setAgentInfo] = useState<ImplementationInfo | null>(null);
   // Configurable options reported by the agent (model, mode, thinking, etc.).
-  const [configOptions, setConfigOptions] = useState<ConfigOption[]>([]);
+  // Initialised from the store so chips survive a reopen where
+  // session/load returns null.
+  const [configOptions, setConfigOptions] = useState<ConfigOption[]>(
+    session?.configOptions ?? [],
+  );
   // Usage persists across turns (unlike `turn.usage` which resets on send)
   // so the context-size chip is always visible in the input toolbar.
   const [lastUsage, setLastUsage] = useState<UsageUpdateType | null>(null);
@@ -181,6 +185,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         }
         if (result.configOptions) {
           setConfigOptions(result.configOptions);
+          setSessionConfig(sessionId, result.configOptions);
         }
         const info = client.initializeResult?.agentInfo ?? null;
         if (info) setAgentInfo(info);
@@ -201,6 +206,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
             }
             if (fresh.configOptions) {
               setConfigOptions(fresh.configOptions);
+              setSessionConfig(sessionId, fresh.configOptions);
             }
             const info = client.initializeResult?.agentInfo ?? null;
             if (info) setAgentInfo(info);
@@ -213,7 +219,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [client, connected, acpSessionId, session?.acpSessionId, sessionId, setSessionAcpId]);
+  }, [client, connected, acpSessionId, session?.acpSessionId, sessionId, setSessionAcpId, setSessionConfig]);
 
   // Subscribe to session/update notifications.
   useEffect(() => {
@@ -372,11 +378,13 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
       const client = clientRef.current;
       if (!client || !acpSessionId) return;
       // Optimistic update so the chip reflects the change immediately.
-      setConfigOptions((prev) =>
-        prev.map((o) =>
+      setConfigOptions((prev) => {
+        const next = prev.map((o) =>
           o.id === optionId ? { ...o, currentValue: value } : o,
-        ),
-      );
+        );
+        setSessionConfig(sessionId, next);
+        return next;
+      });
       try {
         const result = await client.sessionSetConfigOption({
           sessionId: acpSessionId,
@@ -384,11 +392,13 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
           value,
         });
         if (result.configOption) {
-          setConfigOptions((prev) =>
-            prev.map((o) =>
+          setConfigOptions((prev) => {
+            const next = prev.map((o) =>
               o.id === result.configOption!.id ? result.configOption! : o,
-            ),
-          );
+            );
+            setSessionConfig(sessionId, next);
+            return next;
+          });
         }
       } catch (e) {
         // Revert optimistic update on failure.
@@ -403,7 +413,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         );
       }
     },
-    [acpSessionId],
+    [acpSessionId, sessionId, setSessionConfig],
   );
 
   if (!gateway) {

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Session, Message, MessageRole } from "../types";
+import type { ConfigOption } from "@hermit/acp";
 
 interface SessionState {
   sessions: Session[];
@@ -11,6 +12,8 @@ interface SessionState {
   setActiveSession: (id: string | null) => void;
   /** Persist the agent-side ACP session ID so it can be resumed later. */
   setSessionAcpId: (id: string, acpSessionId: string) => void;
+  /** Persist config options so status chips survive a reopen. */
+  setSessionConfig: (id: string, configOptions: ConfigOption[]) => void;
   addMessage: (sessionId: string, role: MessageRole, content: string) => Message;
   appendToMessage: (messageId: string, delta: string) => void;
   getSessionMessages: (sessionId: string) => Message[];
@@ -59,6 +62,14 @@ export const useSessionStore = create<SessionState>()(
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === id ? { ...s, acpSessionId, updatedAt: Date.now() } : s,
+          ),
+        }));
+      },
+
+      setSessionConfig(id, configOptions) {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === id ? { ...s, configOptions } : s,
           ),
         }));
       },
