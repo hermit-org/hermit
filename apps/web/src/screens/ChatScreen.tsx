@@ -187,6 +187,29 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn("[ACP] session setup failed:", e);
+        // If resume/load failed, fall back to creating a fresh session
+        // so the user can still chat.
+        if (shouldRestore) {
+          try {
+            // eslint-disable-next-line no-console
+            console.debug("[ACP] fallback to session/new");
+            const fresh = await client.sessionNew({ cwd: "/" });
+            setAcpSessionId(fresh.sessionId);
+            setSessionAcpId(sessionId, fresh.sessionId);
+            if (fresh.modes) {
+              setMeta((m) => ({ ...m, modes: fresh.modes ?? null }));
+            }
+            if (fresh.configOptions) {
+              setConfigOptions(fresh.configOptions);
+            }
+            const info = client.initializeResult?.agentInfo ?? null;
+            if (info) setAgentInfo(info);
+            return;
+          } catch (e2) {
+            setError(e2 instanceof Error ? e2.message : String(e2));
+            return;
+          }
+        }
         setError(e instanceof Error ? e.message : String(e));
       }
     })();

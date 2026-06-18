@@ -307,12 +307,15 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
       }),
 
     sessionLoad: (params) =>
-      request<SessionLoadParams, null>(AcpMethod.SessionLoad, params),
+      request<SessionLoadParams, null>(AcpMethod.SessionLoad, {
+        mcpServers: [],
+        ...params,
+      }),
 
     sessionResume: (params) =>
       request<SessionResumeParams, SessionSetupResult>(
         AcpMethod.SessionResume,
-        params,
+        { mcpServers: [], ...params },
       ),
 
     sessionClose: (params) =>
