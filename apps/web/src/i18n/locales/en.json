@@ -1,0 +1,40 @@
+{
+  "title": "Hermit Web",
+  "language": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "gateways": {
+    "title": "Gateways",
+    "add": "Add Gateway",
+    "update": "Update",
+    "cancel": "Cancel",
+    "name": "Gateway name",
+    "url": "SSE URL (e.g. http://localhost:8787)",
+    "token": "Bearer token",
+    "edit": "Edit",
+    "delete": "Delete",
+    "connect": "Connect",
+    "empty": "No gateways. Add one or open a connection link.",
+    "deleteConfirm": "Delete this gateway?"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "new": "New Session",
+    "empty": "No sessions yet. Start a new one."
+  },
+  "chat": {
+    "placeholder": "Message...",
+    "send": "Send",
+    "reconnect": "Reconnect",
+    "gatewayNotFound": "Gateway not found.",
+    "back": "Back"
+  },
+  "connect": {
+    "paste": "Paste connection string",
+    "import": "Import",
+    "imported": "Gateway imported",
+    "invalid": "Invalid connection string",
+    "autoImported": "Gateway auto-configured from link"
+  }
+}

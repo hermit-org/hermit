@@ -15,8 +15,10 @@ protocol-agnostic.
 | `@hermit/utils` | `packages/utils` | Shared TypeScript utility helpers |
 | `@hermit/stdio-to-sse` | `packages/stdio-to-sse` | Protocol-agnostic stdio ↔ HTTP POST/SSE bridge (Node.js/Bun) |
 | `@hermit/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE transport with stdio-like interface |
+| `@hermit/acp` | `packages/acp` | Agent Client Protocol (ACP) v1 client: typed methods, session/update dispatch |
 | `@hermit/cli` | `packages/cli` | Bun CLI that starts the ACP gateway and manages pairing |
 | `@hermit/mobile` | `apps/mobile` | React Native app: gateway list, sessions, streaming chat |
+| `@hermit/web` | `apps/web` | Vite + React web client: gateway list, sessions, streaming chat |
 
 ## Tech Stack
 
@@ -25,6 +27,7 @@ protocol-agnostic.
 - **Language:** TypeScript with strict mode
 - **CLI:** `commander`
 - **Mobile:** React Native `0.76.0`, React `18.3.1`, `@react-navigation/native`, Zustand, MMKV
+- **Web:** Vite + React `18.3.1`, Zustand, `react-markdown`, `react-i18next`
 - **Testing:** `bun:test`
 
 ## Getting Started
@@ -123,6 +126,22 @@ The gateway exposes:
 - `GET/POST /` — SSE stream of the agent stdout (requires bearer token)
 - `POST /send` — write request body to the agent stdin (requires bearer token)
 - `POST /pair` — exchange a pairing code for a bearer token
+- `GET /api/config` — read-only connection info derived from `hermit.config.json`
+  (no token required; used by the web client to pre-fill its connection form)
+
+#### Connect the web client
+
+`hermit start` accepts a `--web` option (defaults to `http://localhost:5180`).
+When set, it prints a ready-to-use web URL carrying the connection config as
+query params:
+
+```bash
+bun packages/cli/src/index.ts start --web http://localhost:5180
+```
+
+Opening that URL auto-configures a gateway in the web client. The web client
+also supports manual entry and pasting a connection string (the JSON printed
+by the CLI).
 
 ## stdio-to-sse (Node.js)
 
@@ -230,6 +249,35 @@ The app has three screens:
 Add a gateway using the CLI host's IP (e.g. `http://192.168.1.5:8787`) and the
 token from `hermit pair`.
 
+## Web App
+
+The web app is a browser replica of the mobile client. It connects to the same
+ACP gateway over SSE (using `fetch` streaming, since `EventSource` cannot send
+the `Authorization` header) and `POST /send`.
+
+```bash
+# 1. Start the gateway (prints a pre-configured web link)
+bun packages/cli/src/index.ts start --web http://localhost:5180
+
+# 2. Start the web client
+cd apps/web
+bun run dev
+```
+
+The app has three views mirroring mobile:
+
+1. **Gateways** — add/import/edit gateway connections.
+2. **Sessions** — browse and create chat sessions for a gateway.
+3. **Chat** — connect via SSE, send messages, render streaming Markdown.
+
+Connection config is resolved in priority order:
+
+1. **URL params** — `?url=...&token=...&name=...` (the link printed by
+   `hermit start`), or `?payload=<connection JSON>`.
+2. **Paste a connection string** — the JSON or `hermit://connect?payload=...`
+   value printed by the CLI.
+3. **Manual entry** — name, SSE URL, and bearer token in the form.
+
 ## Repository Layout
 
 ```
@@ -242,10 +290,12 @@ hermit/
 │   ├── cli/
 │   ├── stdio-to-sse/
 │   ├── stdio-to-sse_rn/
+│   ├── acp/
 │   ├── types/
 │   └── utils/
 └── apps/
-    └── mobile/
+    ├── mobile/
+    └── web/
 ```
 
 ## License

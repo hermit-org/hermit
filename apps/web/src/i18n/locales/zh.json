@@ -1,0 +1,40 @@
+{
+  "title": "Hermit Web",
+  "language": {
+    "en": "English",
+    "zh": "中文"
+  },
+  "gateways": {
+    "title": "网关",
+    "add": "添加网关",
+    "update": "更新",
+    "cancel": "取消",
+    "name": "网关名称",
+    "url": "SSE 地址（如 http://localhost:8787）",
+    "token": "Bearer 令牌",
+    "edit": "编辑",
+    "delete": "删除",
+    "connect": "连接",
+    "empty": "暂无网关，请添加或打开连接链接。",
+    "deleteConfirm": "确定删除此网关？"
+  },
+  "sessions": {
+    "title": "会话",
+    "new": "新建会话",
+    "empty": "暂无会话，请新建一个。"
+  },
+  "chat": {
+    "placeholder": "输入消息…",
+    "send": "发送",
+    "reconnect": "重新连接",
+    "gatewayNotFound": "未找到网关。",
+    "back": "返回"
+  },
+  "connect": {
+    "paste": "粘贴连接字符串",
+    "import": "导入",
+    "imported": "网关已导入",
+    "invalid": "连接字符串无效",
+    "autoImported": "已从链接自动配置网关"
+  }
+}

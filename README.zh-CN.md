@@ -14,8 +14,10 @@ Gateway 场景设计，但传输层本身保持与协议无关。
 | `@hermit/utils` | `packages/utils` | 共享 TypeScript 工具函数 |
 | `@hermit/stdio-to-sse` | `packages/stdio-to-sse` | 与协议无关的 stdio ↔ HTTP POST/SSE 桥接库（Node.js/Bun） |
 | `@hermit/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE 传输层，提供 stdio-like 接口 |
+| `@hermit/acp` | `packages/acp` | Agent Client Protocol (ACP) v1 客户端：类型化方法、session/update 分发 |
 | `@hermit/cli` | `packages/cli` | Bun CLI，启动 ACP Gateway 并管理配对 |
 | `@hermit/mobile` | `apps/mobile` | React Native 应用：Gateway 列表、会话、流式聊天 |
+| `@hermit/web` | `apps/web` | Vite + React Web 客户端：Gateway 列表、会话、流式聊天 |
 
 ## 技术栈
 
@@ -24,6 +26,7 @@ Gateway 场景设计，但传输层本身保持与协议无关。
 - **语言：** TypeScript（严格模式）
 - **CLI：** `commander`
 - **移动端：** React Native `0.76.0`、React `18.3.1`、`@react-navigation/native`、Zustand、MMKV
+- **Web：** Vite + React `18.3.1`、Zustand、`react-markdown`、`react-i18next`
 - **测试：** `bun:test`
 
 ## 快速开始
@@ -121,6 +124,20 @@ Gateway 暴露以下端点：
 - `GET/POST /` —— Agent stdout 的 SSE 流（需要 Bearer token）
 - `POST /send` —— 将请求体写入 Agent stdin（需要 Bearer token）
 - `POST /pair` —— 用配对码换取 Bearer token
+- `GET /api/config` —— 只读连接信息（由 `hermit.config.json` 推导，无需
+  token；供 Web 客户端预填连接表单使用）
+
+#### 连接 Web 客户端
+
+`hermit start` 接受 `--web` 选项（默认 `http://localhost:5180`）。设置后，
+会打印一个将连接配置作为查询参数携带的、可直接使用的 Web URL：
+
+```bash
+bun packages/cli/src/index.ts start --web http://localhost:5180
+```
+
+打开该 URL 即可在 Web 客户端自动配置一个 Gateway。Web 客户端也支持手动
+填写和粘贴连接字符串（CLI 打印的 JSON）。
 
 ## stdio-to-sse（Node.js）
 
@@ -226,6 +243,34 @@ bun run ios
 添加 Gateway 时使用 CLI 主机的 IP（例如 `http://192.168.1.5:8787`）以及
 `hermit pair` 生成的 token。
 
+## Web 应用
+
+Web 应用是移动客户端的浏览器复刻版。它通过 SSE 连接同一个 ACP
+Gateway（因为浏览器 `EventSource` 无法发送 `Authorization` 头，改用
+`fetch` 流式读取）以及 `POST /send`。
+
+```bash
+# 1. 启动 Gateway（会打印预配置好的 Web 链接）
+bun packages/cli/src/index.ts start --web http://localhost:5180
+
+# 2. 启动 Web 客户端
+cd apps/web
+bun run dev
+```
+
+应用包含三个与移动端对应的页面：
+
+1. **Gateways** —— 添加 / 导入 / 编辑 Gateway 连接。
+2. **Sessions** —— 浏览并创建某个 Gateway 下的聊天会话。
+3. **Chat** —— 通过 SSE 连接，发送消息，流式渲染 Markdown。
+
+连接配置按优先级依次解析：
+
+1. **URL 参数** —— `?url=...&token=...&name=...`（`hermit start` 打印的
+   链接）或 `?payload=<连接 JSON>`。
+2. **粘贴连接字符串** —— CLI 打印的 JSON 或 `hermit://connect?payload=...`。
+3. **手动填写** —— 在表单中填写名称、SSE 地址和 Bearer token。
+
 ## 仓库结构
 
 ```
@@ -238,10 +283,12 @@ hermit/
 │   ├── cli/
 │   ├── stdio-to-sse/
 │   ├── stdio-to-sse_rn/
+│   ├── acp/
 │   ├── types/
 │   └── utils/
 └── apps/
-    └── mobile/
+    ├── mobile/
+    └── web/
 ```
 
 ## 许可证
