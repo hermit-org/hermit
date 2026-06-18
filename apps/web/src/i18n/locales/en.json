@@ -30,6 +30,15 @@
     "gatewayNotFound": "Gateway not found.",
     "back": "Back"
   },
+  "permission": {
+    "title": "Tool approval",
+    "wantsTo": "wants to run",
+    "allowOnce": "Allow once",
+    "allowAlways": "Allow always",
+    "rejectOnce": "Reject once",
+    "rejectAlways": "Reject always",
+    "dismiss": "Dismiss"
+  },
   "connect": {
     "paste": "Paste connection string",
     "import": "Import",

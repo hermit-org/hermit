@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createAcpClient, type AcpClient } from "@hermit/acp";
 import { createWebTransport } from "../transport/stdio";
 import type { WebSseEvent } from "../transport/connection";
+import { usePermissionStore } from "../stores";
 import type { Gateway } from "../types";
 
 export interface UseAcpClientOptions {
@@ -30,6 +31,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const [error, setError] = useState<Error | null>(null);
 
   const disconnect = useCallback(() => {
+    usePermissionStore.getState().clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
     setConnected(false);
@@ -54,10 +56,15 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
       },
     });
 
+    const permissionStore = usePermissionStore;
+
     const client = createAcpClient({
       transport,
       clientInfo: { name: "hermit-web", title: "Hermit Web", version: "0.0.1" },
       clientCapabilities: {},
+      handlers: {
+        requestPermission: (params) => permissionStore.getState().request(params),
+      },
     });
 
     clientRef.current = client;

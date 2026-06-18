@@ -207,14 +207,56 @@ export interface SessionLoadParams {
 
 export type SessionResumeParams = SessionLoadParams;
 
+/**
+ * A configurable option reported by the agent in `session/new`.
+ *
+ * This is an agent extension (used by e.g. Kimi Code CLI) that supplements the
+ * standard `modes` field. Each option describes a tunable setting such as the
+ * active model, thinking level, or operating mode, along with its current
+ * value and (for `select` types) the list of allowed values.
+ */
+export interface ConfigOptionChoice {
+  value: string;
+  name?: string;
+  description?: string;
+}
+
+export interface ConfigOption {
+  type: "select" | "text" | "toggle";
+  id: string;
+  name: string;
+  category?: string;
+  currentValue: string;
+  options?: ConfigOptionChoice[];
+  description?: string;
+}
+
 export interface SessionSetupResult {
   sessionId: string;
   /** Available operating modes (session-modes). */
   modes?: SessionModeState;
+  /** Agent-reported configurable options (model, mode, thinking, etc.). */
+  configOptions?: ConfigOption[];
 }
 
 export interface SessionCloseParams {
   sessionId: string;
+}
+
+// ---------------------------------------------------------------------------
+// Config options (session/set_config_option)
+// ---------------------------------------------------------------------------
+
+export interface SessionSetConfigOptionParams {
+  sessionId: string;
+  id: string;
+  value: string;
+}
+
+/** Result of `session/set_config_option`. The full updated option is returned
+ * so the client can refresh its local state. */
+export interface SessionSetConfigOptionResult {
+  configOption?: ConfigOption;
 }
 
 // ---------------------------------------------------------------------------
@@ -612,6 +654,7 @@ export const AcpMethod = {
   SessionClose: "session/close",
   SessionPrompt: "session/prompt",
   SessionSetMode: "session/set_mode",
+  SessionSetConfigOption: "session/set_config_option",
   SessionList: "session/list",
   SessionDelete: "session/delete",
 } as const;

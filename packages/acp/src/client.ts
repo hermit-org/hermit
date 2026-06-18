@@ -28,6 +28,8 @@ import {
   type SessionPromptParams,
   type SessionPromptResult,
   type SessionSetModeParams,
+  type SessionSetConfigOptionParams,
+  type SessionSetConfigOptionResult,
   type SessionListParams,
   type SessionListResult,
   type SessionDeleteParams,
@@ -100,6 +102,9 @@ export interface AcpClient {
   sessionClose(params: SessionCloseParams): Promise<null>;
   sessionPrompt(params: SessionPromptParams): Promise<SessionPromptResult>;
   sessionSetMode(params: SessionSetModeParams): Promise<null>;
+  sessionSetConfigOption(
+    params: SessionSetConfigOptionParams,
+  ): Promise<SessionSetConfigOptionResult>;
   sessionList(params?: SessionListParams): Promise<SessionListResult>;
   sessionDelete(params: SessionDeleteParams): Promise<null>;
   sessionCancel(params: SessionCancelParams): Promise<void>;
@@ -321,6 +326,12 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
 
     sessionSetMode: (params) =>
       request<SessionSetModeParams, null>(AcpMethod.SessionSetMode, params),
+
+    sessionSetConfigOption: (params) =>
+      request<SessionSetConfigOptionParams, SessionSetConfigOptionResult>(
+        AcpMethod.SessionSetConfigOption,
+        params,
+      ),
 
     sessionList: (params) =>
       request<SessionListParams | undefined, SessionListResult>(

@@ -30,6 +30,15 @@
     "gatewayNotFound": "未找到网关。",
     "back": "返回"
   },
+  "permission": {
+    "title": "工具授权",
+    "wantsTo": "请求运行",
+    "allowOnce": "允许一次",
+    "allowAlways": "总是允许",
+    "rejectOnce": "拒绝一次",
+    "rejectAlways": "总是拒绝",
+    "dismiss": "关闭"
+  },
   "connect": {
     "paste": "粘贴连接字符串",
     "import": "导入",

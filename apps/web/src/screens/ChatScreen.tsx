@@ -1,20 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useGatewayStore, useSessionStore } from "../stores";
+import { useGatewayStore, useSessionStore, useSettingsStore } from "../stores";
 import { useAcpClient } from "../acp/hooks";
 import { ChatMessage } from "../components/ChatMessage";
-import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import {
   ToolCallView,
   mergeToolCall,
   type ToolCallState,
 } from "../components/ToolCallView";
+import { ThoughtView } from "../components/ThoughtView";
+import { SendHorizontal, Cpu, Gauge, Layers, BrainCog } from "lucide-react";
 import {
   PlanView,
-  UsageView,
   ModeView,
-  CommandsView,
 } from "../components/SessionMeta";
+import { PermissionDialog } from "../components/PermissionDialog";
+import { CommandSuggest } from "../components/CommandSuggest";
+import { ConfigChip } from "../components/ConfigChip";
 import type { Gateway, Message } from "../types";
 import type {
   SessionUpdate,
@@ -24,6 +26,8 @@ import type {
   AvailableCommand,
   ContentBlock,
   AcpClient,
+  ImplementationInfo,
+  ConfigOption,
 } from "@hermit/acp";
 
 interface ChatScreenProps {
@@ -81,10 +85,25 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const [acpSessionId, setAcpSessionId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agentInfo, setAgentInfo] = useState<ImplementationInfo | null>(null);
+  // Configurable options reported by the agent (model, mode, thinking, etc.).
+  const [configOptions, setConfigOptions] = useState<ConfigOption[]>([]);
+  // Usage persists across turns (unlike `turn.usage` which resets on send)
+  // so the context-size chip is always visible in the input toolbar.
+  const [lastUsage, setLastUsage] = useState<UsageUpdateType | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // Accumulates the assistant text for the in-flight turn so `handleSend` can
   // read the latest value after the prompt promise resolves.
   const turnAssistantRef = useRef("");
+
+  // Configurable: how many lines of a thought block to show when collapsed.
+  const thoughtPreviewLines = useSettingsStore(
+    (s) => s.thoughtPreviewLines,
+  );
+
+  // Responsive input sizing: on short screens use a single-line input to
+  // maximise message space; otherwise show a 3-line textarea.
+  const inputRows = useInputRows();
 
   const { client, connected, state: connectionState, connect } = useAcpClient({
     gateway: gateway ?? null,
@@ -101,10 +120,19 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         const result = await client.sessionNew({
           cwd: typeof navigator !== "undefined" ? "/" : "/",
         });
+        // eslint-disable-next-line no-console
+        console.debug("[ACP] session/new result:", result);
         setAcpSessionId(result.sessionId);
         if (result.modes) {
           setMeta((m) => ({ ...m, modes: result.modes ?? null }));
         }
+        if (result.configOptions) {
+          setConfigOptions(result.configOptions);
+        }
+        const info = client.initializeResult?.agentInfo ?? null;
+        // eslint-disable-next-line no-console
+        console.debug("[ACP] agentInfo:", info);
+        if (info) setAgentInfo(info);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
@@ -120,6 +148,13 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   }, [client]);
 
   const applyUpdate = useCallback((update: SessionUpdate) => {
+    // Debug: log every session/update so we can see what the agent actually
+    // sends (usage, modes, non-standard fields, etc.).
+    if (typeof console !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.debug("[ACP] session/update:", update.sessionUpdate, update);
+    }
+
     switch (update.sessionUpdate) {
       case "agent_thought_chunk": {
         const text = contentToText(update.content);
@@ -181,10 +216,22 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         break;
       case "usage_update":
         setTurn((prev) => ({ ...prev, usage: update }));
+        setLastUsage(update);
         break;
       case "current_mode_update":
         setMeta((m) => {
-          if (!m.modes) return m;
+          if (!m.modes) {
+            // Agent sends mode updates without declaring availableModes
+            // in session/new. Track the current modeId so we can at least
+            // display something.
+            return {
+              ...m,
+              modes: {
+                currentModeId: update.modeId,
+                availableModes: [{ id: update.modeId, name: update.modeId }],
+              },
+            };
+          }
           return { ...m, modes: { ...m.modes, currentModeId: update.modeId } };
         });
         break;
@@ -193,6 +240,14 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         break;
       case "session_info_update":
         // Title updates could be persisted; kept as no-op for now.
+        break;
+      default:
+        // Catch non-standard update types (some agents embed usage/model
+        // info in custom sessionUpdate values). Log for diagnosis.
+        if (typeof console !== "undefined") {
+          // eslint-disable-next-line no-console
+          console.debug("[ACP] unhandled update type:", (update as { sessionUpdate: string }).sessionUpdate, update);
+        }
         break;
     }
   }, []);
@@ -229,6 +284,52 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
     }
   }, [input, acpSessionId, sessionId, addMessage]);
 
+  const handleCommandPick = useCallback((text: string) => {
+    setInput(text);
+  }, []);
+
+  // Change an agent config option (model / mode / thinking …) via
+  // `session/set_config_option`. Updates local state optimistically and
+  // refreshes from the response if the agent returns the updated option.
+  const handleConfigChange = useCallback(
+    async (optionId: string, value: string) => {
+      const client = clientRef.current;
+      if (!client || !acpSessionId) return;
+      // Optimistic update so the chip reflects the change immediately.
+      setConfigOptions((prev) =>
+        prev.map((o) =>
+          o.id === optionId ? { ...o, currentValue: value } : o,
+        ),
+      );
+      try {
+        const result = await client.sessionSetConfigOption({
+          sessionId: acpSessionId,
+          id: optionId,
+          value,
+        });
+        if (result.configOption) {
+          setConfigOptions((prev) =>
+            prev.map((o) =>
+              o.id === result.configOption!.id ? result.configOption! : o,
+            ),
+          );
+        }
+      } catch (e) {
+        // Revert optimistic update on failure.
+        // eslint-disable-next-line no-console
+        console.error("[ACP] set_config_option failed:", e);
+        setConfigOptions((prev) =>
+          prev.map((o) =>
+            o.id === optionId
+              ? { ...o, currentValue: o.currentValue }
+              : o,
+          ),
+        );
+      }
+    },
+    [acpSessionId],
+  );
+
   if (!gateway) {
     return (
       <div style={styles.center}>
@@ -241,6 +342,20 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   }
 
   const canSend = connected && !!acpSessionId && !busy;
+
+  // Derived values for the compact status bar under the input.
+  const usage = lastUsage ?? turn.usage;
+
+  // Kimi Code CLI reports model/mode/thinking via `configOptions` (an agent
+  // extension). Standard ACP agents report modes via `meta.modes`. The chips
+  // are rendered from the raw configOptions so they can be switched in-place.
+  const configModel = configOptions.find((c) => c.id === "model");
+  const configMode = configOptions.find((c) => c.id === "mode");
+  const configThinking = configOptions.find((c) => c.id === "thinking");
+
+  // Fallback model name for agents that don't report configOptions.
+  const modelName =
+    agentInfo?.title ?? agentInfo?.name ?? undefined;
 
   return (
     <div style={styles.container}>
@@ -274,9 +389,12 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
           }
           if (item.kind === "thought") {
             return (
-              <div key={`th-${i}`} style={styles.thought}>
-                <MarkdownRenderer content={item.content} />
-              </div>
+              <ThoughtView
+                key={`th-${i}`}
+                content={item.content}
+                busy={busy}
+                maxLines={thoughtPreviewLines}
+              />
             );
           }
           if (item.role === "user") {
@@ -307,8 +425,6 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         })}
 
         {turn.plan && <PlanView entries={turn.plan} />}
-        {turn.usage && <UsageView usage={turn.usage} />}
-        {meta.commands.length > 0 && <CommandsView commands={meta.commands} />}
 
         {busy && turn.items.length === 0 && (
           <div style={styles.thinking}>▋</div>
@@ -316,31 +432,80 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         {error && <div style={styles.error}>⚠ {error}</div>}
       </div>
 
-      <div style={styles.inputRow}>
-        <textarea
-          style={styles.input}
-          placeholder={t("chat.placeholder")}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void handleSend();
-            }
-          }}
-          rows={1}
-        />
-        <button
-          style={{
-            ...styles.sendButton,
-            ...(!canSend && styles.sendDisabled),
-          }}
-          onClick={handleSend}
-          disabled={!canSend}
-        >
-          {t("chat.send")}
-        </button>
+      <div style={styles.inputArea}>
+        <div style={styles.inputWrap}>
+          <CommandSuggest
+            commands={meta.commands}
+            input={input}
+            onPick={handleCommandPick}
+          />
+          <textarea
+            style={styles.input}
+            placeholder={t("chat.placeholder")}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void handleSend();
+              }
+            }}
+            rows={inputRows}
+          />
+        </div>
+        <div style={styles.inputToolbar}>
+          <div style={styles.metaBar}>
+            {usage && (
+              <span style={styles.metaChip} title="Context tokens used / size">
+                <Gauge size={12} style={styles.metaIcon} />
+                {formatTokens(usage.used)} / {formatTokens(usage.size)}
+              </span>
+            )}
+            {configMode && (
+              <ConfigChip
+                option={configMode}
+                icon={<Layers size={12} style={styles.metaIcon} />}
+                onSelect={(value) => handleConfigChange(configMode.id, value)}
+              />
+            )}
+            {configThinking && (
+              <ConfigChip
+                option={configThinking}
+                icon={<BrainCog size={12} style={styles.metaIcon} />}
+                onSelect={(value) =>
+                  handleConfigChange(configThinking.id, value)
+                }
+              />
+            )}
+            {configModel && (
+              <ConfigChip
+                option={configModel}
+                icon={<Cpu size={12} style={styles.metaIcon} />}
+                onSelect={(value) => handleConfigChange(configModel.id, value)}
+              />
+            )}
+            {!configModel && modelName && (
+              <span style={styles.metaChip} title={agentInfo?.version}>
+                <Cpu size={12} style={styles.metaIcon} />
+                {modelName}
+              </span>
+            )}
+          </div>
+          <button
+            style={{
+              ...styles.sendButton,
+              ...(!canSend && styles.sendDisabled),
+            }}
+            onClick={handleSend}
+            disabled={!canSend}
+            aria-label={t("chat.send")}
+          >
+            <SendHorizontal size={18} />
+          </button>
+        </div>
       </div>
+
+      <PermissionDialog />
     </div>
   );
 }
@@ -352,6 +517,36 @@ function contentToText(content: ContentBlock): string {
   }
   if (content.type === "resource_link") return content.name;
   return "";
+}
+
+/** Compact token count formatting (e.g. 1200 → "1.2k"). */
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
+/**
+ * Returns the number of textarea rows based on the viewport height.
+ *
+ * Short screens (e.g. mobile landscape, half-height windows) get a single
+ * line to maximise the visible message list; normal and tall screens get a
+ * 3-line textarea for comfortable multi-line editing.
+ */
+function useInputRows(): number {
+  const [rows, setRows] = useState(() => computeInputRows());
+  useEffect(() => {
+    const onResize = () => setRows(computeInputRows());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return rows;
+}
+
+function computeInputRows(): number {
+  const h = typeof window !== "undefined" ? window.innerHeight : 800;
+  // 500px is roughly the height where a single-line input is needed to keep
+  // the conversation readable in landscape / split views.
+  return h < 500 ? 1 : 3;
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -411,16 +606,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#999",
     fontSize: 16,
   },
-  thought: {
-    margin: "6px 12px",
-    padding: "8px 12px",
-    backgroundColor: "#f6f7f9",
-    borderLeft: "3px solid #c8c8d0",
-    borderRadius: "0 8px 8px 0",
-    color: "#777",
-    fontSize: 13,
-    opacity: 0.9,
-  },
   error: {
     margin: "8px 12px",
     padding: "8px 12px",
@@ -429,36 +614,83 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     fontSize: 13,
   },
-  inputRow: {
-    display: "flex",
-    alignItems: "flex-end",
-    gap: 10,
-    padding: 12,
-    borderTop: "1px solid #e5e5e5",
+  inputArea: {
+    margin: "0 12px 12px",
+    border: "1px solid #d1d1d1",
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+  },
+  inputWrap: {
+    position: "relative",
+    display: "block",
   },
   input: {
-    flex: 1,
-    border: "1px solid #d1d1d1",
-    borderRadius: 20,
-    padding: "10px 16px",
+    width: "100%",
+    boxSizing: "border-box",
+    border: "none",
+    borderRadius: 0,
+    padding: "10px 14px",
     fontSize: 15,
     fontFamily: "inherit",
     outline: "none",
     resize: "none",
     maxHeight: 120,
+    background: "transparent",
+  },
+  inputToolbar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "6px 8px 6px 10px",
+    borderTop: "1px solid #f0f0f0",
+    minHeight: 32,
   },
   sendButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 28,
+    width: 28,
+    minWidth: 28,
     backgroundColor: "#007AFF",
     color: "#fff",
-    fontWeight: 600,
     border: "none",
-    borderRadius: 20,
-    padding: "12px 18px",
+    borderRadius: 14,
     cursor: "pointer",
+    padding: 0,
+    flexShrink: 0,
   },
   sendDisabled: {
     backgroundColor: "#b3d7ff",
     cursor: "not-allowed",
+  },
+  metaBar: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+    flex: 1,
+    minWidth: 0,
+  },
+  metaChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    fontSize: 11,
+    color: "#888",
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+    backgroundColor: "#f4f4f5",
+    padding: "2px 8px",
+    borderRadius: 10,
+    maxWidth: "100%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  metaIcon: {
+    flexShrink: 0,
+    opacity: 0.7,
   },
   button: {
     backgroundColor: "#007AFF",
