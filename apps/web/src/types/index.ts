@@ -20,6 +20,9 @@ export interface Session {
   title: string;
   createdAt: number;
   updatedAt: number;
+  /** The agent-side ACP session ID, persisted so the conversation can be
+   * resumed (via `session/resume`) instead of recreated on reconnect. */
+  acpSessionId?: string;
 }
 
 export type MessageRole = "user" | "assistant" | "system";

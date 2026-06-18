@@ -9,6 +9,8 @@ interface SessionState {
   createSession: (gatewayId: string, title?: string) => Session;
   deleteSession: (id: string) => void;
   setActiveSession: (id: string | null) => void;
+  /** Persist the agent-side ACP session ID so it can be resumed later. */
+  setSessionAcpId: (id: string, acpSessionId: string) => void;
   addMessage: (sessionId: string, role: MessageRole, content: string) => Message;
   appendToMessage: (messageId: string, delta: string) => void;
   getSessionMessages: (sessionId: string) => Message[];
@@ -51,6 +53,14 @@ export const useSessionStore = create<SessionState>()(
 
       setActiveSession(id) {
         set({ activeSessionId: id });
+      },
+
+      setSessionAcpId(id, acpSessionId) {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === id ? { ...s, acpSessionId, updatedAt: Date.now() } : s,
+          ),
+        }));
       },
 
       addMessage(sessionId, role, content) {

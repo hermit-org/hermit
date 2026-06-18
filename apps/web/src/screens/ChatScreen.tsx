@@ -73,7 +73,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const localMessages = useSessionStore((state) =>
     state.getSessionMessages(sessionId),
   );
-  const { addMessage } = useSessionStore();
+  const { addMessage, setSessionAcpId } = useSessionStore();
 
   const gateway = useGatewayStore((state: { gateways: Gateway[] }) =>
     state.gateways.find((g) => g.id === session?.gatewayId),
@@ -82,7 +82,11 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const [input, setInput] = useState("");
   const [turn, setTurn] = useState<TurnState>(EMPTY_TURN);
   const [meta, setMeta] = useState<SessionMeta>({ modes: null, commands: [] });
-  const [acpSessionId, setAcpSessionId] = useState<string | null>(null);
+  // Initialise from the persisted session so reopening a chat resumes the
+  // existing ACP session instead of creating a new one.
+  const [acpSessionId, setAcpSessionId] = useState<string | null>(
+    session?.acpSessionId ?? null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [agentInfo, setAgentInfo] = useState<ImplementationInfo | null>(null);
@@ -112,17 +116,35 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const clientRef = useRef<AcpClient | null>(null);
   clientRef.current = client;
 
-  // Create an ACP session once the client is connected.
+  // Establish (or resume) an ACP session once the client is connected.
+  // If the local session already has an `acpSessionId` persisted from a
+  // previous open, we resume it so the agent's conversation context is
+  // preserved. Otherwise we create a new session.
   useEffect(() => {
     if (!client || !connected || acpSessionId) return;
     void (async () => {
+      const storedAcpId = session?.acpSessionId;
       try {
-        const result = await client.sessionNew({
-          cwd: typeof navigator !== "undefined" ? "/" : "/",
-        });
+        let result;
+        if (storedAcpId) {
+          // eslint-disable-next-line no-console
+          console.debug("[ACP] session/resume:", storedAcpId);
+          result = await client.sessionResume({
+            sessionId: storedAcpId,
+            cwd: "/",
+          });
+        } else {
+          // eslint-disable-next-line no-console
+          console.debug("[ACP] session/new");
+          result = await client.sessionNew({
+            cwd: "/",
+          });
+        }
         // eslint-disable-next-line no-console
-        console.debug("[ACP] session/new result:", result);
+        console.debug("[ACP] session setup result:", result);
         setAcpSessionId(result.sessionId);
+        // Persist the ACP session ID for next time.
+        setSessionAcpId(sessionId, result.sessionId);
         if (result.modes) {
           setMeta((m) => ({ ...m, modes: result.modes ?? null }));
         }
@@ -134,10 +156,31 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         console.debug("[ACP] agentInfo:", info);
         if (info) setAgentInfo(info);
       } catch (e) {
+        // If resume fails (e.g. agent restarted, session expired),
+        // fall back to creating a fresh session.
+        if (storedAcpId) {
+          // eslint-disable-next-line no-console
+          console.warn("[ACP] resume failed, creating new session:", e);
+          try {
+            const fresh = await client.sessionNew({ cwd: "/" });
+            setAcpSessionId(fresh.sessionId);
+            setSessionAcpId(sessionId, fresh.sessionId);
+            if (fresh.modes) {
+              setMeta((m) => ({ ...m, modes: fresh.modes ?? null }));
+            }
+            if (fresh.configOptions) {
+              setConfigOptions(fresh.configOptions);
+            }
+            return;
+          } catch (e2) {
+            setError(e2 instanceof Error ? e2.message : String(e2));
+            return;
+          }
+        }
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [client, connected, acpSessionId]);
+  }, [client, connected, acpSessionId, session?.acpSessionId, sessionId, setSessionAcpId]);
 
   // Subscribe to session/update notifications.
   useEffect(() => {
