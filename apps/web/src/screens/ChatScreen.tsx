@@ -619,7 +619,9 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #d1d1d1",
     borderRadius: 16,
     backgroundColor: "#fff",
-    overflow: "hidden",
+    // overflow must be visible so the CommandSuggest popover (positioned
+    // above via bottom:100%) is not clipped.
+    overflow: "visible",
   },
   inputWrap: {
     position: "relative",
