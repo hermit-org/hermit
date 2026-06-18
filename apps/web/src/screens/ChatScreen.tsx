@@ -118,15 +118,41 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
 
   // Establish (or resume) an ACP session once the client is connected.
   // If the local session already has an `acpSessionId` persisted from a
-  // previous open, we resume it so the agent's conversation context is
-  // preserved. Otherwise we create a new session.
+  // previous open, we try to resume/load it so the agent's conversation
+  // context is preserved. Otherwise we create a new session.
   useEffect(() => {
     if (!client || !connected || acpSessionId) return;
     void (async () => {
       const storedAcpId = session?.acpSessionId;
+      const caps = client.initializeResult?.agentCapabilities;
+      const supportsLoad = caps?.loadSession === true;
+      const supportsResume = !!caps?.sessionCapabilities?.resume;
+
+      // eslint-disable-next-line no-console
+      console.debug("[ACP] capabilities:", {
+        supportsLoad,
+        supportsResume,
+        full: client.initializeResult,
+      });
+      // eslint-disable-next-line no-console
+      console.debug("[ACP] stored acpSessionId:", storedAcpId);
+
+      // If we have a stored session AND the agent supports resume/load,
+      // try to restore it. Otherwise create a new session.
+      const shouldRestore = storedAcpId && (supportsLoad || supportsResume);
+
       try {
         let result;
-        if (storedAcpId) {
+        if (shouldRestore && supportsLoad) {
+          // eslint-disable-next-line no-console
+          console.debug("[ACP] session/load:", storedAcpId);
+          await client.sessionLoad({
+            sessionId: storedAcpId,
+            cwd: "/",
+          });
+          // session/load returns null per spec; synthesize the result.
+          result = { sessionId: storedAcpId };
+        } else if (shouldRestore && supportsResume) {
           // eslint-disable-next-line no-console
           console.debug("[ACP] session/resume:", storedAcpId);
           result = await client.sessionResume({
@@ -134,11 +160,16 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
             cwd: "/",
           });
         } else {
-          // eslint-disable-next-line no-console
-          console.debug("[ACP] session/new");
-          result = await client.sessionNew({
-            cwd: "/",
-          });
+          if (storedAcpId) {
+            // eslint-disable-next-line no-console
+            console.debug(
+              "[ACP] agent does not support resume/load, creating new session",
+            );
+          } else {
+            // eslint-disable-next-line no-console
+            console.debug("[ACP] session/new");
+          }
+          result = await client.sessionNew({ cwd: "/" });
         }
         // eslint-disable-next-line no-console
         console.debug("[ACP] session setup result:", result);
@@ -152,31 +183,10 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
           setConfigOptions(result.configOptions);
         }
         const info = client.initializeResult?.agentInfo ?? null;
-        // eslint-disable-next-line no-console
-        console.debug("[ACP] agentInfo:", info);
         if (info) setAgentInfo(info);
       } catch (e) {
-        // If resume fails (e.g. agent restarted, session expired),
-        // fall back to creating a fresh session.
-        if (storedAcpId) {
-          // eslint-disable-next-line no-console
-          console.warn("[ACP] resume failed, creating new session:", e);
-          try {
-            const fresh = await client.sessionNew({ cwd: "/" });
-            setAcpSessionId(fresh.sessionId);
-            setSessionAcpId(sessionId, fresh.sessionId);
-            if (fresh.modes) {
-              setMeta((m) => ({ ...m, modes: fresh.modes ?? null }));
-            }
-            if (fresh.configOptions) {
-              setConfigOptions(fresh.configOptions);
-            }
-            return;
-          } catch (e2) {
-            setError(e2 instanceof Error ? e2.message : String(e2));
-            return;
-          }
-        }
+        // eslint-disable-next-line no-console
+        console.warn("[ACP] session setup failed:", e);
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
