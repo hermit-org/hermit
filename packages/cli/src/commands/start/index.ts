@@ -104,7 +104,7 @@ function getLanAddress(port: number): string {
   return `http://${candidates[0].address}:${port}`;
 }
 
-async function startServer(config: HermitConfig): Promise<void> {
+async function startServer(config: HermitConfig, webClientUrl?: string): Promise<void> {
   const { agent, gateway } = config;
 
   const sseEndpoint = gateway!.endpoint || "/";
@@ -130,6 +130,32 @@ async function startServer(config: HermitConfig): Promise<void> {
       return { url, sendUrl, token };
     },
     onRequest: async (req, res) => {
+      // Read-only connection info endpoint. The web client uses this to
+      // pre-fill its connection form from `hermit.config.json` when the page
+      // is opened without URL params. No token is exposed here.
+      if (gateway!.cors && req.method === "OPTIONS" && req.url === "/api/config") {
+        res.writeHead(204, {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        });
+        res.end();
+        return true;
+      }
+
+      if (req.method === "GET" && req.url === "/api/config") {
+        sendJson(res, 200, {
+          agent: { command: agent!.command, args: agent!.args ?? [] },
+          gateway: {
+            url: getLanAddress(port) + sseEndpoint,
+            sendUrl: getLanAddress(port) + sendEndpoint,
+            endpoint: sseEndpoint,
+            port,
+          },
+        });
+        return true;
+      }
+
       // CORS preflight for the pairing endpoint.
       if (gateway!.cors && req.method === "OPTIONS" && req.url === "/pair") {
         res.writeHead(204, {
@@ -184,6 +210,19 @@ async function startServer(config: HermitConfig): Promise<void> {
   console.log(await generateQrTerminal(qrPayload));
   console.log("\nOr paste this connection string:");
   console.log(encodeConnectionPayload(qrPayload));
+
+  if (webClientUrl) {
+    const params = new URLSearchParams({
+      name: "Hermit Gateway",
+      url: qrPayload.url,
+      sendUrl: qrPayload.sendUrl,
+      token: qrPayload.token,
+    });
+    const base = webClientUrl.replace(/[?#].*$/, "");
+    console.log(`\nOpen the web client (connection pre-configured):`);
+    console.log(`${base}?${params.toString()}`);
+  }
+
   console.log("\nPress Ctrl+C to stop");
 
   process.once("SIGINT", async () => {
@@ -193,11 +232,16 @@ async function startServer(config: HermitConfig): Promise<void> {
   });
 }
 
-async function startAction(): Promise<void> {
+async function startAction(options: { web?: string }): Promise<void> {
   const config = await loadConfig();
-  await startServer(config);
+  await startServer(config, options.web);
 }
 
 export const command = new Command("start")
   .description("Start the Hermit gateway (ACP agent -> SSE)")
+  .option(
+    "--web <url>",
+    "web client base URL; prints a pre-configured link when set",
+    "http://localhost:5180",
+  )
   .action(startAction);
