@@ -74,7 +74,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const localMessages = useSessionStore((state) =>
     state.getSessionMessages(sessionId),
   );
-  const { addMessage, setSessionAcpId, setSessionConfig, setSessionTitle, setSessionClosed } =
+  const { addMessage, setMessages, setSessionAcpId, setSessionConfig, setSessionTitle, setSessionClosed } =
     useSessionStore();
 
   const gateway = useGatewayStore((state: { gateways: Gateway[] }) =>
@@ -105,6 +105,15 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   // Accumulates the assistant text for the in-flight turn so `handleSend` can
   // read the latest value after the prompt promise resolves.
   const turnAssistantRef = useRef("");
+  // While `session/load` replays the agent's history, message chunks are
+  // collected here (the agent's record is authoritative) and flushed to the
+  // store once the replay completes. A `messageId` starts a new entry;
+  // subsequent chunks with the same id (or no id) append to the last one of
+  // that role.
+  const isLoadingHistoryRef = useRef(false);
+  const historyBufferRef = useRef<
+    { role: "user" | "assistant"; content: string }[]
+  >([]);
 
   // Configurable: how many lines of a thought block to show when collapsed.
   const thoughtPreviewLines = useSettingsStore(
@@ -162,10 +171,26 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         if (shouldRestore && supportsLoad) {
           // eslint-disable-next-line no-console
           console.debug("[ACP] session/load:", storedAcpId);
-          await client.sessionLoad({
-            sessionId: storedAcpId,
-            cwd: "/",
-          });
+          // The agent replays the full conversation history over
+          // session/update. Treat that record as authoritative: discard the
+          // local cache and rebuild it from the replay.
+          historyBufferRef.current = [];
+          isLoadingHistoryRef.current = true;
+          try {
+            await client.sessionLoad({
+              sessionId: storedAcpId,
+              cwd: "/",
+            });
+          } finally {
+            isLoadingHistoryRef.current = false;
+          }
+          // Flush the replayed history into the store (replacing any prior
+          // local copy) so it survives a re-open or a subsequent prompt.
+          const replayed = historyBufferRef.current;
+          historyBufferRef.current = [];
+          if (replayed.length > 0) {
+            setMessages(sessionId, replayed);
+          }
           // session/load returns null per spec; synthesize the result.
           result = { sessionId: storedAcpId };
         } else if (shouldRestore && supportsResume) {
@@ -268,6 +293,22 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
       case "user_message_chunk": {
         const role = update.sessionUpdate === "agent_message_chunk" ? "assistant" : "user";
         const text = contentToText(update.content);
+
+        // While replaying the agent's history via `session/load`, divert
+        // message chunks into the history buffer instead of the live turn —
+        // the agent's record is authoritative and gets flushed to the store
+        // once the replay completes.
+        if (isLoadingHistoryRef.current) {
+          const buf = historyBufferRef.current;
+          const last = buf[buf.length - 1];
+          if (last && last.role === role) {
+            last.content += text;
+          } else {
+            buf.push({ role, content: text });
+          }
+          return;
+        }
+
         if (role === "assistant") turnAssistantRef.current += text;
         setTurn((prev) => {
           const items = [...prev.items];

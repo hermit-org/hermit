@@ -65,13 +65,18 @@ export function SessionListScreen({
     .filter((s) => s.gatewayId === gatewayId)
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
-  // Local session IDs that are already linked to an agent session, so we can
-  // avoid duplicating them in the "agent sessions" list.
-  const linkedAcpIds = new Set(
-    gatewaySessions.map((s) => s.acpSessionId).filter(Boolean) as string[],
-  );
-  const unlinkedAgentSessions = agentSessions.filter(
-    (s) => !linkedAcpIds.has(s.sessionId),
+  // Agent sessions are the authoritative history — always show them in full.
+  // To avoid showing the same conversation twice, a local session is only
+  // listed when it is NOT already represented in the agent list (i.e. truly
+  // new / not-yet-created-on-agent chats). Previously we filtered the agent
+  // list by local links, which hid the entire history whenever a local copy
+  // existed — making it look like "no agent history".
+  const agentSessionIds = new Set(agentSessions.map((s) => s.sessionId));
+  // While the agent list is loading we don't yet know what's linked, so keep
+  // all local sessions visible to avoid a flash of empty state.
+  const listLoaded = supportsList && !loadingAgent;
+  const localOnlySessions = gatewaySessions.filter(
+    (s) => !listLoaded || !s.acpSessionId || !agentSessionIds.has(s.acpSessionId),
   );
 
   const handleNewSession = (): void => {
@@ -79,9 +84,15 @@ export function SessionListScreen({
     onOpen(session.id);
   };
 
-  // Open an agent-side session: create a local session linked to the agent's
-  // sessionId. ChatScreen will then `session/load` / `session/resume` it.
+  // Open an agent-side session: reuse the existing local session if one is
+  // already linked to it, otherwise create one. ChatScreen will then
+  // `session/load` / `session/resume` it.
   const handleOpenAgent = (info: SessionInfo): void => {
+    const existing = gatewaySessions.find((s) => s.acpSessionId === info.sessionId);
+    if (existing) {
+      onOpen(existing.id);
+      return;
+    }
     const session = createSession(
       gatewayId,
       info.title ?? "Agent session",
@@ -155,10 +166,10 @@ export function SessionListScreen({
             {t("sessions.agentSessions")}
             {loadingAgent ? ` · ${t("sessions.loading")}` : ""}
           </div>
-          {unlinkedAgentSessions.length === 0 && !loadingAgent && (
+          {agentSessions.length === 0 && !loadingAgent && (
             <div style={styles.empty}>{t("sessions.empty")}</div>
           )}
-          {unlinkedAgentSessions.map((s) => (
+          {agentSessions.map((s) => (
             <div key={s.sessionId} style={styles.item}>
               <div style={styles.itemMain} onClick={() => handleOpenAgent(s)}>
                 <div style={styles.itemTitle}>
@@ -188,10 +199,10 @@ export function SessionListScreen({
       {/* Local sessions */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>{t("sessions.localSessions")}</div>
-        {gatewaySessions.length === 0 && !supportsList && (
+        {localOnlySessions.length === 0 && !supportsList && (
           <div style={styles.empty}>{t("sessions.empty")}</div>
         )}
-        {gatewaySessions.map((s) => (
+        {localOnlySessions.map((s) => (
           <div key={s.id} style={styles.item}>
             <div style={styles.itemMain} onClick={() => onOpen(s.id)}>
               <div style={styles.itemTitle}>

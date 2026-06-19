@@ -23,6 +23,9 @@ interface SessionState {
   /** Mark whether the agent-side session has been closed. */
   setSessionClosed: (id: string, closed: boolean) => void;
   addMessage: (sessionId: string, role: MessageRole, content: string) => Message;
+  /** Replace a session's entire message history (used after `session/load`,
+   * where the agent's replayed history is authoritative). */
+  setMessages: (sessionId: string, messages: { role: MessageRole; content: string }[]) => void;
   appendToMessage: (messageId: string, delta: string) => void;
   getSessionMessages: (sessionId: string) => Message[];
 }
@@ -116,6 +119,26 @@ export const useSessionStore = create<SessionState>()(
           ),
         }));
         return message;
+      },
+
+      setMessages(sessionId, history) {
+        const now = Date.now();
+        const rebuilt: Message[] = history.map((m, i) => ({
+          id: generateId("msg"),
+          sessionId,
+          role: m.role,
+          content: m.content,
+          createdAt: now + i,
+        }));
+        set((state) => ({
+          messages: [
+            ...state.messages.filter((m) => m.sessionId !== sessionId),
+            ...rebuilt,
+          ],
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, updatedAt: now } : s,
+          ),
+        }));
       },
 
       appendToMessage(messageId, delta) {
