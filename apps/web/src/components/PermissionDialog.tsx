@@ -11,9 +11,29 @@ import type { ToolCallContent } from "@hermit/acp";
  * responds, the agent's prompt turn is blocked, so the dialog is non-dismissable
  * except via the explicit "reject"/"dismiss" actions.
  */
-export function PermissionDialog(): React.JSX.Element | null {
+/**
+ * Renders any pending `session/request_permission` requests.
+ *
+ * By default these are shown as a modal overlay. Pass `inline` to render
+ * them as stacked cards (e.g. docked above the input) without the overlay,
+ * so the prompt UI stays attached to the composer.
+ */
+export function PermissionDialog({
+  inline = false,
+}: {
+  inline?: boolean;
+} = {}): React.JSX.Element | null {
   const pending = usePermissionStore((s) => s.pending);
   if (pending.length === 0) return null;
+  if (inline) {
+    return (
+      <div style={styles.inlineStack}>
+        {pending.map((entry) => (
+          <PermissionCard key={entry.id} entry={entry} />
+        ))}
+      </div>
+    );
+  }
   return (
     <div style={styles.overlay}>
       {pending.map((entry) => (
@@ -136,6 +156,11 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     padding: 16,
     zIndex: 1000,
+  },
+  inlineStack: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
   },
   card: {
     width: "100%",

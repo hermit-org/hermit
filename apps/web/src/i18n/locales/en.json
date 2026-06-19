@@ -40,7 +40,17 @@
     "back": "Back",
     "closeSession": "Close session",
     "closeSessionConfirm": "Close this session on the agent?",
-    "switchMode": "Switch mode"
+    "switchMode": "Switch mode",
+    "multiMode": "Multi",
+    "singleMode": "Single",
+    "addQuestion": "Add question",
+    "confirmQuestions": "Confirm",
+    "questionPlaceholder": "Question",
+    "queued": "Queued",
+    "todoTitle": "Todo",
+    "todoCollapse": "Collapse",
+    "todoExpand": "Expand",
+    "todoAllDone": "All done"
   },
   "permission": {
     "title": "Tool approval",

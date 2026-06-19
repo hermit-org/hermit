@@ -40,7 +40,17 @@
     "back": "返回",
     "closeSession": "关闭会话",
     "closeSessionConfirm": "是否在 Agent 端关闭此会话？",
-    "switchMode": "切换模式"
+    "switchMode": "切换模式",
+    "multiMode": "多问题",
+    "singleMode": "单问题",
+    "addQuestion": "增加问题",
+    "confirmQuestions": "确认",
+    "questionPlaceholder": "问题",
+    "queued": "排队中",
+    "todoTitle": "待办",
+    "todoCollapse": "收起",
+    "todoExpand": "展开",
+    "todoAllDone": "全部完成"
   },
   "permission": {
     "title": "工具授权",
