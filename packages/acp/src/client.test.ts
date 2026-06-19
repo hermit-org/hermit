@@ -272,6 +272,43 @@ describe("AcpClient", () => {
     client.disconnect();
   });
 
+  test("parameter-less requests send an empty params object", async () => {
+    const mock = makeMockTransport();
+    const client = createAcpClient({ transport: mock.transport });
+
+    const init = client.initialize();
+    await Promise.resolve();
+    mock.feed(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: lastRequest(mock.sent).id,
+        result: { protocolVersion: 1 },
+      }),
+    );
+    await init;
+
+    const listPromise = client.sessionList();
+    await Promise.resolve();
+
+    const req = lastRequest(mock.sent);
+    expect(req.method).toBe("session/list");
+    // `params` must be present as `{}`, not omitted. Agents reject a missing
+    // params field with JSON-RPC "Invalid params" (-32602).
+    expect(req.params).toEqual({});
+    expect("params" in req).toBe(true);
+
+    mock.feed(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: req.id,
+        result: { sessions: [] },
+      }),
+    );
+    const result = await listPromise;
+    expect(result.sessions).toEqual([]);
+    client.disconnect();
+  });
+
   test("unknown agent->client request returns method-not-found error", async () => {
     const mock = makeMockTransport();
     const client = createAcpClient({ transport: mock.transport });

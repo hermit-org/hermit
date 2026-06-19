@@ -18,7 +18,10 @@ export function createRequest<T>(method: string, params?: T): JsonRpcRequest<T> 
     jsonrpc: "2.0",
     id: generateRequestId(),
     method,
-    params,
+    // Default to `{}`: many agents reject requests that omit `params`
+    // entirely (JSON-RPC `params` is expected to be present, and ACP
+    // methods like `session/list` validate its presence).
+    params: (params ?? {}) as T,
   };
 }
 
@@ -29,7 +32,7 @@ export function createNotification<T>(
   return {
     jsonrpc: "2.0",
     method,
-    params,
+    params: (params ?? {}) as T,
   };
 }
 
