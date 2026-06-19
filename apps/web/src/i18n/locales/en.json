@@ -21,14 +21,26 @@
   "sessions": {
     "title": "Sessions",
     "new": "New Session",
-    "empty": "No sessions yet. Start a new one."
+    "empty": "No sessions yet. Start a new one.",
+    "agentSessions": "Agent sessions",
+    "localSessions": "Local sessions",
+    "loading": "Loading sessions…",
+    "loadFailed": "Failed to load sessions",
+    "deleteAgentConfirm": "Delete this session on the agent too?",
+    "deleteAgentOnly": "Delete agent session?",
+    "openAgent": "Open",
+    "close": "Close"
   },
   "chat": {
     "placeholder": "Message...",
     "send": "Send",
+    "stop": "Stop",
     "reconnect": "Reconnect",
     "gatewayNotFound": "Gateway not found.",
-    "back": "Back"
+    "back": "Back",
+    "closeSession": "Close session",
+    "closeSessionConfirm": "Close this session on the agent?",
+    "switchMode": "Switch mode"
   },
   "permission": {
     "title": "Tool approval",
@@ -38,6 +50,13 @@
     "rejectOnce": "Reject once",
     "rejectAlways": "Reject always",
     "dismiss": "Dismiss"
+  },
+  "auth": {
+    "required": "Authentication required",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signedIn": "Signed in",
+    "failed": "Authentication failed"
   },
   "connect": {
     "paste": "Paste connection string",

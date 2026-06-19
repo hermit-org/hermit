@@ -7,13 +7,21 @@ interface SessionState {
   sessions: Session[];
   messages: Message[];
   activeSessionId: string | null;
-  createSession: (gatewayId: string, title?: string) => Session;
+  createSession: (
+    gatewayId: string,
+    title?: string,
+    acpSessionId?: string,
+  ) => Session;
   deleteSession: (id: string) => void;
   setActiveSession: (id: string | null) => void;
   /** Persist the agent-side ACP session ID so it can be resumed later. */
   setSessionAcpId: (id: string, acpSessionId: string) => void;
   /** Persist config options so status chips survive a reopen. */
   setSessionConfig: (id: string, configOptions: ConfigOption[]) => void;
+  /** Update a session's title (e.g. from `session_info_update`). */
+  setSessionTitle: (id: string, title: string) => void;
+  /** Mark whether the agent-side session has been closed. */
+  setSessionClosed: (id: string, closed: boolean) => void;
   addMessage: (sessionId: string, role: MessageRole, content: string) => Message;
   appendToMessage: (messageId: string, delta: string) => void;
   getSessionMessages: (sessionId: string) => Message[];
@@ -30,7 +38,7 @@ export const useSessionStore = create<SessionState>()(
       messages: [],
       activeSessionId: null,
 
-      createSession(gatewayId, title) {
+      createSession(gatewayId, title, acpSessionId) {
         const now = Date.now();
         const session: Session = {
           id: generateId("sess"),
@@ -38,6 +46,7 @@ export const useSessionStore = create<SessionState>()(
           title: title ?? "New session",
           createdAt: now,
           updatedAt: now,
+          ...(acpSessionId ? { acpSessionId } : {}),
         };
         set((state) => ({
           sessions: [session, ...state.sessions],
@@ -70,6 +79,24 @@ export const useSessionStore = create<SessionState>()(
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === id ? { ...s, configOptions } : s,
+          ),
+        }));
+      },
+
+      setSessionTitle(id, title) {
+        const trimmed = title.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === id ? { ...s, title: trimmed, updatedAt: Date.now() } : s,
+          ),
+        }));
+      },
+
+      setSessionClosed(id, closed) {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === id ? { ...s, closed, updatedAt: Date.now() } : s,
           ),
         }));
       },

@@ -28,6 +28,8 @@ export interface Session {
   /** Agent-reported config options (model, mode, thinking, …). Persisted so
    * the status chips survive a reopen where `session/load` returns null. */
   configOptions?: ConfigOption[];
+  /** True after `session/close` has been called on the agent side. */
+  closed?: boolean;
 }
 
 export type MessageRole = "user" | "assistant" | "system";

@@ -63,21 +63,35 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-export function ModeView({ modes }: { modes: SessionModeState }): React.JSX.Element {
+export function ModeView({
+  modes,
+  onSelectMode,
+}: {
+  modes: SessionModeState;
+  /** If provided, mode chips become clickable and switch the mode. */
+  onSelectMode?: (modeId: string) => void;
+}): React.JSX.Element {
   return (
     <div style={styles.modes}>
-      {modes.availableModes.map((mode) => (
-        <span
-          key={mode.id}
-          style={{
-            ...styles.modeChip,
-            ...(mode.id === modes.currentModeId ? styles.modeActive : {}),
-          }}
-          title={mode.description}
-        >
-          {mode.name}
-        </span>
-      ))}
+      {modes.availableModes.map((mode) => {
+        const active = mode.id === modes.currentModeId;
+        return (
+          <button
+            key={mode.id}
+            type="button"
+            disabled={!onSelectMode || active}
+            onClick={() => onSelectMode?.(mode.id)}
+            style={{
+              ...styles.modeChip,
+              ...(active ? styles.modeActive : {}),
+              ...(onSelectMode && !active ? styles.modeClickable : {}),
+            }}
+            title={mode.description}
+          >
+            {mode.name}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -160,6 +174,9 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: "#f0f0f0",
     color: "#666",
     border: "1px solid #e0e0e0",
+  },
+  modeClickable: {
+    cursor: "pointer",
   },
   modeActive: {
     backgroundColor: "#007AFF",

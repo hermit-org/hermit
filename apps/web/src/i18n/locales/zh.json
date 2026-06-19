@@ -21,14 +21,26 @@
   "sessions": {
     "title": "会话",
     "new": "新建会话",
-    "empty": "暂无会话，请新建一个。"
+    "empty": "暂无会话，请新建一个。",
+    "agentSessions": "Agent 端会话",
+    "localSessions": "本地会话",
+    "loading": "正在加载会话…",
+    "loadFailed": "加载会话失败",
+    "deleteAgentConfirm": "是否同时删除 Agent 端的会话？",
+    "deleteAgentOnly": "删除 Agent 端会话？",
+    "openAgent": "打开",
+    "close": "关闭"
   },
   "chat": {
     "placeholder": "输入消息…",
     "send": "发送",
+    "stop": "停止",
     "reconnect": "重新连接",
     "gatewayNotFound": "未找到网关。",
-    "back": "返回"
+    "back": "返回",
+    "closeSession": "关闭会话",
+    "closeSessionConfirm": "是否在 Agent 端关闭此会话？",
+    "switchMode": "切换模式"
   },
   "permission": {
     "title": "工具授权",
@@ -38,6 +50,13 @@
     "rejectOnce": "拒绝一次",
     "rejectAlways": "总是拒绝",
     "dismiss": "关闭"
+  },
+  "auth": {
+    "required": "需要认证",
+    "signIn": "登录",
+    "signOut": "退出登录",
+    "signedIn": "已登录",
+    "failed": "认证失败"
   },
   "connect": {
     "paste": "粘贴连接字符串",

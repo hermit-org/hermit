@@ -105,6 +105,8 @@ export interface SessionCapabilities {
   resume?: Record<string, never> | null;
   /** `session/close` availability. */
   close?: Record<string, never> | null;
+  /** `session/fork` availability (RFD draft). */
+  fork?: Record<string, never> | null;
 }
 
 export interface AgentCapabilities {
@@ -206,6 +208,20 @@ export interface SessionLoadParams {
 }
 
 export type SessionResumeParams = SessionLoadParams;
+
+/**
+ * `session/fork` (RFD draft) params.
+ *
+ * Forks a new session from an existing one's history without replaying it,
+ * useful for side operations (e.g. generating a summary) that must not
+ * pollute the original conversation.
+ */
+export interface SessionForkParams {
+  sessionId: string;
+  cwd: string;
+  mcpServers?: McpServerConfig[];
+  additionalDirectories?: string[];
+}
 
 /**
  * A configurable option reported by the agent in `session/new`.
@@ -657,6 +673,7 @@ export const AcpMethod = {
   SessionSetConfigOption: "session/set_config_option",
   SessionList: "session/list",
   SessionDelete: "session/delete",
+  SessionFork: "session/fork",
 } as const;
 
 export const AcpNotification = {

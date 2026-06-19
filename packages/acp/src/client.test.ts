@@ -179,6 +179,99 @@ describe("AcpClient", () => {
     client.disconnect();
   });
 
+  test("session/fork returns the new session setup result", async () => {
+    const mock = makeMockTransport();
+    const client = createAcpClient({ transport: mock.transport });
+
+    const init = client.initialize();
+    await Promise.resolve();
+    mock.feed(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: lastRequest(mock.sent).id,
+        result: { protocolVersion: 1 },
+      }),
+    );
+    await init;
+
+    const forkPromise = client.sessionFork({
+      sessionId: "s1",
+      cwd: "/proj",
+    });
+    await Promise.resolve();
+
+    const req = lastRequest(mock.sent);
+    expect(req.method).toBe("session/fork");
+
+    mock.feed(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: req.id,
+        result: { sessionId: "s2" },
+      }),
+    );
+
+    const result = await forkPromise;
+    expect(result.sessionId).toBe("s2");
+    client.disconnect();
+  });
+
+  test("session/set_mode sends the mode change request", async () => {
+    const mock = makeMockTransport();
+    const client = createAcpClient({ transport: mock.transport });
+
+    const init = client.initialize();
+    await Promise.resolve();
+    mock.feed(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: lastRequest(mock.sent).id,
+        result: { protocolVersion: 1 },
+      }),
+    );
+    await init;
+
+    const modePromise = client.sessionSetMode({
+      sessionId: "s1",
+      modeId: "code",
+    });
+    await Promise.resolve();
+
+    const req = lastRequest(mock.sent);
+    expect(req.method).toBe("session/set_mode");
+    expect((req.params as { modeId: string }).modeId).toBe("code");
+
+    mock.feed(
+      JSON.stringify({ jsonrpc: "2.0", id: req.id, result: null }),
+    );
+    await modePromise;
+    client.disconnect();
+  });
+
+  test("session/cancel is sent as a notification (no id)", async () => {
+    const mock = makeMockTransport();
+    const client = createAcpClient({ transport: mock.transport });
+
+    const init = client.initialize();
+    await Promise.resolve();
+    mock.feed(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: lastRequest(mock.sent).id,
+        result: { protocolVersion: 1 },
+      }),
+    );
+    await init;
+
+    mock.sent.length = 0;
+    await client.sessionCancel({ sessionId: "s1" });
+
+    const msg = JSON.parse(mock.sent[0]);
+    expect(msg.method).toBe("session/cancel");
+    expect("id" in msg).toBe(false);
+    client.disconnect();
+  });
+
   test("unknown agent->client request returns method-not-found error", async () => {
     const mock = makeMockTransport();
     const client = createAcpClient({ transport: mock.transport });

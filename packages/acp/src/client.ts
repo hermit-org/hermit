@@ -23,6 +23,7 @@ import {
   type SessionNewParams,
   type SessionLoadParams,
   type SessionResumeParams,
+  type SessionForkParams,
   type SessionSetupResult,
   type SessionCloseParams,
   type SessionPromptParams,
@@ -99,6 +100,7 @@ export interface AcpClient {
   sessionNew(params: SessionNewParams): Promise<SessionSetupResult>;
   sessionLoad(params: SessionLoadParams): Promise<null>;
   sessionResume(params: SessionResumeParams): Promise<SessionSetupResult>;
+  sessionFork(params: SessionForkParams): Promise<SessionSetupResult>;
   sessionClose(params: SessionCloseParams): Promise<null>;
   sessionPrompt(params: SessionPromptParams): Promise<SessionPromptResult>;
   sessionSetMode(params: SessionSetModeParams): Promise<null>;
@@ -317,6 +319,12 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
         AcpMethod.SessionResume,
         { mcpServers: [], ...params },
       ),
+
+    sessionFork: (params) =>
+      request<SessionForkParams, SessionSetupResult>(AcpMethod.SessionFork, {
+        mcpServers: [],
+        ...params,
+      }),
 
     sessionClose: (params) =>
       request<SessionCloseParams, null>(AcpMethod.SessionClose, params),

@@ -9,12 +9,13 @@ import {
   type ToolCallState,
 } from "../components/ToolCallView";
 import { ThoughtView } from "../components/ThoughtView";
-import { SendHorizontal, Cpu, Gauge, Layers, BrainCog } from "lucide-react";
+import { SendHorizontal, Cpu, Gauge, Layers, BrainCog, OctagonX, X } from "lucide-react";
 import {
   PlanView,
   ModeView,
 } from "../components/SessionMeta";
 import { PermissionDialog } from "../components/PermissionDialog";
+import { AuthPanel } from "../components/AuthPanel";
 import { CommandSuggest } from "../components/CommandSuggest";
 import { ConfigChip } from "../components/ConfigChip";
 import type { Gateway, Message } from "../types";
@@ -73,7 +74,8 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   const localMessages = useSessionStore((state) =>
     state.getSessionMessages(sessionId),
   );
-  const { addMessage, setSessionAcpId, setSessionConfig } = useSessionStore();
+  const { addMessage, setSessionAcpId, setSessionConfig, setSessionTitle, setSessionClosed } =
+    useSessionStore();
 
   const gateway = useGatewayStore((state: { gateways: Gateway[] }) =>
     state.gateways.find((g) => g.id === session?.gatewayId),
@@ -113,7 +115,17 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   // maximise message space; otherwise show a 3-line textarea.
   const inputRows = useInputRows();
 
-  const { client, connected, state: connectionState, connect } = useAcpClient({
+  const {
+    client,
+    connected,
+    state: connectionState,
+    connect,
+    authMethods,
+    canLogout,
+    authenticated,
+    authenticate,
+    logout,
+  } = useAcpClient({
     gateway: gateway ?? null,
     autoConnect: true,
   });
@@ -321,7 +333,10 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         setMeta((m) => ({ ...m, commands: update.availableCommands }));
         break;
       case "session_info_update":
-        // Title updates could be persisted; kept as no-op for now.
+        // Persist title updates reported by the agent.
+        if (update.title) {
+          setSessionTitle(sessionId, update.title);
+        }
         break;
       default:
         // Catch non-standard update types (some agents embed usage/model
@@ -332,13 +347,54 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         }
         break;
     }
-  }, []);
+  }, [sessionId, setSessionTitle]);
 
   // Auto-scroll.
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [turn, localMessages]);
+
+  // Cancel the in-flight turn via `session/cancel`.
+  const handleCancel = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client || !acpSessionId) return;
+    try {
+      await client.sessionCancel({ sessionId: acpSessionId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [acpSessionId]);
+
+  // Switch the session operating mode via `session/set_mode`.
+  const handleModeChange = useCallback(
+    async (modeId: string) => {
+      const client = clientRef.current;
+      if (!client || !acpSessionId) return;
+      try {
+        await client.sessionSetMode({ sessionId: acpSessionId, modeId });
+        setMeta((m) =>
+          m.modes ? { ...m, modes: { ...m.modes, currentModeId: modeId } } : m,
+        );
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [acpSessionId],
+  );
+
+  // Close the agent-side session via `session/close`.
+  const handleCloseSession = useCallback(async () => {
+    const client = clientRef.current;
+    if (!client || !acpSessionId) return;
+    if (!window.confirm(t("chat.closeSessionConfirm"))) return;
+    try {
+      await client.sessionClose({ sessionId: acpSessionId });
+      setSessionClosed(sessionId, true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [acpSessionId, sessionId, setSessionClosed, t]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -454,6 +510,24 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
           {acpSessionId ? " · ready" : ""}
           {busy ? " · working" : ""}
         </span>
+        <AuthPanel
+          authMethods={authMethods}
+          canLogout={canLogout}
+          authenticated={authenticated}
+          onAuthenticate={authenticate}
+          onLogout={logout}
+        />
+        {acpSessionId && !session?.closed && (
+          <button
+            type="button"
+            style={styles.closeButton}
+            onClick={handleCloseSession}
+            title={t("chat.closeSession")}
+            aria-label={t("chat.closeSession")}
+          >
+            <X size={14} />
+          </button>
+        )}
         {!connected && (
           <button style={styles.reconnect} onClick={connect}>
             {t("chat.reconnect")}
@@ -461,7 +535,12 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         )}
       </div>
 
-      {meta.modes && <ModeView modes={meta.modes} />}
+      {meta.modes && (
+        <ModeView
+          modes={meta.modes}
+          onSelectMode={acpSessionId ? handleModeChange : undefined}
+        />
+      )}
 
       <div ref={listRef} style={styles.list}>
         {localMessages.map((m: Message) => (
@@ -577,17 +656,29 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
               </span>
             )}
           </div>
-          <button
-            style={{
-              ...styles.sendButton,
-              ...(!canSend && styles.sendDisabled),
-            }}
-            onClick={handleSend}
-            disabled={!canSend}
-            aria-label={t("chat.send")}
-          >
-            <SendHorizontal size={18} />
-          </button>
+          {busy ? (
+            <button
+              type="button"
+              style={styles.stopButton}
+              onClick={handleCancel}
+              aria-label={t("chat.stop")}
+              title={t("chat.stop")}
+            >
+              <OctagonX size={18} />
+            </button>
+          ) : (
+            <button
+              style={{
+                ...styles.sendButton,
+                ...(!canSend && styles.sendDisabled),
+              }}
+              onClick={handleSend}
+              disabled={!canSend}
+              aria-label={t("chat.send")}
+            >
+              <SendHorizontal size={18} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -752,6 +843,33 @@ const styles: Record<string, React.CSSProperties> = {
   sendDisabled: {
     backgroundColor: "#b3d7ff",
     cursor: "not-allowed",
+  },
+  stopButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 36,
+    width: 36,
+    minWidth: 36,
+    backgroundColor: "#ff3b30",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+    padding: 0,
+    flexShrink: 0,
+  },
+  closeButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "none",
+    color: "#999",
+    border: "1px solid #e0e0e0",
+    borderRadius: 6,
+    cursor: "pointer",
+    padding: "2px 6px",
+    marginLeft: "auto",
   },
   metaBar: {
     display: "flex",
