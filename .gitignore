@@ -37,3 +37,9 @@ apps/mobile/ios/
 apps/mobile/vendor/
 apps/mobile/.bundle/
 *.tgz
+
+# Playwright (apps/web e2e)
+apps/web/test-results/
+apps/web/playwright-report/
+apps/web/blob-report/
+apps/web/playwright/.cache/

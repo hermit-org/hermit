@@ -9,16 +9,15 @@ import {
   type ToolCallState,
 } from "../components/ToolCallView";
 import { ThoughtView } from "../components/ThoughtView";
-import { SendHorizontal, Cpu, Gauge, Layers, BrainCog, OctagonX, X, ListChecks, MessageSquare } from "lucide-react";
+import { SendHorizontal, Cpu, Gauge, Layers, BrainCog, OctagonX, X } from "lucide-react";
 import {
   ModeView,
 } from "../components/SessionMeta";
-import { PermissionDialog } from "../components/PermissionDialog";
 import { AuthPanel } from "../components/AuthPanel";
 import { CommandSuggest } from "../components/CommandSuggest";
 import { ConfigChip } from "../components/ConfigChip";
 import { TodoView } from "../components/TodoView";
-import { MultiQuestionInput } from "../components/MultiQuestionInput";
+import { ToolQuestionsView } from "../components/ToolQuestionsView";
 import type { Gateway, Message } from "../types";
 import type {
   SessionUpdate,
@@ -102,8 +101,6 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
   // Usage persists across turns (unlike `turn.usage` which resets on send)
   // so the context-size chip is always visible in the input toolbar.
   const [lastUsage, setLastUsage] = useState<UsageUpdateType | null>(null);
-  // Single vs multi-question composer.
-  const [multiMode, setMultiMode] = useState(false);
   // Number of questions waiting to be sent (queued) + the one in flight.
   const [queueDepth, setQueueDepth] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
@@ -461,18 +458,6 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
     void pumpQueue();
   }, [input, acpSessionId]);
 
-  // Confirm a batch of questions (multi-mode composer). Each question becomes
-  // its own sequential turn; all questions and answers stay in the history.
-  const handleConfirmQuestions = useCallback(
-    (questions: string[]) => {
-      if (!acpSessionId || questions.length === 0) return;
-      queueRef.current.push(...questions);
-      setQueueDepth((n) => n + questions.length);
-      void pumpQueue();
-    },
-    [acpSessionId],
-  );
-
   // Drain the queue one turn at a time. Each question is sent as a separate
   // `session/prompt` turn and awaited before the next starts.
   const pumpQueue = useCallback(async () => {
@@ -686,74 +671,40 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
       </div>
 
       {/* Input dock: elements that stay attached to the composer —
-          pending tool approvals (inline, not modal) and the todo/plan. */}
+          tool questions (agent-initiated prompts, inline) and the todo/plan. */}
       <div style={styles.inputDock}>
-        <PermissionDialog inline />
+        <ToolQuestionsView />
         {turn.plan && <TodoView entries={turn.plan} />}
       </div>
 
       <div style={styles.inputArea}>
-        {/* Mode toggle: single question vs multi-question composer */}
-        <div style={styles.modeToggle}>
-          <button
-            type="button"
-            style={{
-              ...styles.modeBtn,
-              ...(!multiMode ? styles.modeBtnActive : {}),
-            }}
-            onClick={() => setMultiMode(false)}
-            title={t("chat.singleMode")}
-          >
-            <MessageSquare size={13} />
-            {t("chat.singleMode")}
-          </button>
-          <button
-            type="button"
-            style={{
-              ...styles.modeBtn,
-              ...(multiMode ? styles.modeBtnActive : {}),
-            }}
-            onClick={() => setMultiMode(true)}
-            title={t("chat.multiMode")}
-          >
-            <ListChecks size={13} />
-            {t("chat.multiMode")}
-          </button>
-          {queueDepth > 0 && (
+        {queueDepth > 0 && (
+          <div style={styles.queueRow}>
             <span style={styles.queueBadge}>
               {queueDepth} {t("chat.queued")}
             </span>
-          )}
-        </div>
-
-        {multiMode ? (
-          <MultiQuestionInput
-            disabled={!connected || !acpSessionId}
-            queued={Math.max(0, queueDepth - (busy ? 1 : 0))}
-            onConfirm={handleConfirmQuestions}
-          />
-        ) : (
-          <div style={styles.inputWrap}>
-            <CommandSuggest
-              commands={meta.commands}
-              input={input}
-              onPick={handleCommandPick}
-            />
-            <textarea
-              style={styles.input}
-              placeholder={t("chat.placeholder")}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              rows={inputRows}
-            />
           </div>
         )}
+        <div style={styles.inputWrap}>
+          <CommandSuggest
+            commands={meta.commands}
+            input={input}
+            onPick={handleCommandPick}
+          />
+          <textarea
+            style={styles.input}
+            placeholder={t("chat.placeholder")}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            rows={inputRows}
+          />
+        </div>
         <div style={styles.inputToolbar}>
           <div style={styles.metaBar}>
             {usage && (
@@ -940,32 +891,10 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     gap: 8,
   },
-  modeToggle: {
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-    padding: "6px 8px 0",
-  },
-  modeBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 4,
-    background: "none",
-    border: "1px solid #e0e0e0",
-    color: "#888",
-    borderRadius: 16,
-    padding: "3px 10px",
-    fontSize: 11,
-    fontWeight: 600,
-    cursor: "pointer",
-  },
-  modeBtnActive: {
-    backgroundColor: "#007AFF",
-    color: "#fff",
-    borderColor: "#007AFF",
+  queueRow: {
+    padding: "6px 10px 0",
   },
   queueBadge: {
-    marginLeft: "auto",
     fontSize: 11,
     color: "#f5a623",
     fontFamily: "ui-monospace, monospace",

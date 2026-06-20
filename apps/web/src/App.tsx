@@ -6,38 +6,74 @@ import { readConfigFromUrl } from "./config";
 import { ServerListScreen } from "./screens/ServerListScreen";
 import { SessionListScreen } from "./screens/SessionListScreen";
 import { ChatScreen } from "./screens/ChatScreen";
+import {
+  RealApp,
+  ShowcasePage,
+  SettingsPage,
+  GatewayManager,
+} from "./pages";
+import type { Gateway } from "./types";
+import {
+  navigate,
+  useRoute,
+  realGatewayPath,
+  legacyGatewayPath,
+  legacySessionPath,
+  type Route,
+} from "./router";
 
-type View =
-  | { name: "serverList" }
-  | { name: "sessionList"; gatewayId: string }
-  | { name: "chat"; gatewayId: string; sessionId: string };
-
+/**
+ * Root component. Routing is path-based (see `src/router.ts`):
+ *
+ *   /                                 → GatewayManager (landing)
+ *   /g/:gatewayId                     → RealApp chat for a gateway
+ *   /showcase                         → design preview (mock data)
+ *   /settings                         → settings page
+ *   /legacy                           → legacy gateway list
+ *   /legacy/g/:gatewayId              → legacy session list
+ *   /legacy/g/:gatewayId/s/:sessionId → legacy chat
+ *
+ * On first load, `?legacy` / `?showcase` are migrated to their paths, and a
+ * gateway carried via `?url=…&token=…` (how `hermit start` hands off config)
+ * is auto-imported and the user is dropped straight into chat.
+ */
 export default function App(): React.JSX.Element {
   const { t } = useTranslation();
-  const { addGateway, gateways } = useGatewayStore();
-  const [view, setView] = useState<View>({ name: "serverList" });
-  const [notice, setNotice] = useState<string | null>(null);
+  const gateways = useGatewayStore((s) => s.gateways);
   const [language, setLanguage] = useState<Language>(i18n.language as Language);
 
-  // Auto-configure a gateway from URL params (?url=&token=&name=... or ?payload=...).
-  // This is how `hermit start` hands connection info to the web client.
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (window.location.pathname === "/") {
+      if (params.has("legacy")) {
+        navigate("/legacy", { replace: true });
+        return;
+      }
+      if (params.has("showcase")) {
+        navigate("/showcase", { replace: true });
+        return;
+      }
+    }
     const config = readConfigFromUrl();
     if (!config) return;
-
-    const exists = gateways.some(
+    const store = useGatewayStore.getState();
+    const existing = store.gateways.find(
       (g) => g.url === config.url && g.token === config.token,
     );
-    if (!exists) {
-      addGateway({
+    const g =
+      existing ??
+      store.addGateway({
         name: config.name || "Hermit Gateway",
         url: config.url,
         sendUrl: config.sendUrl,
         token: config.token,
       });
+    if (window.location.pathname === "/") {
+      navigate(realGatewayPath(g.id), { replace: true });
     }
-    setNotice(t("connect.autoImported"));
-  }, []); // run once on mount
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleLanguage = (): void => {
     const next: Language = language === "zh" ? "en" : "zh";
@@ -45,45 +81,164 @@ export default function App(): React.JSX.Element {
     setLanguage(next);
   };
 
+  const route = useRoute();
+
+  const fullScreen =
+    route.name === "gateways" ||
+    route.name === "real" ||
+    route.name === "showcase" ||
+    route.name === "settings";
+
+  if (fullScreen) {
+    return (
+      <div style={{ height: "100vh", position: "relative" }}>
+        <FullScreenRoute route={route} gateways={gateways} />
+        <ModeSwitcher route={route} />
+      </div>
+    );
+  }
+
   return (
     <div style={styles.app}>
       <header style={styles.header}>
         <span style={styles.brand}>{t("title")}</span>
-        <button style={styles.langButton} onClick={toggleLanguage}>
-          {language === "zh" ? "EN" : "中"}
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            style={{ ...styles.langButton, fontSize: 11 }}
+            onClick={() => navigate("/")}
+            title="Switch to the new UI"
+          >
+            New UI
+          </button>
+          <button style={styles.langButton} onClick={toggleLanguage}>
+            {language === "zh" ? "EN" : "中"}
+          </button>
+        </div>
       </header>
 
-      {notice && view.name === "serverList" && (
-        <div style={styles.notice}>{notice}</div>
-      )}
-
       <main style={styles.main}>
-        {view.name === "serverList" && (
-          <ServerListScreen
-            onOpen={(gatewayId) => setView({ name: "sessionList", gatewayId })}
-          />
-        )}
-
-        {view.name === "sessionList" && (
-          <SessionListScreen
-            gatewayId={view.gatewayId}
-            onOpen={(sessionId) =>
-              setView({ name: "chat", gatewayId: view.gatewayId, sessionId })
-            }
-            onBack={() => setView({ name: "serverList" })}
-          />
-        )}
-
-        {view.name === "chat" && (
-          <ChatScreen
-            sessionId={view.sessionId}
-            onBack={() =>
-              setView({ name: "sessionList", gatewayId: view.gatewayId })
-            }
-          />
-        )}
+        <LegacyRoute route={route} />
       </main>
+    </div>
+  );
+}
+
+function FullScreenRoute({
+  route,
+  gateways,
+}: {
+  route: Route;
+  gateways: Gateway[];
+}): React.JSX.Element {
+  switch (route.name) {
+    case "gateways":
+      return (
+        <GatewayManager onConnect={(id) => navigate(realGatewayPath(id))} />
+      );
+    case "real": {
+      const exists = gateways.some((g) => g.id === route.gatewayId);
+      if (!exists) {
+        return (
+          <GatewayManager onConnect={(id) => navigate(realGatewayPath(id))} />
+        );
+      }
+      return <RealApp gatewayId={route.gatewayId} />;
+    }
+    case "showcase":
+      return <ShowcasePage />;
+    case "settings":
+      return <SettingsPage onBack={() => navigate("/")} />;
+    default:
+      return (
+        <GatewayManager onConnect={(id) => navigate(realGatewayPath(id))} />
+      );
+  }
+}
+
+function LegacyRoute({ route }: { route: Route }): React.JSX.Element {
+  switch (route.name) {
+    case "legacy-server-list":
+      return (
+        <ServerListScreen
+          onOpen={(gatewayId) => navigate(legacyGatewayPath(gatewayId))}
+        />
+      );
+    case "legacy-session-list":
+      return (
+        <SessionListScreen
+          gatewayId={route.gatewayId}
+          onOpen={(sessionId) =>
+            navigate(legacySessionPath(route.gatewayId, sessionId))
+          }
+          onBack={() => navigate("/legacy")}
+        />
+      );
+    case "legacy-chat":
+      return (
+        <ChatScreen
+          sessionId={route.sessionId}
+          onBack={() => navigate(legacyGatewayPath(route.gatewayId))}
+        />
+      );
+    default:
+      return (
+        <ServerListScreen
+          onOpen={(gatewayId) => navigate(legacyGatewayPath(gatewayId))}
+        />
+      );
+  }
+}
+
+/** Floating mode switcher shown over the full-screen new UI. */
+function ModeSwitcher({ route }: { route: Route }): React.JSX.Element {
+  const active =
+    route.name === "showcase"
+      ? "showcase"
+      : route.name === "settings"
+        ? "settings"
+        : route.name === "real"
+          ? "real"
+          : "gateways";
+  const options: { id: string; label: string; to: string }[] = [
+    { id: "gateways", label: "Gateways", to: "/" },
+    { id: "showcase", label: "Preview", to: "/showcase" },
+    { id: "settings", label: "Settings", to: "/settings" },
+    { id: "legacy", label: "Legacy", to: "/legacy" },
+  ];
+  return (
+    <div
+      style={{
+        position: "fixed",
+        right: 12,
+        bottom: 12,
+        zIndex: 50,
+        display: "flex",
+        gap: 4,
+        background: "hsl(0 0% 100%)",
+        border: "1px solid hsl(0 0% 90%)",
+        borderRadius: 8,
+        padding: 4,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+      }}
+    >
+      {options.map((opt) => (
+        <button
+          key={opt.id}
+          style={{
+            border: "none",
+            background: active === opt.id ? "hsl(0 0% 10%)" : "transparent",
+            color: active === opt.id ? "#fff" : "hsl(0 0% 40%)",
+            borderRadius: 5,
+            padding: "4px 8px",
+            fontSize: 11,
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
+          onClick={() => navigate(opt.to)}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -119,12 +274,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     cursor: "pointer",
     color: "#333",
-  },
-  notice: {
-    padding: "8px 16px",
-    backgroundColor: "#e8f4ff",
-    color: "#0066cc",
-    fontSize: 13,
   },
   main: {
     flex: 1,
