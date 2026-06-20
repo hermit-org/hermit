@@ -1,80 +1,56 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Smoke tests for the app shell: routing, the mode switcher, and the legacy
- * query-param migration. These exercise the custom path-based router in
- * `src/router.ts` without needing a live gateway backend.
+ * Routing / app-shell smoke tests for the LEGACY web UI (`src/screens/`).
  *
- * Note: Playwright creates a fresh isolated browser context per test, so
- * persisted localStorage starts empty — no manual clearing needed.
+ * Routes (see `src/router.ts` + `App.tsx` LegacyRoute):
+ *   /                                 → new-UI GatewayManager (landing)
+ *   /legacy                           → ServerListScreen (legacy)
+ *   /legacy/g/:gatewayId              → SessionListScreen (legacy)
+ *   /legacy/g/:gatewayId/s/:sessionId → ChatScreen (legacy)
+ *
+ * Playwright gives each test a fresh isolated browser context, so the persisted
+ * gateway/session stores start empty — no manual clearing needed.
  */
 
-/** Locator for the floating mode switcher (bottom-right). Scoped via its
- * unique "Legacy" button so it never collides with same-named showcase tabs.
- *
- * Note: the floating switcher is only rendered on full-screen routes
- * (gateways / real / showcase / settings). On /legacy it is absent — the
- * legacy shell has its own "New UI" button to return to the new UI. */
-function modeSwitcher(page: import("@playwright/test").Page) {
-  return page
-    .getByRole("button", { name: "Legacy" })
-    .locator("xpath=ancestor::div[1]");
-}
-
 test.describe("routing", () => {
-  test("root renders the GatewayManager landing page", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Gateways" })).toBeVisible();
-    // Empty-state copy from the GatewayManager.
-    await expect(
-      page.getByText("Add a gateway above or import one from a connection string."),
-    ).toBeVisible();
+  test("?legacy param migrates to /legacy", async ({ page }) => {
+    await page.goto("/?legacy");
+    await expect(page).toHaveURL(/\/legacy$/);
+    // Legacy shell header brand (i18n "title").
+    await expect(page.getByText("Hermit Web").first()).toBeVisible();
   });
 
-  test("unknown path falls back to the legacy UI without crashing", async ({ page }) => {
+  test("/legacy renders the legacy ServerListScreen", async ({ page }) => {
+    await page.goto("/legacy");
+    // ServerListScreen empty-state copy (i18n gateways.empty).
+    await expect(
+      page.getByText("No gateways. Add one or open a connection link."),
+    ).toBeVisible();
+    // The add/import controls.
+    await expect(page.getByPlaceholder("Gateway name")).toBeVisible();
+    await expect(page.getByPlaceholder("Paste connection string")).toBeVisible();
+  });
+
+  test("unknown path falls back to the legacy shell without crashing", async ({ page }) => {
     await page.goto("/this-route-does-not-exist");
-    // Unknown paths map to a not-found route, which is not full-screen, so the
-    // legacy shell renders (brand "Hermit Web") with the legacy ServerListScreen.
     await expect(page.getByText("Hermit Web").first()).toBeVisible();
     await expect(
       page.getByText("No gateways. Add one or open a connection link."),
     ).toBeVisible();
   });
-});
 
-test.describe("query-param migration", () => {
-  test("?legacy redirects to /legacy", async ({ page }) => {
-    await page.goto("/?legacy");
-    await expect(page).toHaveURL(/\/legacy$/);
-    // Legacy header brand text comes from i18n "title".
-    await expect(page.locator("header")).toBeVisible();
-  });
+  test("header language toggle switches i18n (中/EN)", async ({ page }) => {
+    await page.goto("/legacy");
+    // Add button label is English by default (navigator.language → en).
+    await expect(page.getByRole("button", { name: "Add Gateway" })).toBeVisible();
 
-  test("?showcase redirects to /showcase", async ({ page }) => {
-    await page.goto("/?showcase");
-    await expect(page).toHaveURL(/\/showcase$/);
-    await expect(page.getByText("Atomic Design", { exact: false })).toBeVisible();
-  });
-});
+    // Toggle to Chinese.
+    await page.getByRole("button", { name: "中" }).click();
+    await expect(page.getByRole("button", { name: "添加网关" })).toBeVisible();
 
-test.describe("floating mode switcher", () => {
-  test("navigates Gateways → Preview → Settings → Legacy", async ({ page }) => {
-    await page.goto("/");
-
-    await modeSwitcher(page).getByRole("button", { name: "Preview" }).click();
-    await expect(page).toHaveURL(/\/showcase$/);
-
-    // "Settings" also exists as a showcase view-tab; scope to the floating
-    // switcher (anchored on the unique "Legacy" button) to disambiguate.
-    await modeSwitcher(page).getByRole("button", { name: "Settings" }).click();
-    await expect(page).toHaveURL(/\/settings$/);
-
-    await modeSwitcher(page).getByRole("button", { name: "Legacy" }).click();
-    await expect(page).toHaveURL(/\/legacy$/);
-
-    // The floating switcher is not rendered on /legacy; the legacy shell's
-    // "New UI" button returns to the new UI.
-    await page.getByRole("button", { name: "New UI" }).click();
-    await expect(page).toHaveURL(/^http:\/\/localhost:5180\/$/);
+    // Toggle back to English.
+    await page.getByRole("button", { name: "EN" }).click();
+    await expect(page.getByRole("button", { name: "Add Gateway" })).toBeVisible();
   });
 });

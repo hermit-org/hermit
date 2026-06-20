@@ -1,16 +1,29 @@
 # Web E2E tests (Playwright)
 
-End-to-end tests for the `@hermit/web` app (`apps/web`), driven by
-[Playwright](https://playwright.dev) with Chromium.
+End-to-end tests for the **legacy web UI** of `@hermit/web` (`apps/web`) — the
+`src/screens/` UI served at `/legacy`, which is the web frontend in active use.
+Driven by [Playwright](https://playwright.dev) with Chromium.
 
 ## What's covered
 
+All routes are under `/legacy` (see `src/router.ts` + `App.tsx` LegacyRoute):
+
 | Spec | Route | What it checks |
 | --- | --- | --- |
-| `routing.spec.ts` | `/`, `/?legacy`, `/?showcase`, unknown paths | The custom path router (`src/router.ts`), query-param migration, and the floating mode switcher. |
-| `gateway-manager.spec.ts` | `/` | Add / edit / delete / connect gateways and connection-string import (JSON + `hermit://` deep link). |
-| `showcase.spec.ts` | `/showcase` | The design preview renders mock sessions, token usage and cost — no live gateway needed. |
-| `url-config.spec.ts` | `/?url=…&token=…` | The `hermit start` config handoff: `readConfigFromUrl` imports the gateway and drops the user into chat. |
+| `routing.spec.ts` | `/legacy`, `/?legacy`, unknown paths | Route migration, the legacy shell, and the i18n language toggle (中/EN). |
+| `legacy-server-list.spec.ts` | `/legacy` | `ServerListScreen`: add / edit / delete gateways and connection-string import (JSON + `hermit://` deep link). |
+| `legacy-session-list.spec.ts` | `/legacy/g/:id` | `SessionListScreen`: create / list / delete local sessions, back-nav. |
+| `legacy-chat.spec.ts` | `/legacy/g/:id/s/:id` | `ChatScreen` shell: composer, disconnected state ("Reconnect"), disabled Send, "gateway not found" fallback. |
+
+Labels come from i18n (`src/i18n/locales/en.json`); the default language is
+English (`navigator.language` → en).
+
+## Not covered (needs a live gateway)
+
+The agent-side session list and full chat streaming (send → assistant reply →
+tool calls) require a running gateway + agent (`hermit start` + e.g.
+`npx codex --acp`). The local-session and chat-shell behaviour above works
+without a backend.
 
 ## Run
 
@@ -32,13 +45,3 @@ bun run e2e:ui
 
 The Playwright config auto-starts `bun run dev` on `http://localhost:5180`
 (see `playwright.config.ts` → `webServer`) and reuses an already-running server.
-
-## A note on `?url=…` and the Vite dev server
-
-`url-config.spec.ts` runs against the **production preview build**
-(`vite preview` on port 5182), not the Vite dev server. The Vite dev server
-returns **HTTP 403 for any request carrying a `url=` query param** — a
-deliberate Vite security feature against open-redirect / SSRF. The CLI handoff
-URL (`buildConfigUrl` → `?url=…&token=…&name=…`) is consumed against a served
-build, so the preview build is the correct target. In dev, use the `?payload=`
-form instead.
