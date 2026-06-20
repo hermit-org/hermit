@@ -2,9 +2,63 @@
   "title": "Hermit 移动端",
   "userId": "用户 ID: {{id}}",
   "userName": "用户名称: {{name}}",
-  "switchLanguage": "切换语言",
   "language": {
-    "en": "英文",
+    "label": "语言",
+    "system": "跟随系统",
+    "en": "English",
     "zh": "中文"
+  },
+  "navigation": {
+    "gateways": "网关",
+    "sessions": "会话",
+    "chat": "聊天",
+    "scanQr": "扫描二维码"
+  },
+  "common": {
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "save": "保存",
+    "update": "更新",
+    "add": "添加",
+    "retry": "重试",
+    "later": "稍后",
+    "connect": "连接",
+    "copy": "复制"
+  },
+  "serverList": {
+    "title": "网关",
+    "scanQr": "扫码",
+    "namePlaceholder": "网关名称",
+    "urlPlaceholder": "SSE URL（例如 http://192.168.1.5:8787）",
+    "tokenPlaceholder": "Bearer token",
+    "addGateway": "添加网关",
+    "updateGateway": "更新网关",
+    "missingFields": "请填写名称、URL 和 token。",
+    "missingFieldsTitle": "缺少字段",
+    "deleteTitle": "删除网关",
+    "deleteMessage": "确定要删除吗？",
+    "empty": "暂无网关，添加一个开始使用。"
+  },
+  "sessionList": {
+    "newSession": "+ 新会话",
+    "empty": "还没有会话，开始一个新的吧。"
+  },
+  "chat": {
+    "gatewayNotFoundTitle": "网关不存在",
+    "gatewayNotFoundMessage": "该会话对应的网关已不存在。",
+    "reconnect": "重新连接",
+    "messagePlaceholder": "输入消息...",
+    "send": "发送",
+    "errorPrefix": "\n\n错误：{{message}}"
+  },
+  "qrScanner": {
+    "invalidQrTitle": "无效的二维码",
+    "invalidQrMessage": "无法解析连接数据。",
+    "scannedGatewayName": "已扫描网关",
+    "gatewayAddedTitle": "网关已添加",
+    "gatewayAddedMessage": "立即连接到此网关吗？",
+    "permissionDenied": "扫描二维码需要相机权限。",
+    "hint": "将相机对准 Hermit 二维码"
   }
 }

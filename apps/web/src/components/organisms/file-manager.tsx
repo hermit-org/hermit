@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Save, RefreshCw, FolderOpen, FileWarning } from "lucide-react";
 import { FileTreeItem } from "@/components/molecules";
 import { EmptyState, Spinner } from "@/components/atoms";
@@ -59,6 +60,7 @@ export function FileManager({
   onRefresh,
   className,
 }: FileManagerProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [localExpanded, setLocalExpanded] = React.useState<Set<string>>(
     () => expandedPaths ?? new Set(),
   );
@@ -105,14 +107,14 @@ export function FileManager({
       <div className="flex w-56 shrink-0 flex-col border-r border-border">
         <div className="flex items-center gap-2 border-b border-border px-2.5 py-1.5">
           <FolderOpen className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs font-semibold">Files</span>
+          <span className="text-xs font-semibold">{t("fileManager.files")}</span>
           {onRefresh ? (
             <Button
               type="button"
               variant="ghost"
               size="icon-sm"
               className="ml-auto h-6 w-6"
-              aria-label="Refresh"
+              aria-label={t("common.refresh")}
               onClick={onRefresh}
             >
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
@@ -124,8 +126,8 @@ export function FileManager({
             {tree.length === 0 ? (
               <EmptyState
                 icon={FileWarning}
-                title="No files"
-                description="The working directory is empty."
+                title={t("fileManager.noFilesTitle")}
+                description={t("fileManager.emptyDirectory")}
                 compact
               />
             ) : (
@@ -142,7 +144,7 @@ export function FileManager({
               <span className="truncate font-mono text-xs">{selectedPath}</span>
               {dirty ? (
                 <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
-                  unsaved
+                  {t("fileManager.unsaved")}
                 </Badge>
               ) : null}
               {onSave && !readOnly ? (
@@ -155,7 +157,7 @@ export function FileManager({
                   onClick={onSave}
                 >
                   <Save className="h-3.5 w-3.5" />
-                  Save
+                  {t("common.save")}
                 </Button>
               ) : null}
             </div>
@@ -178,8 +180,8 @@ export function FileManager({
         ) : (
           <EmptyState
             icon={FolderOpen}
-            title="No file selected"
-            description="Select a file from the tree to preview or edit."
+            title={t("fileManager.noFileSelectedTitle")}
+            description={t("fileManager.selectFile")}
           />
         )}
       </div>

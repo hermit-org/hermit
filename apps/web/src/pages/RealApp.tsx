@@ -10,12 +10,14 @@
  * than reaching into the legacy `screens/`.
  */
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, PlugZap, ServerCog } from "lucide-react";
 
 import { ACPClientPage } from "./acp-client-page";
 import { useAcpPageAdapter } from "../hooks/useAcpPageAdapter";
 import { useGatewayStore } from "../stores/gatewayStore";
 import { readConfigFromUrl } from "../config";
+import { navigate } from "../router";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -34,6 +36,7 @@ export interface RealAppProps {
  * <RealApp />
  */
 export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
+  const { t } = useTranslation();
   const gateways = useGatewayStore((s) => s.gateways);
   const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
   const addGateway = useGatewayStore((s) => s.addGateway);
@@ -49,7 +52,7 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
     );
     if (!exists) {
       addGateway({
-        name: config.name || "Hermit Gateway",
+        name: config.name || t("gateways.defaultName"),
         url: config.url,
         sendUrl: config.sendUrl,
         token: config.token,
@@ -80,6 +83,7 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
     <ACPClientPage
       {...rest}
       activeSessionId={activeSessionId ?? undefined}
+      onOpenSettings={() => navigate("/settings")}
     />
   );
 }
@@ -93,6 +97,7 @@ function GatewayConnect({
 }: {
   onAdd: (gatewayId: string) => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const addGateway = useGatewayStore((s) => s.addGateway);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -103,7 +108,7 @@ function GatewayConnect({
   const handleSave = (): void => {
     if (!canSave) return;
     const g = addGateway({
-      name: name.trim() || "Hermit Gateway",
+      name: name.trim() || t("gateways.defaultName"),
       url: url.trim(),
       sendUrl: "",
       token: token.trim(),
@@ -119,43 +124,43 @@ function GatewayConnect({
       <div className="w-full max-w-md">
         <EmptyState
           icon={ServerCog}
-          title="Connect to a gateway"
-          description="No gateway is configured. Add a Hermit gateway URL and token to start chatting with an ACP agent."
+          title={t("gateways.connectTitle")}
+          description={t("gateways.connectDescription")}
         />
         <div className="mt-6 space-y-4 rounded-lg border border-border bg-card p-4">
           <div className="space-y-1.5">
-            <Label htmlFor="gw-name">Name</Label>
+            <Label htmlFor="gw-name">{t("gateways.nameLabel")}</Label>
             <Input
               id="gw-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Hermit Gateway"
+              placeholder={t("gateways.namePlaceholder")}
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="gw-url">SSE URL</Label>
+            <Label htmlFor="gw-url">{t("gateways.sseUrlLabel")}</Label>
             <Input
               id="gw-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://localhost:5174/sse"
+              placeholder={t("gateways.sseUrlPlaceholder")}
               autoCapitalize="none"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="gw-token">Token</Label>
+            <Label htmlFor="gw-token">{t("gateways.tokenLabel")}</Label>
             <Input
               id="gw-token"
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="pairing token"
+              placeholder={t("gateways.tokenPlaceholder")}
               autoCapitalize="none"
             />
           </div>
           <Button className="w-full" disabled={!canSave} onClick={handleSave}>
             {canSave ? <PlugZap className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            Connect
+            {t("gateways.connect")}
           </Button>
         </div>
       </div>

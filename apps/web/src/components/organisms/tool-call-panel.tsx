@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Wrench, Filter } from "lucide-react";
 import { ToolCallCard } from "@/components/molecules";
 import { EmptyState } from "@/components/atoms";
@@ -36,6 +37,7 @@ export function ToolCallPanel({
   defaultExpanded,
   className,
 }: ToolCallPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [filter, setFilter] = React.useState<ToolCallStatus | "all">(
     statusFilter ?? "all",
   );
@@ -68,14 +70,14 @@ export function ToolCallPanel({
     <div className={cn("flex h-full flex-col", className)}>
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Wrench className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-semibold">Tool calls</span>
+        <span className="text-sm font-semibold">{t("tool.title")}</span>
         <span className="text-xs text-muted-foreground">({calls.length})</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-1.5">
         <Filter className="mr-1 h-3 w-3 text-muted-foreground" />
         <FilterChip
-          label="All"
+          label={t("tool.all")}
           active={filter === "all"}
           count={calls.length}
           onClick={() => setFilter("all")}
@@ -83,7 +85,7 @@ export function ToolCallPanel({
         {STATUS_ORDER.map((s) => (
           <FilterChip
             key={s}
-            label={s.replace("_", " ")}
+            label={t(`tool.status.${s}` as const)}
             tone={statusTone(s)}
             active={filter === s}
             count={counts[s]}
@@ -98,8 +100,8 @@ export function ToolCallPanel({
           {visible.length === 0 ? (
             <EmptyState
               icon={Wrench}
-              title="No tool calls"
-              description="Tool invocations will appear here as the agent works."
+              title={t("tool.noCallsTitle")}
+              description={t("tool.noCallsDescription")}
               compact
             />
           ) : (

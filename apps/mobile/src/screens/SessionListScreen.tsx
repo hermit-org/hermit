@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NavigationProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { useGatewayStore, useSessionStore } from "../stores";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
@@ -15,6 +16,7 @@ type SessionListRoute = RouteProp<RootStackParamList, "SessionList">;
 type SessionListNavigation = NavigationProp<RootStackParamList, "SessionList">;
 
 export function SessionListScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const route = useRoute<SessionListRoute>();
   const navigation = useNavigation<SessionListNavigation>();
   const { gatewayId } = route.params;
@@ -29,7 +31,7 @@ export function SessionListScreen(): React.JSX.Element {
     .sort((a: { updatedAt: number }, b: { updatedAt: number }) => b.updatedAt - a.updatedAt);
 
   const handleNewSession = () => {
-    const session = createSession(gatewayId, "New chat");
+    const session = createSession(gatewayId, t("sessionList.newSession"));
     navigation.navigate("Chat", { sessionId: session.id });
   };
 
@@ -40,9 +42,9 @@ export function SessionListScreen(): React.JSX.Element {
   return (
     <View style={localStyles.container}>
       <View style={localStyles.header}>
-        <Text style={localStyles.title}>{gateway?.name ?? "Gateway"}</Text>
+        <Text style={localStyles.title}>{gateway?.name ?? t("navigation.gateways")}</Text>
         <TouchableOpacity style={localStyles.newButton} onPress={handleNewSession}>
-          <Text style={localStyles.newButtonText}>+ New Session</Text>
+          <Text style={localStyles.newButtonText}>{t("sessionList.newSession")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -62,7 +64,7 @@ export function SessionListScreen(): React.JSX.Element {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <Text style={localStyles.empty}>No sessions yet. Start a new one.</Text>
+          <Text style={localStyles.empty}>{t("sessionList.empty")}</Text>
         }
       />
     </View>

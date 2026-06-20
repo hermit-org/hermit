@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+export type AppLanguage = "en" | "zh";
+
 interface SettingsState {
   /**
    * How many lines of an agent "thought" block to show in its collapsed
@@ -8,9 +10,24 @@ interface SettingsState {
    */
   thoughtPreviewLines: number;
   setThoughtPreviewLines: (lines: number) => void;
+  /** Display language. */
+  language: AppLanguage;
+  setLanguage: (language: AppLanguage) => void;
+  /** Whether the left session sidebar is expanded. */
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  /** Whether the right tool panel is expanded. */
+  rightPanelOpen: boolean;
+  setRightPanelOpen: (open: boolean) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
+
+function resolveDefaultLanguage(): AppLanguage {
+  if (typeof navigator === "undefined") return "en";
+  const code = navigator.language.split("-")[0];
+  return code === "zh" ? "zh" : "en";
+}
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -20,6 +37,12 @@ export const useSettingsStore = create<SettingsState>()(
         set({
           thoughtPreviewLines: Math.max(1, Math.min(50, Math.round(lines))),
         }),
+      language: resolveDefaultLanguage(),
+      setLanguage: (language) => set({ language }),
+      sidebarOpen: true,
+      setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      rightPanelOpen: true,
+      setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
     }),
     {
       name: "hermit-settings",

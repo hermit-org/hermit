@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Camera, CameraType } from "react-native-camera-kit";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { useGatewayStore } from "../stores";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
@@ -32,6 +33,7 @@ function parseConnectionString(input: string): { url: string; sendUrl: string; t
 }
 
 export function QrScannerScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const navigation = useNavigation<QrScannerNavigation>();
   const { addGateway, setActiveGateway } = useGatewayStore();
   const [scanning, setScanning] = useState(true);
@@ -47,23 +49,23 @@ export function QrScannerScreen(): React.JSX.Element {
     const connection = parseConnectionString(value);
 
     if (!connection) {
-      Alert.alert("Invalid QR code", "Could not parse connection data.");
+      Alert.alert(t("qrScanner.invalidQrTitle"), t("qrScanner.invalidQrMessage"));
       setScanning(true);
       return;
     }
 
     const gateway = addGateway({
-      name: "Scanned Gateway",
+      name: t("qrScanner.scannedGatewayName"),
       url: connection.url,
       sendUrl: connection.sendUrl,
       token: connection.token,
     });
     setActiveGateway(gateway.id);
 
-    Alert.alert("Gateway added", "Connect to this gateway now?", [
-      { text: "Later", style: "cancel", onPress: () => navigation.goBack() },
+    Alert.alert(t("qrScanner.gatewayAddedTitle"), t("qrScanner.gatewayAddedMessage"), [
+      { text: t("common.later"), style: "cancel", onPress: () => navigation.goBack() },
       {
-        text: "Connect",
+        text: t("common.connect"),
         onPress: () => {
           navigation.goBack();
           navigation.navigate("SessionList", { gatewayId: gateway.id });
@@ -75,9 +77,9 @@ export function QrScannerScreen(): React.JSX.Element {
   if (permissionDenied) {
     return (
       <View style={localStyles.center}>
-        <Text style={localStyles.message}>Camera permission is required to scan QR codes.</Text>
+        <Text style={localStyles.message}>{t("qrScanner.permissionDenied")}</Text>
         <TouchableOpacity style={localStyles.button} onPress={() => setPermissionDenied(false)}>
-          <Text style={localStyles.buttonText}>Retry</Text>
+          <Text style={localStyles.buttonText}>{t("common.retry")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -95,7 +97,7 @@ export function QrScannerScreen(): React.JSX.Element {
         laserColor="#007AFF"
       />
       <View style={localStyles.overlay}>
-        <Text style={localStyles.hint}>Point the camera at the Hermit QR code</Text>
+        <Text style={localStyles.hint}>{t("qrScanner.hint")}</Text>
         {!scanning && <ActivityIndicator style={localStyles.spinner} />}
       </View>
     </View>

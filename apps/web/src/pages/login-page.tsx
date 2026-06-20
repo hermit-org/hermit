@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { KeyRound, Loader2, ShieldCheck, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,10 +27,12 @@ export interface LoginPageProps {
   className?: string;
 }
 
-const DEFAULT_METHODS: AuthMethod[] = [
-  { id: "api_key", name: "API Key", description: "Use an agent API key" },
-  { id: "oauth", name: "OAuth", description: "Sign in via OAuth provider" },
-];
+function getDefaultMethods(t: (key: string) => string): AuthMethod[] {
+  return [
+    { id: "api_key", name: t("auth.apiKey"), description: t("auth.apiKeyDescription") },
+    { id: "oauth", name: t("auth.oauth"), description: t("auth.oauthDescription") },
+  ];
+}
 
 /**
  * Login page: authentication-method selection, API key entry, and OAuth
@@ -39,13 +42,15 @@ const DEFAULT_METHODS: AuthMethod[] = [
  * <LoginPage methods={methods} loading={loading} error={err} onAuthenticate={auth} />
  */
 export function LoginPage({
-  methods = DEFAULT_METHODS,
+  methods: methodsProp,
   loading,
   error,
   onAuthenticate,
   onBack,
   className,
 }: LoginPageProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const methods = methodsProp ?? getDefaultMethods(t);
   const [selected, setSelected] = React.useState(methods[0]?.id ?? "api_key");
   const [apiKey, setApiKey] = React.useState("");
 
@@ -67,9 +72,9 @@ export function LoginPage({
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <ShieldCheck className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-semibold">Authenticate</h1>
+          <h1 className="text-xl font-semibold">{t("auth.authenticate")}</h1>
           <p className="text-sm text-muted-foreground">
-            Sign in to connect to the ACP agent.
+            {t("auth.signInTo")}
           </p>
         </div>
 
@@ -121,13 +126,13 @@ export function LoginPage({
 
         <form onSubmit={submit} className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="api-key">API Key</Label>
+            <Label htmlFor="api-key">{t("auth.apiKey")}</Label>
             <Input
               id="api-key"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-…"
+              placeholder={t("auth.apiKeyPlaceholder")}
               autoComplete="off"
               autoFocus
             />
@@ -143,10 +148,10 @@ export function LoginPage({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Authenticating…
+                {t("auth.authenticating")}
               </>
             ) : (
-              "Sign in"
+              t("auth.signIn")
             )}
           </Button>
         </form>
@@ -159,7 +164,7 @@ export function LoginPage({
             onClick={onBack}
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            {t("common.back")}
           </Button>
         ) : null}
       </div>

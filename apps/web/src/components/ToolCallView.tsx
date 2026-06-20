@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import type {
   ToolCallUpdate,
@@ -97,6 +98,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export function ToolCallView({ call }: { call: ToolCallState }): React.JSX.Element {
+  const { t } = useTranslation();
   const statusColor = STATUS_COLOR[call.status ?? "pending"] ?? "#999";
   const rawInputView = renderRawJson(call.rawInput);
   const rawOutputView = renderRawJson(call.rawOutput);
@@ -117,17 +119,17 @@ export function ToolCallView({ call }: { call: ToolCallState }): React.JSX.Eleme
         {hasBody && (
           <span style={styles.caret}>{collapsed ? "▸" : "▾"}</span>
         )}
-        <span style={styles.kind}>{call.kind ?? "tool"}</span>
+        <span style={styles.kind}>{call.kind ?? t("tool.kind.fallback")}</span>
         <span style={styles.title}>{call.title ?? call.toolCallId}</span>
         <span style={{ ...styles.status, color: statusColor }}>
-          {call.status ?? "pending"}
+          {t(`tool.status.${call.status ?? "pending"}` as const)}
         </span>
       </div>
       {!collapsed && (
         <>
           {rawInputView && (
             <div style={styles.rawBlock}>
-              <div style={styles.rawLabel}>input</div>
+              <div style={styles.rawLabel}>{t("tool.input")}</div>
               <pre style={styles.rawText}>
                 <code>{rawInputView}</code>
               </pre>
@@ -142,7 +144,7 @@ export function ToolCallView({ call }: { call: ToolCallState }): React.JSX.Eleme
           )}
           {rawOutputView && (
             <div style={styles.rawBlock}>
-              <div style={styles.rawLabel}>output</div>
+              <div style={styles.rawLabel}>{t("tool.output")}</div>
               <pre style={styles.rawText}>
                 <code>{rawOutputView}</code>
               </pre>
@@ -152,8 +154,9 @@ export function ToolCallView({ call }: { call: ToolCallState }): React.JSX.Eleme
             <div style={styles.locations}>
               {call.locations.map((loc, i) => (
                 <div key={i} style={styles.location}>
-                  📄 {loc.path}
-                  {loc.line ? `:${loc.line}` : ""}
+                  {t("fileManager.location", {
+                    path: `${loc.path}${loc.line ? `:${loc.line}` : ""}`,
+                  })}
                 </div>
               ))}
             </div>
@@ -199,6 +202,7 @@ function ToolCallContentItem({
 }: {
   content: ToolCallContent;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   if (content.type === "content") {
     return <ContentBlockView content={content.content} />;
   }
@@ -209,7 +213,7 @@ function ToolCallContentItem({
       </pre>
     );
   }
-  return <div style={styles.terminal}>[terminal {content.terminalId}]</div>;
+  return <div style={styles.terminal}>{t("terminal.idLabel", { id: content.terminalId })}</div>;
 }
 
 function generateDiffPreview(oldText: string | null, newText: string): string {
@@ -235,6 +239,7 @@ function ContentBlockView({
 }: {
   content: ContentBlock;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   if (content.type === "text") {
     return <MarkdownRenderer content={content.text} />;
   }
@@ -256,7 +261,7 @@ function ContentBlockView({
         </pre>
       );
     }
-    return <div style={styles.resource}>[binary resource {r.uri}]</div>;
+    return <div style={styles.resource}>{t("resource.binary", { uri: r.uri })}</div>;
   }
   if (content.type === "resource_link") {
     return (

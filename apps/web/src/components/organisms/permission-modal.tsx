@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ShieldAlert, ChevronLeft, ChevronRight } from "lucide-react";
 import { PermissionRequestDialog } from "@/components/molecules";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ export function PermissionModal({
   onResolve,
   className,
 }: PermissionModalProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [index, setIndex] = React.useState(0);
 
   React.useEffect(() => {
@@ -63,10 +65,10 @@ export function PermissionModal({
         hideClose={requests.length > 0}
         className={cn("max-w-md gap-0 p-0", className)}
       >
-        <DialogTitle className="sr-only">Permission request</DialogTitle>
+        <DialogTitle className="sr-only">{t("permission.requested")}</DialogTitle>
         <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
           <ShieldAlert className="h-4 w-4 text-warning" />
-          <span className="text-sm font-semibold">Permission required</span>
+          <span className="text-sm font-semibold">{t("permission.required")}</span>
           {requests.length > 1 ? (
             <Badge variant="secondary" className="ml-auto gap-1">
               {index + 1} / {requests.length}
@@ -82,7 +84,7 @@ export function PermissionModal({
           </div>
         ) : (
           <div className="p-4 text-sm text-muted-foreground">
-            No pending requests.
+            {t("permission.noPending")}
           </div>
         )}
         {requests.length > 1 ? (
@@ -94,7 +96,7 @@ export function PermissionModal({
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              Previous
+              {t("permission.previous")}
             </button>
             <button
               type="button"
@@ -104,7 +106,7 @@ export function PermissionModal({
                 setIndex((i) => Math.min(requests.length - 1, i + 1))
               }
             >
-              Next
+              {t("permission.next")}
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>

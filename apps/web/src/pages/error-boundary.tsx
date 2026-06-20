@@ -1,6 +1,7 @@
 import * as React from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import i18n from "../i18n";
 
 interface ErrorBoundaryState {
   error: Error | null;
@@ -45,15 +46,14 @@ export class ErrorBoundary extends React.Component<
           <AlertTriangle className="h-6 w-6" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-base font-semibold">Something went wrong</h2>
+          <h2 className="text-base font-semibold">{i18n.t("error.title")}</h2>
           <p className="mx-auto max-w-md text-sm text-muted-foreground">
-            {error.message ||
-              "An unexpected error occurred while rendering this view."}
+            {error.message || i18n.t("error.defaultMessage")}
           </p>
         </div>
         <Button type="button" variant="outline" onClick={this.reset}>
           <RotateCcw className="h-4 w-4" />
-          Try again
+          {i18n.t("common.tryAgain")}
         </Button>
       </div>
     );

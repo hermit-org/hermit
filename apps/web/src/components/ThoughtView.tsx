@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { BrainCog } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
@@ -29,6 +30,7 @@ export function ThoughtView({
   busy,
   maxLines = 4,
 }: ThoughtViewProps): React.JSX.Element {
+  const { t } = useTranslation();
   // Auto mode follows busy; a non-null `manual` overrides it until busy
   // changes again.
   const [manual, setManual] = useState<ViewMode | null>(null);
@@ -69,7 +71,7 @@ export function ThoughtView({
     <div style={styles.thought}>
       <div style={styles.header}>
         <BrainCog size={14} style={styles.icon} />
-        <span style={styles.label}>Thinking</span>
+        <span style={styles.label}>{t("common.thinking")}</span>
         {busy && <span style={styles.dots}>…</span>}
       </div>
       <div
@@ -88,7 +90,7 @@ export function ThoughtView({
             )
           }
         >
-          {mode === "expanded" ? "收起" : "展开"}
+          {mode === "expanded" ? t("common.collapse") : t("common.expand")}
         </button>
       )}
     </div>

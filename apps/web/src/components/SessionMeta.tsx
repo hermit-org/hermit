@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type {
   PlanEntry,
   UsageUpdate,
@@ -19,9 +20,10 @@ const STATUS_ICON: Record<string, string> = {
 };
 
 export function PlanView({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div style={styles.card}>
-      <div style={styles.title}>Plan</div>
+      <div style={styles.title}>{t("plan.title")}</div>
       {entries.map((entry, i) => {
         const priority = entry.priority ?? "low";
         const status = entry.status ?? "pending";
@@ -31,7 +33,7 @@ export function PlanView({ entries }: { entries: PlanEntry[] }): React.JSX.Eleme
               {STATUS_ICON[status] ?? "○"}
             </span>
             <span style={{ ...styles.priority, color: PRIORITY_COLOR[priority] ?? "#999" }}>
-              {priority}
+              {t(`priority.${priority}` as const)}
             </span>
             <span style={styles.content}>{entry.content}</span>
           </div>
@@ -42,10 +44,11 @@ export function PlanView({ entries }: { entries: PlanEntry[] }): React.JSX.Eleme
 }
 
 export function UsageView({ usage }: { usage: UsageUpdate }): React.JSX.Element {
+  const { t } = useTranslation();
   const pct = usage.size > 0 ? Math.min(100, Math.round((usage.used / usage.size) * 100)) : 0;
   return (
     <div style={styles.usage}>
-      <span title="Context tokens used / size">
+      <span title={t("chat.contextTokens")}>
         {formatTokens(usage.used)} / {formatTokens(usage.size)} ({pct}%)
       </span>
       {usage.cost && (
@@ -101,9 +104,10 @@ export function CommandsView({
 }: {
   commands: AvailableCommand[];
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div style={styles.card}>
-      <div style={styles.title}>Available commands</div>
+      <div style={styles.title}>{t("commands.title")}</div>
       <div style={styles.commands}>
         {commands.map((cmd) => (
           <span key={cmd.name} style={styles.command} title={cmd.description}>

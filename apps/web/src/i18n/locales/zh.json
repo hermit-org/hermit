@@ -2,7 +2,59 @@
   "title": "Hermit Web",
   "language": {
     "en": "English",
-    "zh": "中文"
+    "zh": "中文",
+    "switch": "切换语言（当前 {{language}}）"
+  },
+  "layout": {
+    "newUi": "新界面",
+    "gateways": "网关",
+    "preview": "预览",
+    "settings": "设置",
+    "legacy": "旧版",
+    "toggleSidebar": "切换侧边栏",
+    "toggleOrientation": "切换方向",
+    "stacked": "堆叠",
+    "sideBySide": "并排",
+    "chat": "对话",
+    "terminal": "终端"
+  },
+  "common": {
+    "copy": "复制",
+    "send": "发送",
+    "stop": "停止",
+    "stopGenerating": "停止生成",
+    "scrollToBottom": "滚动到底部",
+    "loading": "加载中",
+    "thinking": "思考中…",
+    "waiting": "等待输出…",
+    "expand": "展开",
+    "collapse": "收起",
+    "dismiss": "关闭",
+    "cancel": "取消",
+    "back": "返回",
+    "close": "关闭",
+    "delete": "删除",
+    "edit": "编辑",
+    "add": "添加",
+    "update": "更新",
+    "import": "导入",
+    "connect": "连接",
+    "search": "搜索",
+    "commands": "命令",
+    "quick": "快捷",
+    "queued": "排队中",
+    "all": "全部",
+    "save": "保存",
+    "refresh": "刷新",
+    "today": "今天",
+    "yesterday": "昨天",
+    "noResults": "无匹配结果",
+    "tryAgain": "重试",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "daysAgo": "{{count}} 天前",
+    "tokens": "令牌"
   },
   "gateways": {
     "title": "网关",
@@ -16,7 +68,22 @@
     "delete": "删除",
     "connect": "连接",
     "empty": "暂无网关，请添加或打开连接链接。",
-    "deleteConfirm": "确定删除此网关？"
+    "deleteConfirm": "确定删除此网关？",
+    "defaultName": "Hermit 网关",
+    "active": "活跃",
+    "connectTitle": "连接到网关",
+    "connectDescription": "尚未配置网关。添加 Hermit 网关地址和令牌，即可开始与 ACP 智能体对话。",
+    "nameLabel": "名称",
+    "sseUrlLabel": "SSE 地址",
+    "tokenLabel": "令牌",
+    "namePlaceholder": "Hermit 网关",
+    "sseUrlPlaceholder": "http://localhost:5174/sse",
+    "tokenPlaceholder": "配对令牌",
+    "requiredError": "名称、地址和令牌为必填项。",
+    "importTitle": "从连接字符串导入",
+    "importPlaceholder": "粘贴 hermit://… 或 JSON",
+    "noGatewaysTitle": "暂无网关",
+    "noGatewaysDescription": "在上方添加网关，或从连接字符串导入。"
   },
   "sessions": {
     "title": "会话",
@@ -29,7 +96,14 @@
     "deleteAgentConfirm": "是否同时删除 Agent 端的会话？",
     "deleteAgentOnly": "删除 Agent 端会话？",
     "openAgent": "打开",
-    "close": "关闭"
+    "close": "关闭",
+    "closed": "已关闭",
+    "loadingTitle": "正在加载会话…",
+    "failedTitle": "加载会话失败",
+    "newChat": "新对话",
+    "agentSession": "Agent 会话",
+    "deleteFailed": "session/delete 失败",
+    "backToSessions": "返回会话列表"
   },
   "chat": {
     "placeholder": "输入消息…",
@@ -48,12 +122,22 @@
     "questionPlaceholder": "问题",
     "queued": "排队中",
     "otherInput": "其他 / 备注…",
-    "answeredHistory": "已回答",
+    "answeredHistory": "已回答（{{count}}）",
     "clearHistory": "清空历史",
     "todoTitle": "待办",
     "todoCollapse": "收起",
     "todoExpand": "展开",
-    "todoAllDone": "全部完成"
+    "todoAllDone": "全部完成",
+    "agent": "智能体",
+    "you": "你",
+    "system": "系统",
+    "noMessages": "暂无消息",
+    "startConversation": "发送一条消息开始对话。",
+    "agentIsThinking": "智能体思考中…",
+    "emptyDefaultDescription": "发送一条消息开始对话。",
+    "ready": "就绪",
+    "working": "工作中",
+    "contextTokens": "上下文令牌已用 / 总量"
   },
   "permission": {
     "title": "工具授权",
@@ -62,14 +146,34 @@
     "allowAlways": "总是允许",
     "rejectOnce": "拒绝一次",
     "rejectAlways": "总是拒绝",
-    "dismiss": "关闭"
+    "dismiss": "关闭",
+    "requested": "请求授权",
+    "required": "需要授权",
+    "cancel": "取消",
+    "previous": "上一个",
+    "next": "下一个",
+    "noPending": "没有待处理的请求。",
+    "answered": "已回答",
+    "qPrefix": "问：",
+    "aPrefix": "答：",
+    "note": "备注"
   },
   "auth": {
     "required": "需要认证",
     "signIn": "登录",
     "signOut": "退出登录",
     "signedIn": "已登录",
-    "failed": "认证失败"
+    "failed": "认证失败",
+    "authenticate": "认证",
+    "signInTo": "登录以连接 ACP 智能体。",
+    "apiKey": "API 密钥",
+    "oauth": "OAuth",
+    "apiKeyDescription": "使用智能体 API 密钥",
+    "oauthDescription": "通过 OAuth 提供商登录",
+    "apiKeyPlaceholder": "sk-…",
+    "authenticating": "正在认证…",
+    "authenticated": "已认证",
+    "stillBrowse": "仍可浏览界面——登录后即可发送提示。"
   },
   "connect": {
     "paste": "粘贴连接字符串",
@@ -77,5 +181,201 @@
     "imported": "网关已导入",
     "invalid": "连接字符串无效",
     "autoImported": "已从链接自动配置网关"
+  },
+  "connection": {
+    "disconnected": "已断开",
+    "connecting": "连接中",
+    "negotiating": "协商中",
+    "connected": "已连接",
+    "error": "连接错误",
+    "protocolBadge": "ACP v{{version}}",
+    "agentFallback": "ACP 智能体"
+  },
+  "commands": {
+    "title": "可用命令",
+    "compact": {
+      "description": "压缩对话上下文"
+    },
+    "clear": {
+      "description": "清空聊天记录"
+    },
+    "mode": {
+      "description": "切换操作模式",
+      "hint": "模式 id"
+    },
+    "help": {
+      "description": "显示可用命令"
+    }
+  },
+  "priority": {
+    "high": "高",
+    "medium": "中",
+    "low": "低"
+  },
+  "resource": {
+    "binary": "[二进制资源 {{uri}}]"
+  },
+  "tool": {
+    "title": "工具调用",
+    "all": "全部",
+    "input": "输入",
+    "output": "输出",
+    "noCallsTitle": "暂无工具调用",
+    "noCallsDescription": "智能体运行时的工具调用将显示在这里。",
+    "status": {
+      "pending": "待处理",
+      "in_progress": "进行中",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "terminal": "终端",
+    "kind": {
+      "fallback": "工具"
+    }
+  },
+  "terminal": {
+    "killProcess": "终止进程",
+    "closeTerminal": "关闭终端",
+    "waitingForOutput": "等待输出…",
+    "typeAndEnter": "输入后按回车发送…",
+    "autoScrollPaused": "自动滚动已暂停——滚动到底部以恢复",
+    "running": "运行中",
+    "idle": "空闲",
+    "exit": "退出码",
+    "idLabel": "[终端 {{id}}]"
+  },
+  "mcp": {
+    "servers": "MCP 服务器",
+    "addServer": "添加服务器",
+    "addMcpServer": "添加 MCP 服务器",
+    "name": "名称",
+    "transport": "传输方式",
+    "command": "命令",
+    "arguments": "参数（空格分隔）",
+    "url": "地址",
+    "namePlaceholder": "my-server",
+    "commandPlaceholder": "npx",
+    "argumentsPlaceholder": "-y @modelcontextprotocol/server-filesystem /tmp",
+    "urlPlaceholder": "https://example.com/mcp",
+    "stdio": "stdio",
+    "http": "http",
+    "sse": "sse",
+    "test": "测试",
+    "testing": "测试中",
+    "edit": "编辑",
+    "delete": "删除",
+    "enable": "启用 {{name}}",
+    "serverActions": "服务器操作",
+    "noServersTitle": "暂无 MCP 服务器",
+    "noServersDescription": "添加 MCP 服务器以扩展智能体的工具。",
+    "state": {
+      "connected": "已连接",
+      "disconnected": "已断开",
+      "connecting": "连接中",
+      "error": "错误"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "back": "返回",
+    "mcpServers": "MCP 服务器",
+    "appearance": "外观",
+    "shortcuts": "快捷键",
+    "language": "语言",
+    "languageHint": "选择界面显示语言。",
+    "theme": "主题",
+    "themeHint": "在浅色与深色模式之间切换。",
+    "darkMode": "深色模式",
+    "darkModeHint": "关闭时跟随系统偏好。",
+    "fontSize": "字体大小",
+    "fontSizeHint": "聊天内容的基础字体大小。",
+    "keyboardShortcuts": "键盘快捷键",
+    "shortcutsHint": "自定义常用操作的键位。",
+    "sendMessage": "发送消息",
+    "newLine": "换行",
+    "commandPalette": "命令面板",
+    "toggleSidebar": "切换侧边栏",
+    "toggleTerminal": "切换终端",
+    "cancelGeneration": "取消生成"
+  },
+  "session": {
+    "rename": "重命名会话",
+    "saveTitle": "保存标题",
+    "manageTags": "管理标签"
+  },
+  "sessionSidebar": {
+    "searchPlaceholder": "搜索会话",
+    "sessionMode": "会话模式",
+    "newSession": "新建会话",
+    "filter": "筛选",
+    "noSessions": "暂无会话",
+    "noMatchingSessions": "无匹配会话",
+    "tryDifferentFilter": "尝试其他搜索或筛选条件。",
+    "createSession": "创建一个会话开始对话。"
+  },
+  "sessionItem": {
+    "resumeLoad": "恢复 / 加载",
+    "fork": "分叉",
+    "duplicate": "复制",
+    "close": "关闭",
+    "delete": "删除",
+    "sessionActions": "会话操作",
+    "closed": "已关闭"
+  },
+  "fileManager": {
+    "files": "文件",
+    "noFilesTitle": "暂无文件",
+    "emptyDirectory": "工作目录为空。",
+    "noFileSelectedTitle": "未选择文件",
+    "selectFile": "在文件树中选择一个文件以预览或编辑。",
+    "unsaved": "未保存",
+    "save": "保存",
+    "refresh": "刷新",
+    "collapse": "收起",
+    "expand": "展开",
+    "fileActions": "文件操作",
+    "edit": "编辑",
+    "download": "下载",
+    "location": "📄 {{path}}"
+  },
+  "composer": {
+    "placeholder": "给智能体发送消息…（Shift+Enter 换行）",
+    "attachFile": "附加文件",
+    "clearInput": "清空输入",
+    "navigateHint": "导航",
+    "noCommands": "没有匹配的命令",
+    "slashCommands": "斜杠命令"
+  },
+  "statusBar": {
+    "generating": "生成中",
+    "settings": "设置"
+  },
+  "error": {
+    "title": "出错了",
+    "defaultMessage": "渲染此视图时发生意外错误。",
+    "dismiss": "关闭"
+  },
+  "plan": {
+    "title": "待办",
+    "allDone": "全部完成",
+    "collapse": "收起"
+  },
+  "mode": {
+    "ask": "问答",
+    "architect": "架构",
+    "code": "代码",
+    "default": "模式",
+    "sessionMode": "会话模式"
+  },
+  "showcase": {
+    "preview": "预览",
+    "acpClient": "ACP 客户端",
+    "mainLayout": "主布局",
+    "splitLayout": "分屏布局",
+    "settings": "设置",
+    "atomicDesign": "Atomic Design · Shadcn/ui"
+  },
+  "config": {
+    "closeSession": "关闭会话"
   }
 }

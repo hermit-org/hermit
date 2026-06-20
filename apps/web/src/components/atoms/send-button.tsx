@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,10 +20,12 @@ export interface SendButtonProps
  */
 export function SendButton({
   disabled,
-  label = "Send",
+  label: labelProp,
   className,
   ...props
 }: SendButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const label = labelProp ?? t("common.send");
   return (
     <Button
       type="submit"

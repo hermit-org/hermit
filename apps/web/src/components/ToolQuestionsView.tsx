@@ -114,15 +114,15 @@ export function ToolQuestionsView(): React.JSX.Element | null {
             onClick={() => setShowHistory((s) => !s)}
           >
             {showHistory ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            {t("chat.answeredHistory")} ({history.length})
+            {t("chat.answeredHistory", { count: history.length })}
           </button>
           {showHistory && (
             <>
               {history.map((h, i) => (
                 <div key={`${h.toolCallId}-${i}`} style={styles.historyItem}>
-                  <div style={styles.historyQ}>Q: {h.question}</div>
-                  <div style={styles.historyA}>A: {h.answer}</div>
-                  {h.note && <div style={styles.historyNote}>✎ {h.note}</div>}
+                  <div style={styles.historyQ}>{t("permission.qPrefix")} {h.question}</div>
+                  <div style={styles.historyA}>{t("permission.aPrefix")} {h.answer}</div>
+                  {h.note && <div style={styles.historyNote}>{t("permission.note")}: {h.note}</div>}
                 </div>
               ))}
               <button
@@ -171,7 +171,7 @@ function QuestionRow({
           type="button"
           style={styles.dismiss}
           onClick={onDismiss}
-          aria-label="dismiss"
+          aria-label={t("common.dismiss")}
         >
           ×
         </button>

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import i18n, { type Language } from "./i18n";
-import { useGatewayStore } from "./stores";
+import { changeAppLanguage } from "./i18n";
+import { useGatewayStore, useSettingsStore } from "./stores";
 import { readConfigFromUrl } from "./config";
 import { ServerListScreen } from "./screens/ServerListScreen";
 import { SessionListScreen } from "./screens/SessionListScreen";
@@ -40,7 +40,11 @@ import {
 export default function App(): React.JSX.Element {
   const { t } = useTranslation();
   const gateways = useGatewayStore((s) => s.gateways);
-  const [language, setLanguage] = useState<Language>(i18n.language as Language);
+  const { language } = useSettingsStore();
+
+  useEffect(() => {
+    changeAppLanguage(language);
+  }, [language]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -63,7 +67,7 @@ export default function App(): React.JSX.Element {
     const g =
       existing ??
       store.addGateway({
-        name: config.name || "Hermit Gateway",
+        name: config.name || t("gateways.defaultName"),
         url: config.url,
         sendUrl: config.sendUrl,
         token: config.token,
@@ -74,12 +78,6 @@ export default function App(): React.JSX.Element {
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const toggleLanguage = (): void => {
-    const next: Language = language === "zh" ? "en" : "zh";
-    i18n.changeLanguage(next);
-    setLanguage(next);
-  };
 
   const route = useRoute();
 
@@ -93,7 +91,6 @@ export default function App(): React.JSX.Element {
     return (
       <div style={{ height: "100vh", position: "relative" }}>
         <FullScreenRoute route={route} gateways={gateways} />
-        <ModeSwitcher route={route} />
       </div>
     );
   }
@@ -102,18 +99,13 @@ export default function App(): React.JSX.Element {
     <div style={styles.app}>
       <header style={styles.header}>
         <span style={styles.brand}>{t("title")}</span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            style={{ ...styles.langButton, fontSize: 11 }}
-            onClick={() => navigate("/")}
-            title="Switch to the new UI"
-          >
-            New UI
-          </button>
-          <button style={styles.langButton} onClick={toggleLanguage}>
-            {language === "zh" ? "EN" : "中"}
-          </button>
-        </div>
+        <button
+          style={{ ...styles.langButton, fontSize: 11 }}
+          onClick={() => navigate("/")}
+          title={t("layout.newUi")}
+        >
+          {t("layout.newUi")}
+        </button>
       </header>
 
       <main style={styles.main}>
@@ -189,60 +181,6 @@ function LegacyRoute({ route }: { route: Route }): React.JSX.Element {
   }
 }
 
-/** Floating mode switcher shown over the full-screen new UI. */
-function ModeSwitcher({ route }: { route: Route }): React.JSX.Element {
-  const active =
-    route.name === "showcase"
-      ? "showcase"
-      : route.name === "settings"
-        ? "settings"
-        : route.name === "real"
-          ? "real"
-          : "gateways";
-  const options: { id: string; label: string; to: string }[] = [
-    { id: "gateways", label: "Gateways", to: "/" },
-    { id: "showcase", label: "Preview", to: "/showcase" },
-    { id: "settings", label: "Settings", to: "/settings" },
-    { id: "legacy", label: "Legacy", to: "/legacy" },
-  ];
-  return (
-    <div
-      style={{
-        position: "fixed",
-        right: 12,
-        bottom: 12,
-        zIndex: 50,
-        display: "flex",
-        gap: 4,
-        background: "hsl(0 0% 100%)",
-        border: "1px solid hsl(0 0% 90%)",
-        borderRadius: 8,
-        padding: 4,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-      }}
-    >
-      {options.map((opt) => (
-        <button
-          key={opt.id}
-          style={{
-            border: "none",
-            background: active === opt.id ? "hsl(0 0% 10%)" : "transparent",
-            color: active === opt.id ? "#fff" : "hsl(0 0% 40%)",
-            borderRadius: 5,
-            padding: "4px 8px",
-            fontSize: 11,
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-          onClick={() => navigate(opt.to)}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 const styles: Record<string, React.CSSProperties> = {
   app: {
     display: "flex",
@@ -265,15 +203,6 @@ const styles: Record<string, React.CSSProperties> = {
   brand: {
     fontSize: 17,
     fontWeight: 700,
-  },
-  langButton: {
-    background: "none",
-    border: "1px solid #ddd",
-    borderRadius: 6,
-    padding: "4px 10px",
-    fontSize: 13,
-    cursor: "pointer",
-    color: "#333",
   },
   main: {
     flex: 1,

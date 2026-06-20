@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { TerminalSquare, MessageSquare, Columns2, Rows2 } from "lucide-react";
 import { ChatArea } from "@/components/organisms/chat-area";
 import { TerminalPanel } from "@/components/organisms/terminal-panel";
@@ -33,6 +34,7 @@ export function SplitLayout({
   split = 60,
   className,
 }: SplitLayoutProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [orient, setOrient] = React.useState(orientation);
   const [pct, setPct] = React.useState(split);
   const draggingRef = React.useRef(false);
@@ -75,9 +77,9 @@ export function SplitLayout({
     <div className={cn("flex h-full w-full flex-col", className)}>
       <div className="flex items-center gap-2 border-b border-border px-2 py-1">
         <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-xs font-semibold">Chat</span>
+        <span className="text-xs font-semibold">{t("layout.chat")}</span>
         <TerminalSquare className="ml-2 h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-xs font-semibold">Terminal</span>
+        <span className="text-xs font-semibold">{t("layout.terminal")}</span>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -85,14 +87,14 @@ export function SplitLayout({
               variant="ghost"
               size="icon-sm"
               className="ml-auto h-6 w-6"
-              aria-label="Toggle orientation"
+              aria-label={t("layout.toggleOrientation")}
               onClick={() => setOrient((o) => (o === "horizontal" ? "vertical" : "horizontal"))}
             >
               {isH ? <Rows2 className="h-3.5 w-3.5" /> : <Columns2 className="h-3.5 w-3.5" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            Switch to {isH ? "stacked" : "side-by-side"}
+            {t(isH ? "layout.stacked" : "layout.sideBySide")}
           </TooltipContent>
         </Tooltip>
       </div>

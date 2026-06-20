@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Plus,
   PlugZap,
@@ -29,6 +30,7 @@ export interface GatewayManagerProps {
 export function GatewayManager({
   onConnect,
 }: GatewayManagerProps): React.JSX.Element {
+  const { t } = useTranslation();
   const gateways = useGatewayStore((s) => s.gateways);
   const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
   const addGateway = useGatewayStore((s) => s.addGateway);
@@ -52,7 +54,7 @@ export function GatewayManager({
 
   const handleSave = (): void => {
     if (!name.trim() || !url.trim() || !token.trim()) {
-      setNotice("Name, URL and token are required.");
+      setNotice(t("gateways.requiredError"));
       return;
     }
     if (editingId) {
@@ -81,7 +83,7 @@ export function GatewayManager({
   };
 
   const handleDelete = (id: string): void => {
-    if (!window.confirm("Delete this gateway?")) return;
+    if (!window.confirm(t("gateways.deleteConfirm"))) return;
     removeGateway(id);
     if (editingId === id) resetForm();
   };
@@ -89,17 +91,17 @@ export function GatewayManager({
   const handleImport = (): void => {
     const config = parseConnectionString(pasteValue);
     if (!config) {
-      setNotice("Invalid connection string.");
+      setNotice(t("connect.invalid"));
       return;
     }
     addGateway({
-      name: config.name || "Imported Gateway",
+      name: config.name || t("gateways.defaultName"),
       url: config.url,
       sendUrl: config.sendUrl,
       token: config.token,
     });
     setPasteValue("");
-    setNotice("Gateway imported.");
+    setNotice(t("connect.imported"));
   };
 
   const handleConnect = (g: Gateway): void => {
@@ -112,17 +114,17 @@ export function GatewayManager({
       <div className="w-full max-w-2xl space-y-6">
         <div className="flex items-center gap-2">
           <ServerCog className="h-5 w-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Gateways</h1>
+          <h1 className="text-lg font-semibold">{t("gateways.title")}</h1>
         </div>
 
         {/* Import from connection string */}
         <div className="space-y-2 rounded-lg border border-border bg-card p-4">
-          <Label>Import from connection string</Label>
+          <Label>{t("gateways.importTitle")}</Label>
           <div className="flex gap-2">
             <Input
               value={pasteValue}
               onChange={(e) => setPasteValue(e.target.value)}
-              placeholder="Paste hermit://… or JSON"
+              placeholder={t("gateways.importPlaceholder")}
               autoCapitalize="none"
             />
             <Button
@@ -130,7 +132,7 @@ export function GatewayManager({
               onClick={handleImport}
               disabled={!pasteValue.trim()}
             >
-              Import
+              {t("connect.import")}
             </Button>
           </div>
         </div>
@@ -138,10 +140,12 @@ export function GatewayManager({
         {/* Add / edit form */}
         <div className="space-y-3 rounded-lg border border-border bg-card p-4">
           <div className="flex items-center justify-between">
-            <Label>{editingId ? "Edit gateway" : "Add gateway"}</Label>
+            <Label>
+              {editingId ? t("gateways.edit") : t("gateways.add")}
+            </Label>
             {editingId ? (
               <Button variant="ghost" size="sm" onClick={resetForm}>
-                Cancel
+                {t("gateways.cancel")}
               </Button>
             ) : null}
           </div>
@@ -149,18 +153,18 @@ export function GatewayManager({
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
+              placeholder={t("gateways.name")}
             />
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="SSE URL (e.g. http://localhost:8787)"
+              placeholder={t("gateways.url")}
               autoCapitalize="none"
             />
             <Input
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Bearer token"
+              placeholder={t("gateways.token")}
               type="password"
               autoCapitalize="none"
             />
@@ -171,7 +175,7 @@ export function GatewayManager({
             ) : (
               <Plus className="h-4 w-4" />
             )}
-            {editingId ? "Update" : "Add"}
+            {editingId ? t("gateways.update") : t("gateways.add")}
           </Button>
         </div>
 
@@ -184,8 +188,8 @@ export function GatewayManager({
           {gateways.length === 0 ? (
             <EmptyState
               icon={Globe}
-              title="No gateways"
-              description="Add a gateway above or import one from a connection string."
+              title={t("gateways.noGatewaysTitle")}
+              description={t("gateways.noGatewaysDescription")}
             />
           ) : (
             gateways.map((g) => {
@@ -201,7 +205,7 @@ export function GatewayManager({
                         {g.name}
                       </span>
                       {active ? (
-                        <Badge variant="secondary">active</Badge>
+                        <Badge variant="secondary">{t("gateways.active")}</Badge>
                       ) : null}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
@@ -213,7 +217,7 @@ export function GatewayManager({
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => handleEdit(g)}
-                      title="Edit"
+                      title={t("gateways.edit")}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -221,17 +225,17 @@ export function GatewayManager({
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => handleDelete(g.id)}
-                      title="Delete"
+                      title={t("gateways.delete")}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => handleConnect(g)}
-                      title="Connect"
+                      title={t("gateways.connect")}
                     >
                       <PlugZap className="h-4 w-4" />
-                      Connect
+                      {t("gateways.connect")}
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </div>

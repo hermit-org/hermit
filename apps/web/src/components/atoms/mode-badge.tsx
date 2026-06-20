@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export function ModeBadge({
   className,
   ...props
 }: ModeBadgeProps): React.JSX.Element {
+  const { t } = useTranslation();
   const meta = MODE_META[modeId] ?? MODE_META.default;
   return (
     <Badge
@@ -45,7 +47,7 @@ export function ModeBadge({
       {...props}
     >
       <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-      {label ?? meta.label}
+      {label ?? t(`mode.${modeId}`, { defaultValue: meta.label })}
     </Badge>
   );
 }

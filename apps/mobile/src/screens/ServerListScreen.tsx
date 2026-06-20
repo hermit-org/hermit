@@ -9,16 +9,21 @@ import {
   StyleSheet,
 } from "react-native";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
-import { useGatewayStore } from "../stores";
+import { useTranslation } from "react-i18next";
+import { useGatewayStore, useSettingsStore, type AppLanguage } from "../stores";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { Gateway } from "../types";
 
 type ServerListNavigation = NavigationProp<RootStackParamList, "ServerList">;
 
+const languageOptions: AppLanguage[] = ["system", "en", "zh"];
+
 export function ServerListScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const navigation = useNavigation<ServerListNavigation>();
   const { gateways, addGateway, updateGateway, removeGateway, setActiveGateway } =
     useGatewayStore();
+  const { language, setLanguage } = useSettingsStore();
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -34,7 +39,7 @@ export function ServerListScreen(): React.JSX.Element {
 
   const handleSave = () => {
     if (!name.trim() || !url.trim() || !token.trim()) {
-      Alert.alert("Missing fields", "Please fill in name, URL and token.");
+      Alert.alert(t("serverList.missingFieldsTitle"), t("serverList.missingFields"));
       return;
     }
 
@@ -54,9 +59,9 @@ export function ServerListScreen(): React.JSX.Element {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert("Delete gateway", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => removeGateway(id) },
+    Alert.alert(t("serverList.deleteTitle"), t("serverList.deleteMessage"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => removeGateway(id) },
     ]);
   };
 
@@ -69,24 +74,40 @@ export function ServerListScreen(): React.JSX.Element {
     navigation.navigate("QrScanner");
   };
 
+  const handleChangeLanguage = () => {
+    Alert.alert(
+      t("language.label"),
+      undefined,
+      languageOptions.map((value) => ({
+        text: t(`language.${value}`),
+        onPress: () => setLanguage(value),
+      })),
+    );
+  };
+
   return (
     <View style={localStyles.container}>
       <View style={localStyles.headerRow}>
-        <Text style={localStyles.headerTitle}>Gateways</Text>
-        <TouchableOpacity style={localStyles.scanButton} onPress={handleScanQr}>
-          <Text style={localStyles.scanButtonText}>Scan QR</Text>
-        </TouchableOpacity>
+        <Text style={localStyles.headerTitle}>{t("serverList.title")}</Text>
+        <View style={localStyles.headerActions}>
+          <TouchableOpacity style={localStyles.languageButton} onPress={handleChangeLanguage}>
+            <Text style={localStyles.languageButtonText}>{t(`language.${language}`)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={localStyles.scanButton} onPress={handleScanQr}>
+            <Text style={localStyles.scanButtonText}>{t("serverList.scanQr")}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <View style={localStyles.form}>
         <TextInput
           style={localStyles.input}
-          placeholder="Gateway name"
+          placeholder={t("serverList.namePlaceholder")}
           value={name}
           onChangeText={setName}
         />
         <TextInput
           style={localStyles.input}
-          placeholder="SSE URL (e.g. http://192.168.1.5:8787)"
+          placeholder={t("serverList.urlPlaceholder")}
           value={url}
           onChangeText={setUrl}
           autoCapitalize="none"
@@ -94,7 +115,7 @@ export function ServerListScreen(): React.JSX.Element {
         />
         <TextInput
           style={localStyles.input}
-          placeholder="Bearer token"
+          placeholder={t("serverList.tokenPlaceholder")}
           value={token}
           onChangeText={setToken}
           autoCapitalize="none"
@@ -102,12 +123,12 @@ export function ServerListScreen(): React.JSX.Element {
         />
         <TouchableOpacity style={localStyles.button} onPress={handleSave}>
           <Text style={localStyles.buttonText}>
-            {editingId ? "Update" : "Add"} Gateway
+            {t(editingId ? "serverList.updateGateway" : "serverList.addGateway")}
           </Text>
         </TouchableOpacity>
         {editingId && (
           <TouchableOpacity style={localStyles.cancelButton} onPress={resetForm}>
-            <Text style={localStyles.cancelButtonText}>Cancel</Text>
+            <Text style={localStyles.cancelButtonText}>{t("common.cancel")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -123,16 +144,16 @@ export function ServerListScreen(): React.JSX.Element {
             </TouchableOpacity>
             <View style={localStyles.itemActions}>
               <TouchableOpacity onPress={() => handleEdit(item)}>
-                <Text style={localStyles.action}>Edit</Text>
+                <Text style={localStyles.action}>{t("common.edit")}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                <Text style={[localStyles.action, localStyles.deleteAction]}>Delete</Text>
+                <Text style={[localStyles.action, localStyles.deleteAction]}>{t("common.delete")}</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
         ListEmptyComponent={
-          <Text style={localStyles.empty}>No gateways. Add one to get started.</Text>
+          <Text style={localStyles.empty}>{t("serverList.empty")}</Text>
         }
       />
     </View>
@@ -155,6 +176,23 @@ const localStyles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  languageButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
+  languageButtonText: {
+    color: "#007AFF",
+    fontWeight: "600",
+    fontSize: 13,
   },
   scanButton: {
     backgroundColor: "#007AFF",

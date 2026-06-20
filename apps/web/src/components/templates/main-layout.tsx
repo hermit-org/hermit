@@ -1,5 +1,6 @@
 import * as React from "react";
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { ConnectionBar } from "@/components/organisms/connection-bar";
 import { SessionSidebar } from "@/components/organisms/session-sidebar";
 import { ChatArea } from "@/components/organisms/chat-area";
@@ -9,6 +10,7 @@ import { StatusBar } from "@/components/organisms/status-bar";
 import { PermissionModal } from "@/components/organisms/permission-modal";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
 import {
   MOCK_CHAT_ITEMS,
@@ -44,8 +46,13 @@ export function MainLayout({
   children,
   className,
 }: MainLayoutProps): React.JSX.Element {
-  const [sidebarOpen, setSidebarOpen] = React.useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = React.useState(true);
+  const { t } = useTranslation();
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    rightPanelOpen,
+    setRightPanelOpen,
+  } = useSettingsStore();
 
   return (
     <div className={cn("flex h-full w-full flex-col bg-background", className)}>
@@ -65,7 +72,7 @@ export function MainLayout({
         {/* Sidebar */}
         <div
           className={cn(
-            "hidden shrink-0 md:block",
+            "hidden shrink-0 overflow-hidden md:block",
             sidebarOpen ? "w-64" : "w-0",
             "transition-[width] duration-200",
           )}
@@ -92,8 +99,8 @@ export function MainLayout({
                   variant="ghost"
                   size="icon-sm"
                   className="h-7 w-7"
-                  aria-label={sidebarOpen ? "Hide sessions" : "Show sessions"}
-                  onClick={() => setSidebarOpen((v) => !v)}
+                  aria-label={t("layout.toggleSidebar")}
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
                 >
                   {sidebarOpen ? (
                     <PanelLeftClose className="h-4 w-4" />
@@ -102,11 +109,30 @@ export function MainLayout({
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Toggle sessions</TooltipContent>
+              <TooltipContent>{t("layout.toggleSidebar")}</TooltipContent>
             </Tooltip>
             <span className="px-1 text-xs text-muted-foreground">
               Refactor parser module
             </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="ml-auto h-7 w-7"
+                  aria-label={t("layout.toggleRightPanel")}
+                  onClick={() => setRightPanelOpen(!rightPanelOpen)}
+                >
+                  {rightPanelOpen ? (
+                    <PanelRightClose className="h-4 w-4" />
+                  ) : (
+                    <PanelRightOpen className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("layout.toggleRightPanel")}</TooltipContent>
+            </Tooltip>
           </div>
 
           <div className="min-h-0 flex-1">
@@ -126,24 +152,32 @@ export function MainLayout({
         </div>
 
         {/* Right panel */}
-        {rightPanelOpen ? (
-          <div className="hidden w-80 shrink-0 border-l border-border lg:block">
-            <div className="flex items-center justify-between border-b border-border px-2 py-1">
-              <span className="text-xs font-semibold">Tools</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="h-6 w-6"
-                aria-label="Close panel"
-                onClick={() => setRightPanelOpen(false)}
-              >
-                <PanelRightClose className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <ToolCallPanel calls={MOCK_TOOL_CALLS} className="h-[calc(100%-2rem)]" />
-          </div>
-        ) : null}
+        <div
+          className={cn(
+            "hidden shrink-0 overflow-hidden border-l border-border lg:block",
+            rightPanelOpen ? "w-80" : "w-0",
+            "transition-[width] duration-200",
+          )}
+        >
+          {rightPanelOpen ? (
+            <>
+              <div className="flex items-center justify-between border-b border-border px-2 py-1">
+                <span className="text-xs font-semibold">{t("tool.title")}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-6 w-6"
+                  aria-label={t("common.close")}
+                  onClick={() => setRightPanelOpen(false)}
+                >
+                  <PanelRightClose className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <ToolCallPanel calls={MOCK_TOOL_CALLS} className="h-[calc(100%-2rem)]" />
+            </>
+          ) : null}
+        </div>
       </div>
 
       <StatusBar
@@ -152,7 +186,6 @@ export function MainLayout({
         usage={MOCK_USAGE}
         contextWindow={200000}
         busy
-        onToggleRightPanel={() => setRightPanelOpen((v) => !v)}
       />
 
       <PermissionModal

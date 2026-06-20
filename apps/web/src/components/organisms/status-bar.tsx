@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Settings, PanelRightOpen, TerminalSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Settings } from "lucide-react";
 import {
   ConnectionStatusDot,
   ModeBadge,
@@ -20,25 +21,20 @@ export interface StatusBarProps {
   modeId?: string;
   /** Latest token usage. */
   usage?: UsageStatsData;
-  /** Optional context window size. */
+  /** Optional context window size for the progress bar. */
   contextWindow?: number;
   /** Whether a turn is currently streaming. */
   busy?: boolean;
-  /** Toggle the right panel (tools/files). */
-  onToggleRightPanel?: () => void;
-  /** Toggle the terminal panel. */
-  onToggleTerminal?: () => void;
   /** Open settings. */
   onOpenSettings?: () => void;
   className?: string;
 }
 
 /**
- * Bottom status bar: connection status, mode, usage/cost, and quick toggles
- * for the side panels.
+ * Bottom status bar: connection status, mode, usage/cost, and a settings button.
  *
  * @example
- * <StatusBar status="connected" modeId="code" usage={usage} busy onToggleTerminal={toggle} />
+ * <StatusBar status="connected" modeId="code" usage={usage} busy onOpenSettings={openSettings} />
  */
 export function StatusBar({
   status,
@@ -46,11 +42,10 @@ export function StatusBar({
   usage,
   contextWindow,
   busy,
-  onToggleRightPanel,
-  onToggleTerminal,
   onOpenSettings,
   className,
 }: StatusBarProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <footer
       className={cn(
@@ -60,14 +55,14 @@ export function StatusBar({
     >
       <div className="flex items-center gap-1.5">
         <ConnectionStatusDot status={status} size={7} pulse={false} />
-        <span className="text-muted-foreground">{status}</span>
+        <span className="text-muted-foreground">{t(`connection.${status}` as const)}</span>
       </div>
       {busy ? (
         <>
           <Separator orientation="vertical" className="h-3.5" />
           <span className="flex items-center gap-1 text-blue-500">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
-            generating
+            {t("statusBar.generating")}
           </span>
         </>
       ) : null}
@@ -92,30 +87,8 @@ export function StatusBar({
           variant="ghost"
           size="icon-sm"
           className="h-6 w-6"
-          aria-label="Toggle terminal"
-          title="Toggle terminal"
-          onClick={onToggleTerminal}
-        >
-          <TerminalSquare className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="h-6 w-6"
-          aria-label="Toggle panel"
-          title="Toggle panel"
-          onClick={onToggleRightPanel}
-        >
-          <PanelRightOpen className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="h-6 w-6"
-          aria-label="Settings"
-          title="Settings"
+          aria-label={t("statusBar.settings")}
+          title={t("statusBar.settings")}
           onClick={onOpenSettings}
         >
           <Settings className="h-3.5 w-3.5" />

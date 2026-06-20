@@ -1,4 +1,6 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus } from "lucide-react";
 import {
   MOCK_CHAT_ITEMS,
   MOCK_COMMANDS,
@@ -17,7 +19,10 @@ import { ToolCallPanel } from "@/components/organisms/tool-call-panel";
 import { MessageComposerPanel } from "@/components/organisms/message-composer-panel";
 import { StatusBar } from "@/components/organisms/status-bar";
 import { ToolQuestionsPanel } from "@/components/organisms/tool-questions-panel";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "./error-boundary";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
 import type {
   AvailableCommand,
@@ -134,7 +139,7 @@ export function ACPClientPage({
   connectionStatus = MOCK_CONNECTION,
   requireAuth,
   protocolVersion = "1",
-  agentName = "ACP Agent",
+  agentName,
   capabilities = [],
   authenticated = true,
   canLogout = false,
@@ -172,7 +177,15 @@ export function ACPClientPage({
   onAuthenticate,
   onLogout,
 }: ACPClientPageProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const assistantDisplayName = agentName ?? t("chat.agent");
   const [internalDraft, setInternalDraft] = React.useState(draft);
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    rightPanelOpen,
+    setRightPanelOpen,
+  } = useSettingsStore();
   const effectiveDraft = onDraftChange ? draft : internalDraft;
 
   const handleDraftChange = React.useCallback(
@@ -198,7 +211,7 @@ export function ACPClientPage({
           <ConnectionBar
             status={connectionStatus}
             protocolVersion={protocolVersion}
-            agentName={agentName}
+            agentName={assistantDisplayName}
             capabilities={capabilities}
             authenticated={authenticated}
             modes={modes}
@@ -223,25 +236,94 @@ export function ACPClientPage({
           ) : null}
 
           <div className="flex min-h-0 flex-1">
-            <SessionSidebar
-              sessions={sessions}
-              activeId={activeSessionId}
-              availableTags={tags}
-              canClose
-              onSelect={onSelectSession}
-              onCreate={onCreateSession}
-              onDelete={onDeleteSession}
-            />
+            {/* Sidebar */}
+            <div
+              className={cn(
+                "hidden shrink-0 overflow-hidden md:block",
+                sidebarOpen ? "w-64" : "w-0",
+                "transition-[width] duration-200",
+              )}
+            >
+              {sidebarOpen ? (
+                <SessionSidebar
+                  sessions={sessions}
+                  activeId={activeSessionId}
+                  availableTags={tags}
+                  canClose
+                  onSelect={onSelectSession}
+                  onCreate={onCreateSession}
+                  onDelete={onDeleteSession}
+                />
+              ) : null}
+            </div>
 
             <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-center gap-1 border-b border-border px-2 py-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="h-7 w-7"
+                      aria-label={t("layout.toggleSidebar")}
+                      onClick={() => setSidebarOpen(!sidebarOpen)}
+                    >
+                      {sidebarOpen ? (
+                        <PanelLeftClose className="h-4 w-4" />
+                      ) : (
+                        <PanelLeftOpen className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("layout.toggleSidebar")}</TooltipContent>
+                </Tooltip>
+                {onCreateSession ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        aria-label={t("sessionSidebar.newSession")}
+                        onClick={onCreateSession}
+                      >
+                        <MessageCirclePlus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("sessionSidebar.newSession")}</TooltipContent>
+                  </Tooltip>
+                ) : null}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="ml-auto h-7 w-7"
+                      aria-label={t("layout.toggleRightPanel")}
+                      onClick={() => setRightPanelOpen(!rightPanelOpen)}
+                    >
+                      {rightPanelOpen ? (
+                        <PanelRightClose className="h-4 w-4" />
+                      ) : (
+                        <PanelRightOpen className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("layout.toggleRightPanel")}</TooltipContent>
+                </Tooltip>
+              </div>
+
               <div className="min-h-0 flex-1">
                 <ChatArea
                   items={chatItems}
-                  assistantName={agentName}
+                  assistantName={assistantDisplayName}
                   emptyDescription={
                     busy
-                      ? "Agent is thinking…"
-                      : "Send a message to start the conversation."
+                      ? t("chat.agentIsThinking")
+                      : t("chat.startConversation")
                   }
                 />
               </div>
@@ -276,8 +358,22 @@ export function ACPClientPage({
               />
             </div>
 
-            <div className="hidden w-80 shrink-0 border-l border-border lg:block">
-              <ToolCallPanel calls={toolCalls} className="h-full" />
+            {/* Right panel */}
+            <div
+              className={cn(
+                "hidden shrink-0 overflow-hidden border-l border-border lg:block",
+                rightPanelOpen ? "w-80" : "w-0",
+                "transition-[width] duration-200",
+              )}
+            >
+              {rightPanelOpen ? (
+                <>
+                  <div className="flex items-center border-b border-border px-2 py-1">
+                    <span className="text-xs font-semibold">{t("tool.title")}</span>
+                  </div>
+                  <ToolCallPanel calls={toolCalls} className="h-[calc(100%-2rem)]" />
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -309,6 +405,7 @@ function ConfigOptionBar({
   onClose?: () => void;
   onChange?: (optionId: string, value: string) => void;
 }): React.JSX.Element | null {
+  const { t } = useTranslation();
   const selectable = options.filter((o) => o.type === "select");
   if (selectable.length === 0 && !onClose) return null;
   return (
@@ -347,9 +444,9 @@ function ConfigOptionBar({
           type="button"
           className="ml-auto rounded-md border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
           onClick={onClose}
-          title="Close session"
+          title={t("config.closeSession")}
         >
-          Close session
+          {t("config.closeSession")}
         </button>
       ) : null}
     </div>
@@ -369,9 +466,10 @@ function AuthBanner({
   methods: { id: string; name: string; description?: string }[];
   onAuthenticate?: (methodId: string, apiKey: string) => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">
-      <span className="font-semibold">Authentication required</span>
+      <span className="font-semibold">{t("auth.required")}</span>
       {methods.map((m) => (
         <button
           key={m.id}
@@ -384,7 +482,7 @@ function AuthBanner({
         </button>
       ))}
       <span className="text-muted-foreground">
-        You can still browse — sign in to send prompts.
+        {t("auth.stillBrowse")}
       </span>
     </div>
   );
@@ -401,6 +499,7 @@ function ErrorBanner({
   message: string;
   onDismiss?: () => void;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-700 dark:text-red-400">
       <span className="font-semibold">⚠ {message}</span>
@@ -410,7 +509,7 @@ function ErrorBanner({
           className="ml-auto text-[11px] font-medium hover:underline"
           onClick={onDismiss}
         >
-          Dismiss
+          {t("common.dismiss")}
         </button>
       ) : null}
     </div>
@@ -423,6 +522,7 @@ function ErrorBanner({
  * status dots.
  */
 function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
   if (!entries || entries.length === 0) return <></>;
   const completed = entries.filter((e) => e.status === "completed").length;
@@ -441,13 +541,13 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
         onClick={() => setExpanded(true)}
       >
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
-          Todo
+          {t("plan.title")}
         </span>
         <span className="tabular-nums text-muted-foreground">
           {completed}/{total}
         </span>
         <span className="flex-1 truncate">
-          {allDone ? "All done" : current.content}
+          {allDone ? t("plan.allDone") : current.content}
         </span>
       </button>
     );
@@ -457,7 +557,7 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
     <div className="mx-3 mt-2 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs">
       <div className="mb-1 flex items-center gap-2">
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
-          Todo
+          {t("plan.title")}
         </span>
         <span className="tabular-nums text-muted-foreground">
           {completed}/{total}
@@ -467,7 +567,7 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
           className="ml-auto text-primary hover:underline"
           onClick={() => setExpanded(false)}
         >
-          Collapse
+          {t("plan.collapse")}
         </button>
       </div>
       {entries.map((e, i) => {

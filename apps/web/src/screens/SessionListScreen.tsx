@@ -80,7 +80,7 @@ export function SessionListScreen({
   );
 
   const handleNewSession = (): void => {
-    const session = createSession(gatewayId, "New chat");
+    const session = createSession(gatewayId, t("sessions.newChat"));
     onOpen(session.id);
   };
 
@@ -95,7 +95,7 @@ export function SessionListScreen({
     }
     const session = createSession(
       gatewayId,
-      info.title ?? "Agent session",
+      info.title ?? t("sessions.agentSession"),
       info.sessionId,
     );
     onOpen(session.id);
@@ -123,7 +123,7 @@ export function SessionListScreen({
         .catch((e: unknown) => {
           // Surface but don't block the local deletion.
           setAgentError(
-            `session/delete failed: ${e instanceof Error ? e.message : String(e)}`,
+            `${t("sessions.deleteFailed")}: ${e instanceof Error ? e.message : String(e)}`,
           );
         });
     }
@@ -207,7 +207,7 @@ export function SessionListScreen({
             <div style={styles.itemMain} onClick={() => onOpen(s.id)}>
               <div style={styles.itemTitle}>
                 {s.title}
-                {s.closed && <span style={styles.closedTag}> closed</span>}
+                {s.closed && <span style={styles.closedTag}> {t("sessions.closed")}</span>}
               </div>
               <div style={styles.itemMeta}>
                 {new Date(s.updatedAt).toLocaleString()}

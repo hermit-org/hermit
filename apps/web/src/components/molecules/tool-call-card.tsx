@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import { ToolStatusIcon, CopyButton } from "@/components/atoms";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ export function ToolCallCard({
   onCollapsedChange,
   className,
 }: ToolCallCardProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [internal, setInternal] = React.useState(defaultCollapsed);
   const isControlled = collapsed !== undefined;
   const isCollapsed = isControlled ? collapsed : internal;
@@ -118,7 +120,7 @@ export function ToolCallCard({
               STATUS_TONE[call.status],
             )}
           >
-            {call.status.replace("_", " ")}
+            {t(`tool.status.${call.status}` as const)}
           </span>
         ) : null}
       </div>
@@ -126,7 +128,7 @@ export function ToolCallCard({
       {!isCollapsed && hasBody ? (
         <div className="space-y-2 border-t border-border px-3 py-2 text-sm">
           {input ? (
-            <RawBlock label="Input" value={input} />
+            <RawBlock label={t("tool.input")} value={input} />
           ) : null}
           {call.content.length > 0 ? (
             <div className="space-y-2">
@@ -149,7 +151,7 @@ export function ToolCallCard({
             </div>
           ) : null}
           {output ? (
-            <RawBlock label="Output" value={output} />
+            <RawBlock label={t("tool.output")} value={output} />
           ) : null}
         </div>
       ) : null}
@@ -186,6 +188,7 @@ function ToolCallContentItem({
 }: {
   content: ToolCallContent;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   if (content.type === "content") {
     return <ContentBlockView content={content.content} />;
   }
@@ -200,7 +203,7 @@ function ToolCallContentItem({
   }
   return (
     <div className="text-xs text-muted-foreground">
-      [terminal {content.terminalId}]
+      {t("terminal.idLabel", { id: content.terminalId })}
     </div>
   );
 }

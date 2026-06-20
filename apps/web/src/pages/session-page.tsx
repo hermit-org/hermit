@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { ChatArea, type ChatItem } from "@/components/organisms/chat-area";
 import { MessageComposerPanel } from "@/components/organisms/message-composer-panel";
@@ -57,7 +58,7 @@ export function SessionPage({
   sessionId,
   loading,
   error,
-  title = "New session",
+  title: titleProp,
   tags = [],
   items,
   draft,
@@ -72,6 +73,8 @@ export function SessionPage({
   onQuickCommand,
   onBack,
 }: SessionPageProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const title = titleProp ?? t("sessions.newChat");
   return (
     <div className="flex h-full w-full flex-col bg-background">
       <div className="flex items-center gap-1">
@@ -80,7 +83,7 @@ export function SessionPage({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Back to sessions"
+            aria-label={t("sessions.backToSessions")}
             onClick={onBack}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -93,15 +96,15 @@ export function SessionPage({
 
       <div className="min-h-0 flex-1">
         {loading ? (
-          <EmptyState title="Loading session…" />
+          <EmptyState title={t("sessions.loadingTitle")} />
         ) : error ? (
           <EmptyState
-            title="Failed to load session"
+            title={t("sessions.loadFailed")}
             description={error}
             action={
               onBack ? (
                 <Button variant="outline" onClick={onBack}>
-                  Back
+                  {t("common.back")}
                 </Button>
               ) : undefined
             }

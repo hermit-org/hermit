@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Server, PlugZap } from "lucide-react";
 import { MCPConfigItem } from "@/components/molecules";
 import { EmptyState } from "@/components/atoms";
@@ -70,6 +71,7 @@ export function MCPConfigPanel({
   onToggleEnabled,
   className,
 }: MCPConfigPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState<NewMcpServer>({
     name: "",
@@ -101,7 +103,7 @@ export function MCPConfigPanel({
     <div className={cn("flex h-full flex-col", className)}>
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Server className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm font-semibold">MCP servers</span>
+        <span className="text-sm font-semibold">{t("mcp.servers")}</span>
         <span className="text-xs text-muted-foreground">
           ({servers.length})
         </span>
@@ -115,27 +117,27 @@ export function MCPConfigPanel({
                 className="ml-auto h-7"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Add server
+                {t("mcp.addServer")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add MCP server</DialogTitle>
+                <DialogTitle>{t("mcp.addMcpServer")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="mcp-name">Name</Label>
+                  <Label htmlFor="mcp-name">{t("mcp.name")}</Label>
                   <Input
                     id="mcp-name"
                     value={form.name}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, name: e.target.value }))
                     }
-                    placeholder="my-server"
+                    placeholder={t("mcp.namePlaceholder")}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="mcp-transport">Transport</Label>
+                  <Label htmlFor="mcp-transport">{t("mcp.transport")}</Label>
                   <Select
                     value={form.transport}
                     onValueChange={(v) =>
@@ -146,28 +148,28 @@ export function MCPConfigPanel({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="stdio">stdio</SelectItem>
-                      <SelectItem value="http">http</SelectItem>
-                      <SelectItem value="sse">sse</SelectItem>
+                      <SelectItem value="stdio">{t("mcp.stdio")}</SelectItem>
+                      <SelectItem value="http">{t("mcp.http")}</SelectItem>
+                      <SelectItem value="sse">{t("mcp.sse")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {form.transport === "stdio" ? (
                   <>
                     <div className="space-y-1.5">
-                      <Label htmlFor="mcp-command">Command</Label>
+                      <Label htmlFor="mcp-command">{t("mcp.command")}</Label>
                       <Input
                         id="mcp-command"
                         value={form.command}
                         onChange={(e) =>
                           setForm((f) => ({ ...f, command: e.target.value }))
                         }
-                        placeholder="npx"
+                        placeholder={t("mcp.commandPlaceholder")}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="mcp-args">
-                        Arguments (space-separated)
+                        {t("mcp.arguments")}
                       </Label>
                       <Input
                         id="mcp-args"
@@ -175,20 +177,20 @@ export function MCPConfigPanel({
                         onChange={(e) =>
                           setForm((f) => ({ ...f, args: e.target.value }))
                         }
-                        placeholder="-y @modelcontextprotocol/server-filesystem /tmp"
+                        placeholder={t("mcp.argumentsPlaceholder")}
                       />
                     </div>
                   </>
                 ) : (
                   <div className="space-y-1.5">
-                    <Label htmlFor="mcp-url">URL</Label>
+                    <Label htmlFor="mcp-url">{t("mcp.url")}</Label>
                     <Input
                       id="mcp-url"
                       value={form.url}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, url: e.target.value }))
                       }
-                      placeholder="https://example.com/mcp"
+                      placeholder={t("mcp.urlPlaceholder")}
                     />
                   </div>
                 )}
@@ -199,11 +201,11 @@ export function MCPConfigPanel({
                   variant="outline"
                   onClick={() => setOpen(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="button" onClick={submit} disabled={!form.name.trim()}>
                   <PlugZap className="h-4 w-4" />
-                  Add
+                  {t("common.add")}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -216,8 +218,8 @@ export function MCPConfigPanel({
           {servers.length === 0 ? (
             <EmptyState
               icon={Server}
-              title="No MCP servers"
-              description="Add an MCP server to extend the agent's tools."
+              title={t("mcp.noServersTitle")}
+              description={t("mcp.noServersDescription")}
               compact
             />
           ) : (

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { TerminalSquare, X, Square } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export function TerminalHeader({
   onClose,
   className,
 }: TerminalHeaderProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <div
       className={cn(
@@ -52,18 +54,18 @@ export function TerminalHeader({
           {running ? (
             <Badge variant="secondary" className="gap-1 px-1.5 py-0 text-[10px]">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-500" />
-              running
+              {t("terminal.running")}
             </Badge>
           ) : exitStatus !== undefined && exitStatus !== null ? (
             <Badge
               variant={exitStatus === 0 ? "success" : "destructive"}
               className="px-1.5 py-0 text-[10px]"
             >
-              exit {exitStatus}
+              {t("terminal.exit")} {exitStatus}
             </Badge>
           ) : (
             <Badge variant="outline" className="px-1.5 py-0 text-[10px] text-muted-foreground">
-              idle
+              {t("terminal.idle")}
             </Badge>
           )}
         </div>
@@ -78,8 +80,8 @@ export function TerminalHeader({
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Kill process"
-          title="Kill process"
+          aria-label={t("terminal.killProcess")}
+          title={t("terminal.killProcess")}
           onClick={onKill}
         >
           <Square className="h-3.5 w-3.5" />
@@ -89,8 +91,8 @@ export function TerminalHeader({
         type="button"
         variant="ghost"
         size="icon-sm"
-        aria-label="Close terminal"
-        title="Close terminal"
+        aria-label={t("terminal.closeTerminal")}
+        title={t("terminal.closeTerminal")}
         onClick={onClose}
       >
         <X className="h-4 w-4" />

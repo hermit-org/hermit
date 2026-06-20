@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRoute, type RouteProp } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useGatewayStore, useSessionStore } from "../stores";
 import { useAcpClient } from "../acp/hooks";
 import { ChatMessage } from "../components/ChatMessage";
@@ -22,6 +23,7 @@ import type { Gateway, JsonRpcMessage, Message } from "../types";
 type ChatRoute = RouteProp<RootStackParamList, "Chat">;
 
 export function ChatScreen(): React.JSX.Element {
+  const { t } = useTranslation();
   const route = useRoute<ChatRoute>();
   const { sessionId } = route.params;
   const insets = useSafeAreaInsets();
@@ -49,9 +51,9 @@ export function ChatScreen(): React.JSX.Element {
 
   useEffect(() => {
     if (!gateway) {
-      Alert.alert("Gateway not found", "The gateway for this session no longer exists.");
+      Alert.alert(t("chat.gatewayNotFoundTitle"), t("chat.gatewayNotFoundMessage"));
     }
-  }, [gateway]);
+  }, [gateway, t]);
 
   useEffect(() => {
     const unsubscribe = client?.onNotification((message: JsonRpcMessage) => {
@@ -88,12 +90,12 @@ export function ChatScreen(): React.JSX.Element {
     } catch (error) {
       appendToMessage(
         assistantMessage.id,
-        `\n\nError: ${error instanceof Error ? error.message : String(error)}`,
+        t("chat.errorPrefix", { message: error instanceof Error ? error.message : String(error) }),
       );
     } finally {
       setStreamingId(null);
     }
-  }, [input, client, connected, sessionId, addMessage, appendToMessage]);
+  }, [input, client, connected, sessionId, addMessage, appendToMessage, t]);
 
   const renderItem = useCallback(
     ({ item }: { item: Message }) => {
@@ -126,7 +128,7 @@ export function ChatScreen(): React.JSX.Element {
         <Text style={localStyles.statusText}>{connectionState}</Text>
         {!connected && (
           <TouchableOpacity onPress={connect}>
-            <Text style={localStyles.reconnect}>Reconnect</Text>
+            <Text style={localStyles.reconnect}>{t("chat.reconnect")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -143,7 +145,7 @@ export function ChatScreen(): React.JSX.Element {
       <View style={localStyles.inputRow}>
         <TextInput
           style={localStyles.input}
-          placeholder="Message..."
+          placeholder={t("chat.messagePlaceholder")}
           value={input}
           onChangeText={setInput}
           multiline
@@ -154,7 +156,7 @@ export function ChatScreen(): React.JSX.Element {
           onPress={handleSend}
           disabled={!input.trim() || !connected}
         >
-          <Text style={localStyles.sendButtonText}>Send</Text>
+          <Text style={localStyles.sendButtonText}>{t("chat.send")}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

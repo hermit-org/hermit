@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { StreamingText } from "@/components/streaming-text";
 import { AvatarAtom, Timestamp, CopyButton, Spinner } from "@/components/atoms";
@@ -51,6 +52,7 @@ export function MessageBubble({
   className,
   onCopy,
 }: MessageBubbleProps): React.JSX.Element {
+  const { t } = useTranslation();
   const isUser = role === "user";
   return (
     <div
@@ -84,7 +86,7 @@ export function MessageBubble({
           {pending ? (
             <div className="flex items-center gap-2 py-0.5 text-muted-foreground">
               <Spinner size={14} />
-              <span className="text-xs">Thinking…</span>
+              <span className="text-xs">{t("common.thinking")}</span>
             </div>
           ) : markdown ? (
             <div className="markdown-body relative">

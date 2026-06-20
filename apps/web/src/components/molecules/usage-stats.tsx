@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { TokenCounter, CostDisplay } from "@/components/atoms";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ export function UsageStats({
   compact,
   className,
 }: UsageStatsProps): React.JSX.Element {
+  const { t } = useTranslation();
   const ratio =
     contextWindow && contextWindow > 0
       ? Math.min(1, usage.used / contextWindow)
@@ -54,7 +56,7 @@ export function UsageStats({
         <Progress
           value={usage.used}
           max={contextWindow}
-          aria-label="Context window usage"
+          aria-label={t("chat.contextTokens")}
           className={cn(
             "h-1.5",
             ratio > 0.9 && "[&>div]:bg-destructive",

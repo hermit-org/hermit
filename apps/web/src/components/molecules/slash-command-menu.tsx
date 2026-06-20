@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { CornerDownLeft, Search } from "lucide-react";
 import type { AvailableCommand } from "@hermit/acp";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function SlashCommandMenu({
   onHighlightedIndexChange,
   className,
 }: SlashCommandMenuProps): React.JSX.Element {
+  const { t } = useTranslation();
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
@@ -55,7 +57,7 @@ export function SlashCommandMenu({
           className,
         )}
       >
-        No matching commands
+        {t("composer.noCommands")}
       </div>
     );
   }
@@ -63,7 +65,7 @@ export function SlashCommandMenu({
   return (
     <div
       role="listbox"
-      aria-label="Slash commands"
+      aria-label={t("composer.slashCommands")}
       className={cn(
         "flex max-h-64 w-72 flex-col overflow-hidden rounded-lg border border-border bg-popover py-1 shadow-md",
         className,
@@ -71,7 +73,7 @@ export function SlashCommandMenu({
     >
       <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         <Search className="h-3 w-3" />
-        Commands
+        {t("common.commands")}
       </div>
       <div className="max-h-56 overflow-auto">
         {filtered.map((cmd, i) => {

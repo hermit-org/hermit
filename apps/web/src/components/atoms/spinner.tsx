@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,10 +19,12 @@ export interface SpinnerProps
  */
 export function Spinner({
   size = 16,
-  label = "Loading",
+  label: labelProp,
   className,
   ...props
 }: SpinnerProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const label = labelProp ?? t("common.loading");
   return (
     <span
       role="status"

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +22,11 @@ export const ScrollToBottomButton = React.forwardRef<
   ScrollToBottomButtonProps
 >(
   (
-    { unreadCount, label = "Scroll to bottom", className, ...props },
+    { unreadCount, label: labelProp, className, ...props },
     ref,
   ) => {
+    const { t } = useTranslation();
+    const label = labelProp ?? t("common.scrollToBottom");
     return (
       <button
         ref={ref}

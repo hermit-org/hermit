@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Pencil, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +48,7 @@ export function SessionInfoBar({
   onManageTags,
   className,
 }: SessionInfoBarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(title);
 
@@ -87,7 +89,7 @@ export function SessionInfoBar({
             type="button"
             size="icon-sm"
             variant="ghost"
-            aria-label="Save title"
+            aria-label={t("session.saveTitle")}
             onClick={commit}
           >
             <Check className="h-3.5 w-3.5" />
@@ -98,7 +100,7 @@ export function SessionInfoBar({
           type="button"
           onClick={() => onRename && setEditing(true)}
           className="group flex min-w-0 items-center gap-1.5 text-left"
-          title="Rename session"
+          title={t("session.rename")}
         >
           <span className="truncate text-sm font-semibold">{title}</span>
           {onRename ? (
@@ -135,7 +137,7 @@ export function SessionInfoBar({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Manage tags"
+            aria-label={t("session.manageTags")}
             onClick={onManageTags}
           >
             <Tag className="h-3.5 w-3.5" />

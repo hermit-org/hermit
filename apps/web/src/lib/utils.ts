@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import i18n from "../i18n";
 
 /**
  * Merge Tailwind CSS class names conditionally.
@@ -60,9 +61,9 @@ export function formatRelativeTime(
   const min = Math.round(sec / 60);
   const hr = Math.round(min / 60);
   const day = Math.round(hr / 24);
-  if (sec < 45) return "just now";
-  if (min < 60) return `${min}m ago`;
-  if (hr < 24) return `${hr}h ago`;
-  if (day < 7) return `${day}d ago`;
+  if (sec < 45) return i18n.t("common.justNow");
+  if (min < 60) return i18n.t("common.minutesAgo", { count: min });
+  if (hr < 24) return i18n.t("common.hoursAgo", { count: hr });
+  if (day < 7) return i18n.t("common.daysAgo", { count: day });
   return new Date(time).toLocaleDateString();
 }

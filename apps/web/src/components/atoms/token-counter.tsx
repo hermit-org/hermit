@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Coins } from "lucide-react";
 import { cn, formatNumber } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ export function TokenCounter({
   className,
   ...props
 }: TokenCounterProps): React.JSX.Element {
+  const { t } = useTranslation();
   const ratio =
     total && total > 0 ? Math.min(1, used / total) : undefined;
   const tone =
@@ -49,7 +51,7 @@ export function TokenCounter({
         tone,
         className,
       )}
-      title={total ? `${formatNumber(used)} / ${formatNumber(total)} tokens` : `${formatNumber(used)} tokens`}
+      title={total ? `${formatNumber(used)} / ${formatNumber(total)} ${t("common.tokens")}` : `${formatNumber(used)} ${t("common.tokens")}`}
       {...props}
     >
       {!hideIcon && <Coins className="h-3.5 w-3.5" aria-hidden />}

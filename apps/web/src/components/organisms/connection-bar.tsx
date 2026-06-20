@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { LogIn, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
 import {
   ConnectionStatusDot,
@@ -64,6 +65,7 @@ export function ConnectionBar({
   onReconnect,
   className,
 }: ConnectionBarProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <header
       className={cn(
@@ -74,7 +76,7 @@ export function ConnectionBar({
       <div className="flex items-center gap-2">
         <ConnectionStatusDot status={status} />
         <span className="text-sm font-semibold">
-          {agentName ?? "ACP Agent"}
+          {agentName ?? t("connection.agentFallback")}
         </span>
       </div>
       <ProtocolBadge version={protocolVersion} />
@@ -102,7 +104,7 @@ export function ConnectionBar({
             onClick={onReconnect}
           >
             <RefreshCw className="h-4 w-4" />
-            <span className="hidden sm:inline">Reconnect</span>
+            <span className="hidden sm:inline">{t("chat.reconnect")}</span>
           </Button>
         ) : null}
         {modes && modes.length > 0 && currentModeId && onModeChange ? (
@@ -119,7 +121,7 @@ export function ConnectionBar({
           <div className="flex items-center gap-2">
             <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
               <ShieldCheck className="h-3.5 w-3.5 text-success" />
-              {principal ?? "Authenticated"}
+              {principal ?? t("auth.authenticated")}
             </span>
             {onLogout ? (
               <Button
@@ -129,7 +131,7 @@ export function ConnectionBar({
                 onClick={onLogout}
               >
                 <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Logout</span>
+                <span className="hidden sm:inline">{t("auth.signOut")}</span>
               </Button>
             ) : null}
           </div>
@@ -141,7 +143,7 @@ export function ConnectionBar({
             onClick={onAuthenticate}
           >
             <LogIn className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign in</span>
+            <span className="hidden sm:inline">{t("auth.signIn")}</span>
           </Button>
         )}
       </div>

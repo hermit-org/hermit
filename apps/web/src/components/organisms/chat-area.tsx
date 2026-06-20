@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { MessagesSquare, BrainCog } from "lucide-react";
 import {
   MessageBubble,
@@ -55,13 +56,13 @@ export interface ChatAreaProps {
   className?: string;
 }
 
-function dayBucket(ts: number): string {
+function dayBucket(ts: number, t: (key: string) => string): string {
   const d = new Date(ts);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return "Today";
-  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  if (d.toDateString() === today.toDateString()) return t("common.today");
+  if (d.toDateString() === yesterday.toDateString()) return t("common.yesterday");
   return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -80,12 +81,13 @@ function dayBucket(ts: number): string {
 export function ChatArea({
   items,
   empty,
-  emptyTitle = "No messages yet",
-  emptyDescription = "Send a message to start the conversation.",
+  emptyTitle,
+  emptyDescription,
   emptyAction,
   assistantName,
   className,
 }: ChatAreaProps): React.JSX.Element {
+  const { t } = useTranslation();
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const [atBottom, setAtBottom] = React.useState(true);
   const [unread, setUnread] = React.useState(0);
@@ -124,6 +126,8 @@ export function ChatArea({
   }, [items.length, atBottom, scrollToBottom]);
 
   const showEmpty = empty || items.length === 0;
+  const resolvedEmptyTitle = emptyTitle ?? t("chat.noMessages");
+  const resolvedEmptyDescription = emptyDescription ?? t("chat.startConversation");
 
   return (
     <div className={cn("relative flex h-full flex-col", className)}>
@@ -136,8 +140,8 @@ export function ChatArea({
           {showEmpty ? (
             <EmptyState
               icon={MessagesSquare}
-              title={emptyTitle}
-              description={emptyDescription}
+              title={resolvedEmptyTitle}
+              description={resolvedEmptyDescription}
               action={emptyAction}
             />
           ) : (
@@ -150,11 +154,11 @@ export function ChatArea({
                     prev && prev.kind === "message" ? prev.createdAt : undefined;
                   if (
                     prevTs === undefined ||
-                    dayBucket(prevTs) !== dayBucket(item.createdAt)
+                    dayBucket(prevTs, t) !== dayBucket(item.createdAt, t)
                   ) {
                     divider = (
                       <div className="px-4 py-2">
-                        <Divider label={dayBucket(item.createdAt)} />
+                        <Divider label={dayBucket(item.createdAt, t)} />
                       </div>
                     );
                   }
@@ -171,10 +175,10 @@ export function ChatArea({
                         pending={item.pending}
                         authorName={
                           item.role === "assistant"
-                            ? (assistantName ?? "Agent")
+                            ? (assistantName ?? t("chat.agent"))
                             : item.role === "user"
-                              ? "You"
-                              : "System"
+                              ? t("chat.you")
+                              : t("chat.system")
                         }
                         createdAt={item.createdAt}
                       />
@@ -221,6 +225,7 @@ function ThoughtBlock({
   content: string;
   streaming?: boolean;
 }): React.JSX.Element {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = React.useState(false);
   const open = expanded || (streaming ?? false);
   return (
@@ -229,7 +234,7 @@ function ThoughtBlock({
         <div className="flex items-center gap-1.5">
           <BrainCog className="h-3.5 w-3.5" />
           <span className="text-[11px] font-semibold uppercase tracking-wide">
-            Thinking
+            {t("common.thinking")}
           </span>
           {streaming ? (
             <span className="animate-pulse text-xs">…</span>
@@ -239,7 +244,7 @@ function ThoughtBlock({
             className="ml-auto text-[11px] font-medium text-primary hover:underline"
             onClick={() => setExpanded((v) => !v)}
           >
-            {open ? "Collapse" : "Expand"}
+            {open ? t("common.collapse") : t("common.expand")}
           </button>
         </div>
         {open ? (

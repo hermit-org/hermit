@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { TerminalSquare } from "lucide-react";
 import { TerminalHeader } from "@/components/molecules";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ export function TerminalPanel({
   onClose,
   className,
 }: TerminalPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = React.useState(autoScrollProp);
   const [draft, setDraft] = React.useState("");
@@ -86,14 +88,14 @@ export function TerminalPanel({
           {session.output || ""}
           {!session.output ? (
             <span className="text-zinc-500">
-              Waiting for output…
+              {t("terminal.waitingForOutput")}
             </span>
           ) : null}
         </pre>
       </ScrollArea>
       {!autoScroll ? (
         <div className="border-t border-zinc-800 bg-zinc-900 px-2 py-0.5 text-center text-[10px] text-zinc-500">
-          Auto-scroll paused — scroll to bottom to resume
+          {t("terminal.autoScrollPaused")}
         </div>
       ) : null}
       {session.running && onInput ? (
@@ -108,7 +110,7 @@ export function TerminalPanel({
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Type and press Enter to send…"
+            placeholder={t("terminal.typeAndEnter")}
             className="h-7 border-zinc-700 bg-zinc-950 font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus-visible:ring-zinc-600"
             spellCheck={false}
             autoComplete="off"

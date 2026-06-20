@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,10 +18,12 @@ export interface StopButtonProps
  * <StopButton onClick={onCancel} />
  */
 export function StopButton({
-  label = "Stop generating",
+  label: labelProp,
   className,
   ...props
 }: StopButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const label = labelProp ?? t("common.stopGenerating");
   return (
     <Button
       type="button"

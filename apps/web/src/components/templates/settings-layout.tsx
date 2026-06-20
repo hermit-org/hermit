@@ -1,12 +1,22 @@
 import * as React from "react";
-import { Server, Palette, Keyboard, ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Server, Palette, Keyboard, ArrowLeft, Languages } from "lucide-react";
 import { MCPConfigPanel } from "@/components/organisms/mcp-config-panel";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useSettingsStore, type AppLanguage } from "@/stores/settingsStore";
+import { changeAppLanguage } from "@/i18n";
 import { MOCK_MCP_SERVERS } from "./mock-data";
 import type { McpServerConfig, McpServerEntry } from "@/components/domain";
 
@@ -30,11 +40,11 @@ export interface SettingsLayoutProps {
 
 export type SettingsSection = "mcp" | "appearance" | "shortcuts";
 
-const SECTIONS: { id: SettingsSection; label: string; icon: typeof Server }[] =
+const SECTIONS: { id: SettingsSection; labelKey: string; icon: typeof Server }[] =
   [
-    { id: "mcp", label: "MCP servers", icon: Server },
-    { id: "appearance", label: "Appearance", icon: Palette },
-    { id: "shortcuts", label: "Shortcuts", icon: Keyboard },
+    { id: "mcp", labelKey: "settings.mcpServers", icon: Server },
+    { id: "appearance", labelKey: "settings.appearance", icon: Palette },
+    { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
   ];
 
 /**
@@ -56,6 +66,7 @@ export function SettingsLayout({
   onToggleServer,
   className,
 }: SettingsLayoutProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [section, setSection] = React.useState<SettingsSection>(defaultSection);
 
   return (
@@ -66,13 +77,13 @@ export function SettingsLayout({
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Back"
+            aria-label={t("common.back")}
             onClick={onBack}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
         ) : null}
-        <span className="text-sm font-semibold">Settings</span>
+        <span className="text-sm font-semibold">{t("settings.title")}</span>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -92,7 +103,7 @@ export function SettingsLayout({
                 )}
               >
                 <s.icon className="h-4 w-4" />
-                {s.label}
+                {t(s.labelKey)}
               </button>
             );
           })}
@@ -122,20 +133,45 @@ export function SettingsLayout({
 }
 
 function AppearanceSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const { language, setLanguage } = useSettingsStore();
   const [dark, setDark] = React.useState(false);
+
+  const handleLanguageChange = (value: AppLanguage): void => {
+    setLanguage(value);
+    changeAppLanguage(value);
+  };
+
   return (
     <div className="mx-auto max-w-xl space-y-6 p-6">
       <div>
-        <h3 className="text-sm font-semibold">Theme</h3>
+        <h3 className="text-sm font-semibold">{t("settings.language")}</h3>
         <p className="text-xs text-muted-foreground">
-          Toggle between light and dark mode.
+          {t("settings.languageHint")}
+        </p>
+      </div>
+      <Select value={language} onValueChange={handleLanguageChange}>
+        <SelectTrigger className="w-full">
+          <Languages className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="en">{t("language.en")}</SelectItem>
+          <SelectItem value="zh">{t("language.zh")}</SelectItem>
+        </SelectContent>
+      </Select>
+      <Separator />
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.theme")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.themeHint")}
         </p>
       </div>
       <div className="flex items-center justify-between rounded-lg border border-border p-3">
         <div>
-          <Label htmlFor="dark-mode">Dark mode</Label>
+          <Label htmlFor="dark-mode">{t("settings.darkMode")}</Label>
           <p className="text-xs text-muted-foreground">
-            Uses the system preference when off.
+            {t("settings.darkModeHint")}
           </p>
         </div>
         <Switch
@@ -149,9 +185,9 @@ function AppearanceSection(): React.JSX.Element {
       </div>
       <Separator />
       <div>
-        <h3 className="text-sm font-semibold">Font size</h3>
+        <h3 className="text-sm font-semibold">{t("settings.fontSize")}</h3>
         <p className="text-xs text-muted-foreground">
-          Base font size for the chat transcript.
+          {t("settings.fontSizeHint")}
         </p>
       </div>
       <Input type="number" defaultValue={15} min={12} max={20} />
@@ -160,20 +196,21 @@ function AppearanceSection(): React.JSX.Element {
 }
 
 function ShortcutsSection(): React.JSX.Element {
+  const { t } = useTranslation();
   const shortcuts = [
-    { keys: "Enter", action: "Send message" },
-    { keys: "Shift+Enter", action: "New line" },
-    { keys: "Ctrl+K", action: "Command palette" },
-    { keys: "Ctrl+B", action: "Toggle sidebar" },
-    { keys: "Ctrl+J", action: "Toggle terminal" },
-    { keys: "Esc", action: "Cancel generation" },
+    { keys: "Enter", actionKey: "settings.sendMessage" },
+    { keys: "Shift+Enter", actionKey: "settings.newLine" },
+    { keys: "Ctrl+K", actionKey: "settings.commandPalette" },
+    { keys: "Ctrl+B", actionKey: "settings.toggleSidebar" },
+    { keys: "Ctrl+J", actionKey: "settings.toggleTerminal" },
+    { keys: "Esc", actionKey: "settings.cancelGeneration" },
   ];
   return (
     <div className="mx-auto max-w-xl space-y-3 p-6">
       <div>
-        <h3 className="text-sm font-semibold">Keyboard shortcuts</h3>
+        <h3 className="text-sm font-semibold">{t("settings.keyboardShortcuts")}</h3>
         <p className="text-xs text-muted-foreground">
-          Customize key bindings for common actions.
+          {t("settings.shortcutsHint")}
         </p>
       </div>
       <div className="divide-y divide-border rounded-lg border border-border">
@@ -182,7 +219,7 @@ function ShortcutsSection(): React.JSX.Element {
             key={s.keys}
             className="flex items-center justify-between px-3 py-2"
           >
-            <span className="text-sm">{s.action}</span>
+            <span className="text-sm">{t(s.actionKey)}</span>
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">
               {s.keys}
             </kbd>

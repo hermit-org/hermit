@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ShieldAlert, Check, X, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ export function PermissionRequestDialog({
   busy,
   className,
 }: PermissionRequestDialogProps): React.JSX.Element {
+  const { t } = useTranslation();
   const tc = request.toolCall;
   const allows = request.options.filter(isAllow);
   const rejects = request.options.filter((o) => !isAllow(o));
@@ -59,7 +61,7 @@ export function PermissionRequestDialog({
         </div>
         <div className="min-w-0 flex-1 space-y-1">
           <h3 id="perm-title" className="text-sm font-semibold">
-            Permission requested
+            {t("permission.requested")}
           </h3>
           <p className="text-xs text-muted-foreground">
             {tc.title ?? tc.toolCallId}
@@ -113,7 +115,7 @@ export function PermissionRequestDialog({
           onClick={() => onResolve("cancelled")}
         >
           <Ban className="h-4 w-4" />
-          Cancel
+          {t("permission.cancel")}
         </Button>
       </div>
     </div>

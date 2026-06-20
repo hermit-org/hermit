@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Zap, Eraser, SlashSquare, Layers } from "lucide-react";
 import type { AvailableCommand } from "@hermit/acp";
 import { MessageComposer } from "@/components/molecules";
@@ -53,6 +54,7 @@ export function MessageComposerPanel({
   queueDepth,
   className,
 }: MessageComposerPanelProps): React.JSX.Element {
+  const { t } = useTranslation();
   const shortcuts = commands.slice(0, 4);
 
   return (
@@ -60,14 +62,14 @@ export function MessageComposerPanel({
       {queueDepth && queueDepth > 0 ? (
         <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
           <Layers className="h-3 w-3" />
-          <span>{queueDepth} queued</span>
+          <span>{queueDepth} {t("common.queued")}</span>
         </div>
       ) : null}
       {shortcuts.length > 0 ? (
         <div className="mb-1.5 flex flex-wrap items-center gap-1">
           <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
             <Zap className="h-3 w-3" />
-            Quick
+            {t("common.quick")}
           </span>
           {shortcuts.map((cmd) => (
             <Tooltip key={cmd.name}>
@@ -112,14 +114,14 @@ export function MessageComposerPanel({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Clear input"
+                aria-label={t("composer.clearInput")}
                 className="shrink-0 rounded-full"
                 onClick={onClear}
               >
                 <Eraser className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Clear input</TooltipContent>
+            <TooltipContent>{t("composer.clearInput")}</TooltipContent>
           </Tooltip>
         ) : null}
       </div>

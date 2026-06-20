@@ -2,9 +2,63 @@
   "title": "Hermit Mobile",
   "userId": "User ID: {{id}}",
   "userName": "User Name: {{name}}",
-  "switchLanguage": "Switch Language",
   "language": {
+    "label": "Language",
+    "system": "System default",
     "en": "English",
-    "zh": "Chinese"
+    "zh": "中文"
+  },
+  "navigation": {
+    "gateways": "Gateways",
+    "sessions": "Sessions",
+    "chat": "Chat",
+    "scanQr": "Scan QR Code"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "save": "Save",
+    "update": "Update",
+    "add": "Add",
+    "retry": "Retry",
+    "later": "Later",
+    "connect": "Connect",
+    "copy": "Copy"
+  },
+  "serverList": {
+    "title": "Gateways",
+    "scanQr": "Scan QR",
+    "namePlaceholder": "Gateway name",
+    "urlPlaceholder": "SSE URL (e.g. http://192.168.1.5:8787)",
+    "tokenPlaceholder": "Bearer token",
+    "addGateway": "Add Gateway",
+    "updateGateway": "Update Gateway",
+    "missingFields": "Please fill in name, URL and token.",
+    "missingFieldsTitle": "Missing fields",
+    "deleteTitle": "Delete gateway",
+    "deleteMessage": "Are you sure?",
+    "empty": "No gateways. Add one to get started."
+  },
+  "sessionList": {
+    "newSession": "+ New Session",
+    "empty": "No sessions yet. Start a new one."
+  },
+  "chat": {
+    "gatewayNotFoundTitle": "Gateway not found",
+    "gatewayNotFoundMessage": "The gateway for this session no longer exists.",
+    "reconnect": "Reconnect",
+    "messagePlaceholder": "Message...",
+    "send": "Send",
+    "errorPrefix": "\n\nError: {{message}}"
+  },
+  "qrScanner": {
+    "invalidQrTitle": "Invalid QR code",
+    "invalidQrMessage": "Could not parse connection data.",
+    "scannedGatewayName": "Scanned Gateway",
+    "gatewayAddedTitle": "Gateway added",
+    "gatewayAddedMessage": "Connect to this gateway now?",
+    "permissionDenied": "Camera permission is required to scan QR codes.",
+    "hint": "Point the camera at the Hermit QR code"
   }
 }

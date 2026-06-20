@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ShieldAlert, Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
@@ -44,6 +45,7 @@ export function ToolQuestionsPanel({
   onCancel,
   className,
 }: ToolQuestionsPanelProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const [showHistory, setShowHistory] = React.useState(false);
 
   if (requests.length === 0 && (!history || history.length === 0)) return null;
@@ -70,7 +72,7 @@ export function ToolQuestionsPanel({
                   type="button"
                   className="text-muted-foreground hover:text-foreground"
                   onClick={() => onCancel(req)}
-                  aria-label="dismiss"
+                  aria-label={t("common.dismiss")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -109,7 +111,7 @@ export function ToolQuestionsPanel({
             ) : (
               <ChevronDown className="h-3 w-3" />
             )}
-            Answered ({history.length})
+            {t("chat.answeredHistory", { count: history.length })}
           </button>
           {showHistory
             ? history.map((h) => (
@@ -118,14 +120,14 @@ export function ToolQuestionsPanel({
                   className="border-b border-border/50 py-1 text-[11px]"
                 >
                   <div className="font-semibold text-muted-foreground">
-                    Q: {h.question}
+                    {t("permission.qPrefix")} {h.question}
                   </div>
                   <div className="text-green-600 dark:text-green-400">
-                    A: {h.answer}
+                    {t("permission.aPrefix")} {h.answer}
                   </div>
                   {h.note ? (
                     <div className="italic text-muted-foreground">
-                      ✎ {h.note}
+                      {t("permission.note")}: {h.note}
                     </div>
                   ) : null}
                 </div>

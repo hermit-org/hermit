@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Paperclip, Slash } from "lucide-react";
 import type { AvailableCommand } from "@hermit/acp";
 import { SendButton, StopButton } from "@/components/atoms";
@@ -47,7 +48,7 @@ export function MessageComposer({
   onSubmit,
   onCancel,
   busy,
-  placeholder = "Message the agent… (Shift+Enter for newline)",
+  placeholder: placeholderProp,
   commands = [],
   onCommand,
   onAttach,
@@ -55,6 +56,8 @@ export function MessageComposer({
   maxRows = 8,
   className,
 }: MessageComposerProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const placeholder = placeholderProp ?? t("composer.placeholder");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
   const [highlight, setHighlight] = React.useState(0);
 
@@ -146,7 +149,7 @@ export function MessageComposer({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="Attach file"
+            aria-label={t("composer.attachFile")}
             className="shrink-0 rounded-full"
             onClick={onAttach}
           >
@@ -166,7 +169,7 @@ export function MessageComposer({
         {showMenu ? (
           <span className="mb-1 hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
             <Slash className="h-3 w-3" />
-            ↑↓ to navigate
+            ↑↓ {t("composer.navigateHint")}
           </span>
         ) : null}
         {busy ? (

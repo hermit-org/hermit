@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Plus, Search, MessageSquarePlus, Filter } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { MessageCirclePlus, Search, MessageSquarePlus, Filter } from "lucide-react";
 import { SessionListItem } from "@/components/molecules";
 import { EmptyState } from "@/components/atoms";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function SessionSidebar({
   onResume,
   className,
 }: SessionSidebarProps): React.JSX.Element {
+  const { t } = useTranslation();
   const [query, setQuery] = React.useState("");
   const [activeTag, setActiveTag] = React.useState<string | null>(null);
 
@@ -85,7 +87,7 @@ export function SessionSidebar({
   return (
     <aside
       className={cn(
-        "flex h-full w-64 flex-col border-r border-border bg-background",
+        "flex h-full w-64 min-w-0 flex-col overflow-hidden border-r border-border bg-background",
         className,
       )}
     >
@@ -95,7 +97,7 @@ export function SessionSidebar({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search sessions"
+            placeholder={t("sessionSidebar.searchPlaceholder")}
             className="h-8 pl-7 text-xs"
           />
         </div>
@@ -103,11 +105,11 @@ export function SessionSidebar({
           type="button"
           size="icon-sm"
           variant="default"
-          aria-label="New session"
-          title="New session"
+          aria-label={t("sessionSidebar.newSession")}
+          title={t("sessionSidebar.newSession")}
           onClick={onCreate}
         >
-          <Plus className="h-4 w-4" />
+          <MessageCirclePlus className="h-4 w-4" />
         </Button>
       </div>
 
@@ -118,57 +120,57 @@ export function SessionSidebar({
             type="button"
             onClick={() => setActiveTag(null)}
             className={cn(
-              "rounded px-1.5 py-0.5 text-[10px] font-medium",
+              "inline-block max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-medium",
               activeTag === null
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-accent",
             )}
           >
-            All
+            {t("common.all")}
           </button>
-          {availableTags.map((t) => (
+          {availableTags.map((tag) => (
             <button
-              key={t.id}
+              key={tag.id}
               type="button"
               onClick={() =>
-                setActiveTag((cur) => (cur === t.id ? null : t.id))
+                setActiveTag((cur) => (cur === tag.id ? null : tag.id))
               }
               className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-medium",
-                activeTag === t.id
+                "inline-block max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-medium",
+                activeTag === tag.id
                   ? "bg-primary text-primary-foreground"
                   : "bg-accent text-accent-foreground hover:bg-accent/70",
               )}
             >
-              {t.name}
+              {tag.name}
             </button>
           ))}
         </div>
       ) : null}
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!min-w-0">
         <div className="p-1.5">
           {filtered.length === 0 ? (
             <EmptyState
               icon={MessageSquarePlus}
-              title={query || activeTag ? "No matching sessions" : "No sessions yet"}
+              title={query || activeTag ? t("sessionSidebar.noMatchingSessions") : t("sessionSidebar.noSessions")}
               description={
                 query || activeTag
-                  ? "Try a different search or filter."
-                  : "Create a session to start chatting."
+                  ? t("sessionSidebar.tryDifferentFilter")
+                  : t("sessionSidebar.createSession")
               }
               compact
               action={
                 !query && !activeTag && onCreate ? (
                   <Button size="sm" variant="outline" onClick={onCreate}>
-                    <Plus className="h-4 w-4" />
-                    New session
+                    <MessageCirclePlus className="h-4 w-4" />
+                    {t("sessionSidebar.newSession")}
                   </Button>
                 ) : undefined
               }
             />
           ) : (
-            <div className="space-y-0.5">
+            <ul role="list" className="space-y-0.5">
               {filtered.map((s) => (
                 <SessionListItem
                   key={s.id}
@@ -191,7 +193,7 @@ export function SessionSidebar({
                   onResume={onResume}
                 />
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </ScrollArea>

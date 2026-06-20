@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { MoreHorizontal, Pencil, Trash2, Plug } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,17 +32,21 @@ export interface MCPConfigItemProps {
 
 const STATE_META: Record<
   McpConnectionState,
-  { label: string; variant: "success" | "secondary" | "warning" | "destructive"; dot: string }
+  { labelKey: `mcp.state.${McpConnectionState}`; variant: "success" | "secondary" | "warning" | "destructive"; dot: string }
 > = {
-  connected: { label: "connected", variant: "success", dot: "bg-success" },
-  disconnected: { label: "disconnected", variant: "secondary", dot: "bg-muted-foreground" },
-  connecting: { label: "connecting", variant: "warning", dot: "bg-warning animate-pulse" },
-  error: { label: "error", variant: "destructive", dot: "bg-destructive" },
+  connected: { labelKey: "mcp.state.connected", variant: "success", dot: "bg-success" },
+  disconnected: { labelKey: "mcp.state.disconnected", variant: "secondary", dot: "bg-muted-foreground" },
+  connecting: { labelKey: "mcp.state.connecting", variant: "warning", dot: "bg-warning animate-pulse" },
+  error: { labelKey: "mcp.state.error", variant: "destructive", dot: "bg-destructive" },
 };
 
-function transportLabel(entry: McpServerEntry): string {
-  if ("type" in entry.config) return entry.config.type.toUpperCase();
-  return "STDIO";
+function transportLabel(entry: McpServerEntry, t: (key: string) => string): string {
+  if ("type" in entry.config) {
+    const type = entry.config.type;
+    if (type === "http") return t("mcp.http");
+    if (type === "sse") return t("mcp.sse");
+  }
+  return t("mcp.stdio");
 }
 
 /**
@@ -60,6 +65,7 @@ export function MCPConfigItem({
   onDelete,
   className,
 }: MCPConfigItemProps): React.JSX.Element {
+  const { t } = useTranslation();
   const meta = STATE_META[entry.state];
   const busy = entry.state === "connecting";
   return (
@@ -75,11 +81,11 @@ export function MCPConfigItem({
             {entry.config.name}
           </span>
           <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-mono">
-            {transportLabel(entry)}
+            {transportLabel(entry, t)}
           </Badge>
           <Badge variant={meta.variant} className="gap-1 px-1.5 py-0 text-[10px]">
             <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-            {meta.label}
+            {t(meta.labelKey)}
           </Badge>
         </div>
         {entry.lastError ? (
@@ -101,23 +107,23 @@ export function MCPConfigItem({
         onClick={onTest}
       >
         <Plug className="h-3.5 w-3.5" />
-        {busy ? "Testing" : "Test"}
+        {busy ? t("mcp.testing") : t("mcp.test")}
       </Button>
       <Switch
         checked={enabled}
         onCheckedChange={onToggleEnabled}
-        aria-label={`Enable ${entry.config.name}`}
+        aria-label={t("mcp.enable", { name: entry.config.name })}
       />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="ghost" size="icon-sm" aria-label="Server actions">
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={t("mcp.serverActions")}>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={onEdit}>
             <Pencil />
-            Edit
+            {t("common.edit")}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -125,7 +131,7 @@ export function MCPConfigItem({
             onClick={onDelete}
           >
             <Trash2 />
-            Delete
+            {t("common.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

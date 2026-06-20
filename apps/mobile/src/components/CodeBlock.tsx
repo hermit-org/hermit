@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, Text, TouchableOpacity, Clipboard, ScrollView } from "react-native";
 // import CodeHighlighter from "react-native-code-highlighter";
 // import { atomOneDark, atomOneLight } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../stores";
 
 interface CodeBlockProps {
@@ -11,6 +12,7 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element {
+  const { t } = useTranslation();
   useSettingsStore(); // keep store dependency for future theme switching
 
   const handleCopy = () => {
@@ -26,7 +28,7 @@ export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element
       <View style={localStyles.header}>
         <Text style={localStyles.language}>{language || "text"}</Text>
         <TouchableOpacity onPress={handleCopy}>
-          <Text style={localStyles.copy}>Copy</Text>
+          <Text style={localStyles.copy}>{t("common.copy")}</Text>
         </TouchableOpacity>
       </View>
       <ScrollView horizontal contentContainerStyle={localStyles.highlighter}>

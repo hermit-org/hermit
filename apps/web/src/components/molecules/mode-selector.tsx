@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { HelpCircle, Compass, Code2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionMode } from "@/components/domain";
@@ -37,11 +38,13 @@ export function ModeSelector({
   variant = "segmented",
   className,
 }: ModeSelectorProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const ariaLabel = t("mode.sessionMode");
   if (variant === "dropdown") {
     return (
       <div className={cn("inline-flex", className)}>
         <select
-          aria-label="Session mode"
+          aria-label={ariaLabel}
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
@@ -60,7 +63,7 @@ export function ModeSelector({
   return (
     <div
       role="radiogroup"
-      aria-label="Session mode"
+      aria-label={ariaLabel}
       className={cn(
         "inline-flex items-center gap-0.5 rounded-md border border-border bg-muted p-0.5",
         disabled && "opacity-50",

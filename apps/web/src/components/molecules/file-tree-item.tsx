@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, MoreHorizontal, FileEdit, Download } from "lucide-react";
 import { FileIcon } from "@/components/atoms";
 import { cn, formatBytes } from "@/lib/utils";
@@ -47,6 +48,7 @@ export function FileTreeItem({
   onDownload,
   className,
 }: FileTreeItemProps): React.JSX.Element {
+  const { t } = useTranslation();
   const isDir = node.isDirectory;
   return (
     <div
@@ -64,7 +66,7 @@ export function FileTreeItem({
       {isDir ? (
         <button
           type="button"
-          aria-label={expanded ? "Collapse" : "Expand"}
+          aria-label={expanded ? t("common.collapse") : t("common.expand")}
           onClick={() => onToggle?.(node)}
           className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground"
         >
@@ -101,7 +103,7 @@ export function FileTreeItem({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              aria-label="File actions"
+              aria-label={t("fileManager.fileActions")}
               className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
             >
               <MoreHorizontal className="h-3.5 w-3.5" />
@@ -110,11 +112,11 @@ export function FileTreeItem({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit?.(node)}>
               <FileEdit />
-              Edit
+              {t("common.edit")}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onDownload?.(node)}>
               <Download />
-              Download
+              {t("fileManager.download")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

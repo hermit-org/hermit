@@ -2,7 +2,59 @@
   "title": "Hermit Web",
   "language": {
     "en": "English",
-    "zh": "中文"
+    "zh": "中文",
+    "switch": "Switch language (currently {{language}})"
+  },
+  "layout": {
+    "newUi": "New UI",
+    "gateways": "Gateways",
+    "preview": "Preview",
+    "settings": "Settings",
+    "legacy": "Legacy",
+    "toggleSidebar": "Toggle sidebar",
+    "toggleOrientation": "Toggle orientation",
+    "stacked": "stacked",
+    "sideBySide": "side-by-side",
+    "chat": "Chat",
+    "terminal": "Terminal"
+  },
+  "common": {
+    "copy": "Copy",
+    "send": "Send",
+    "stop": "Stop",
+    "stopGenerating": "Stop generating",
+    "scrollToBottom": "Scroll to bottom",
+    "loading": "Loading",
+    "thinking": "Thinking…",
+    "waiting": "Waiting for output…",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "dismiss": "Dismiss",
+    "cancel": "Cancel",
+    "back": "Back",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "update": "Update",
+    "import": "Import",
+    "connect": "Connect",
+    "search": "Search",
+    "commands": "Commands",
+    "quick": "Quick",
+    "queued": "queued",
+    "all": "All",
+    "save": "Save",
+    "refresh": "Refresh",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "noResults": "No matching results",
+    "tryAgain": "Try again",
+    "justNow": "just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "tokens": "tokens"
   },
   "gateways": {
     "title": "Gateways",
@@ -16,7 +68,22 @@
     "delete": "Delete",
     "connect": "Connect",
     "empty": "No gateways. Add one or open a connection link.",
-    "deleteConfirm": "Delete this gateway?"
+    "deleteConfirm": "Delete this gateway?",
+    "defaultName": "Hermit Gateway",
+    "active": "active",
+    "connectTitle": "Connect to a gateway",
+    "connectDescription": "No gateway is configured. Add a Hermit gateway URL and token to start chatting with an ACP agent.",
+    "nameLabel": "Name",
+    "sseUrlLabel": "SSE URL",
+    "tokenLabel": "Token",
+    "namePlaceholder": "Hermit Gateway",
+    "sseUrlPlaceholder": "http://localhost:5174/sse",
+    "tokenPlaceholder": "pairing token",
+    "requiredError": "Name, URL and token are required.",
+    "importTitle": "Import from connection string",
+    "importPlaceholder": "Paste hermit://… or JSON",
+    "noGatewaysTitle": "No gateways",
+    "noGatewaysDescription": "Add a gateway above or import one from a connection string."
   },
   "sessions": {
     "title": "Sessions",
@@ -25,14 +92,21 @@
     "agentSessions": "Agent sessions",
     "localSessions": "Local sessions",
     "loading": "Loading sessions…",
-    "loadFailed": "Failed to load sessions",
+    "loadFailed": "Failed to load session",
     "deleteAgentConfirm": "Delete this session on the agent too?",
     "deleteAgentOnly": "Delete agent session?",
     "openAgent": "Open",
-    "close": "Close"
+    "close": "Close",
+    "closed": "closed",
+    "loadingTitle": "Loading session…",
+    "failedTitle": "Failed to load session",
+    "newChat": "New chat",
+    "agentSession": "Agent session",
+    "deleteFailed": "session/delete failed",
+    "backToSessions": "Back to sessions"
   },
   "chat": {
-    "placeholder": "Message...",
+    "placeholder": "Message…",
     "send": "Send",
     "stop": "Stop",
     "reconnect": "Reconnect",
@@ -48,12 +122,22 @@
     "questionPlaceholder": "Question",
     "queued": "Queued",
     "otherInput": "Other / note…",
-    "answeredHistory": "Answered",
+    "answeredHistory": "Answered ({{count}})",
     "clearHistory": "Clear history",
     "todoTitle": "Todo",
     "todoCollapse": "Collapse",
     "todoExpand": "Expand",
-    "todoAllDone": "All done"
+    "todoAllDone": "All done",
+    "agent": "Agent",
+    "you": "You",
+    "system": "System",
+    "noMessages": "No messages yet",
+    "startConversation": "Send a message to start the conversation.",
+    "agentIsThinking": "Agent is thinking…",
+    "emptyDefaultDescription": "Send a message to start the conversation.",
+    "ready": "ready",
+    "working": "working",
+    "contextTokens": "Context tokens used / size"
   },
   "permission": {
     "title": "Tool approval",
@@ -62,14 +146,34 @@
     "allowAlways": "Allow always",
     "rejectOnce": "Reject once",
     "rejectAlways": "Reject always",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "requested": "Permission requested",
+    "required": "Permission required",
+    "cancel": "Cancel",
+    "previous": "Previous",
+    "next": "Next",
+    "noPending": "No pending requests.",
+    "answered": "Answered",
+    "qPrefix": "Q:",
+    "aPrefix": "A:",
+    "note": "Note"
   },
   "auth": {
     "required": "Authentication required",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "signedIn": "Signed in",
-    "failed": "Authentication failed"
+    "failed": "Authentication failed",
+    "authenticate": "Authenticate",
+    "signInTo": "Sign in to connect to the ACP agent.",
+    "apiKey": "API Key",
+    "oauth": "OAuth",
+    "apiKeyDescription": "Use an agent API key",
+    "oauthDescription": "Sign in via OAuth provider",
+    "apiKeyPlaceholder": "sk-…",
+    "authenticating": "Authenticating…",
+    "authenticated": "Authenticated",
+    "stillBrowse": "You can still browse — sign in to send prompts."
   },
   "connect": {
     "paste": "Paste connection string",
@@ -77,5 +181,201 @@
     "imported": "Gateway imported",
     "invalid": "Invalid connection string",
     "autoImported": "Gateway auto-configured from link"
+  },
+  "connection": {
+    "disconnected": "Disconnected",
+    "connecting": "Connecting",
+    "negotiating": "Negotiating",
+    "connected": "Connected",
+    "error": "Connection error",
+    "protocolBadge": "ACP v{{version}}",
+    "agentFallback": "ACP Agent"
+  },
+  "commands": {
+    "title": "Available commands",
+    "compact": {
+      "description": "Compact the conversation context"
+    },
+    "clear": {
+      "description": "Clear the transcript"
+    },
+    "mode": {
+      "description": "Switch operating mode",
+      "hint": "mode id"
+    },
+    "help": {
+      "description": "Show available commands"
+    }
+  },
+  "priority": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "resource": {
+    "binary": "[binary resource {{uri}}]"
+  },
+  "tool": {
+    "title": "Tool calls",
+    "all": "All",
+    "input": "Input",
+    "output": "Output",
+    "noCallsTitle": "No tool calls",
+    "noCallsDescription": "Tool invocations will appear here as the agent works.",
+    "status": {
+      "pending": "pending",
+      "in_progress": "in progress",
+      "completed": "completed",
+      "failed": "failed"
+    },
+    "terminal": "terminal",
+    "kind": {
+      "fallback": "tool"
+    }
+  },
+  "terminal": {
+    "killProcess": "Kill process",
+    "closeTerminal": "Close terminal",
+    "waitingForOutput": "Waiting for output…",
+    "typeAndEnter": "Type and press Enter to send…",
+    "autoScrollPaused": "Auto-scroll paused — scroll to bottom to resume",
+    "running": "running",
+    "idle": "idle",
+    "exit": "exit",
+    "idLabel": "[terminal {{id}}]"
+  },
+  "mcp": {
+    "servers": "MCP servers",
+    "addServer": "Add server",
+    "addMcpServer": "Add MCP server",
+    "name": "Name",
+    "transport": "Transport",
+    "command": "Command",
+    "arguments": "Arguments (space-separated)",
+    "url": "URL",
+    "namePlaceholder": "my-server",
+    "commandPlaceholder": "npx",
+    "argumentsPlaceholder": "-y @modelcontextprotocol/server-filesystem /tmp",
+    "urlPlaceholder": "https://example.com/mcp",
+    "stdio": "stdio",
+    "http": "http",
+    "sse": "sse",
+    "test": "Test",
+    "testing": "Testing",
+    "edit": "Edit",
+    "delete": "Delete",
+    "enable": "Enable {{name}}",
+    "serverActions": "Server actions",
+    "noServersTitle": "No MCP servers",
+    "noServersDescription": "Add an MCP server to extend the agent's tools.",
+    "state": {
+      "connected": "connected",
+      "disconnected": "disconnected",
+      "connecting": "connecting",
+      "error": "error"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "back": "Back",
+    "mcpServers": "MCP servers",
+    "appearance": "Appearance",
+    "shortcuts": "Shortcuts",
+    "language": "Language",
+    "languageHint": "Choose the display language.",
+    "theme": "Theme",
+    "themeHint": "Toggle between light and dark mode.",
+    "darkMode": "Dark mode",
+    "darkModeHint": "Uses the system preference when off.",
+    "fontSize": "Font size",
+    "fontSizeHint": "Base font size for the chat transcript.",
+    "keyboardShortcuts": "Keyboard shortcuts",
+    "shortcutsHint": "Customize key bindings for common actions.",
+    "sendMessage": "Send message",
+    "newLine": "New line",
+    "commandPalette": "Command palette",
+    "toggleSidebar": "Toggle sidebar",
+    "toggleTerminal": "Toggle terminal",
+    "cancelGeneration": "Cancel generation"
+  },
+  "session": {
+    "rename": "Rename session",
+    "saveTitle": "Save title",
+    "manageTags": "Manage tags"
+  },
+  "sessionSidebar": {
+    "searchPlaceholder": "Search sessions",
+    "sessionMode": "Session mode",
+    "newSession": "New session",
+    "filter": "Filter",
+    "noSessions": "No sessions yet",
+    "noMatchingSessions": "No matching sessions",
+    "tryDifferentFilter": "Try a different search or filter.",
+    "createSession": "Create a session to start chatting."
+  },
+  "sessionItem": {
+    "resumeLoad": "Resume / load",
+    "fork": "Fork",
+    "duplicate": "Duplicate",
+    "close": "Close",
+    "delete": "Delete",
+    "sessionActions": "Session actions",
+    "closed": "closed"
+  },
+  "fileManager": {
+    "files": "Files",
+    "noFilesTitle": "No files",
+    "emptyDirectory": "The working directory is empty.",
+    "noFileSelectedTitle": "No file selected",
+    "selectFile": "Select a file from the tree to preview or edit.",
+    "unsaved": "unsaved",
+    "save": "Save",
+    "refresh": "Refresh",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "fileActions": "File actions",
+    "edit": "Edit",
+    "download": "Download",
+    "location": "📄 {{path}}"
+  },
+  "composer": {
+    "placeholder": "Message the agent… (Shift+Enter for newline)",
+    "attachFile": "Attach file",
+    "clearInput": "Clear input",
+    "navigateHint": "to navigate",
+    "noCommands": "No matching commands",
+    "slashCommands": "Slash commands"
+  },
+  "statusBar": {
+    "generating": "generating",
+    "settings": "Settings"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "defaultMessage": "An unexpected error occurred while rendering this view.",
+    "dismiss": "Dismiss"
+  },
+  "plan": {
+    "title": "Todo",
+    "allDone": "All done",
+    "collapse": "Collapse"
+  },
+  "mode": {
+    "ask": "Ask",
+    "architect": "Architect",
+    "code": "Code",
+    "default": "Mode",
+    "sessionMode": "Session mode"
+  },
+  "showcase": {
+    "preview": "Preview",
+    "acpClient": "ACP Client",
+    "mainLayout": "Main Layout",
+    "splitLayout": "Split Layout",
+    "settings": "Settings",
+    "atomicDesign": "Atomic Design · Shadcn/ui"
+  },
+  "config": {
+    "closeSession": "Close session"
   }
 }

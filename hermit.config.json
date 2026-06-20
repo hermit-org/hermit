@@ -1,15 +1,15 @@
 {
-  "agent": {
-    "command": "kimi",
-    "args": ["acp"]
-  },
-  "gateway": {
-    "port": 8787,
-    "hostname": "0.0.0.0",
-    "endpoint": "/",
-    "heartbeatInterval": 30000,
-    "cors": true,
-    "timeout": 0
-  },
-  "authorizedTokens": []
+    "agent": {
+        "command": "kimi",
+        "args": ["acp"]
+    },
+    "gateway": {
+        "port": 8787,
+        "hostname": "0.0.0.0",
+        "endpoint": "/",
+        "heartbeatInterval": 30000,
+        "cors": true,
+        "timeout": 0
+    },
+    "authorizedTokens": []
 }

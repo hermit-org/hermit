@@ -29,7 +29,7 @@ export function ServerListScreen({ onOpen }: ServerListScreenProps): React.JSX.E
 
   const handleSave = (): void => {
     if (!name.trim() || !url.trim() || !token.trim()) {
-      setNotice(t("gateways.empty"));
+      setNotice(t("gateways.requiredError"));
       return;
     }
 
@@ -75,7 +75,7 @@ export function ServerListScreen({ onOpen }: ServerListScreenProps): React.JSX.E
       return;
     }
     addGateway({
-      name: config.name || "Imported Gateway",
+      name: config.name || t("gateways.defaultName"),
       url: config.url,
       sendUrl: config.sendUrl,
       token: config.token,

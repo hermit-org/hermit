@@ -580,8 +580,8 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         </button>
         <span style={styles.statusText}>
           {connectionState}
-          {acpSessionId ? " · ready" : ""}
-          {busy ? " · working" : ""}
+          {acpSessionId ? ` · ${t("chat.ready")}` : ""}
+          {busy ? ` · ${t("chat.working")}` : ""}
         </span>
         <AuthPanel
           authMethods={authMethods}
@@ -708,7 +708,7 @@ export function ChatScreen({ sessionId, onBack }: ChatScreenProps): React.JSX.El
         <div style={styles.inputToolbar}>
           <div style={styles.metaBar}>
             {usage && (
-              <span style={styles.metaChip} title="Context tokens used / size">
+              <span style={styles.metaChip} title={t("chat.contextTokens")}>
                 <Gauge size={12} style={styles.metaIcon} />
                 {formatTokens(usage.used)} / {formatTokens(usage.size)}
               </span>

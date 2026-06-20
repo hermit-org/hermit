@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { ConnectionStatus } from "@/components/domain";
 
@@ -22,13 +23,7 @@ const STATUS_COLOR: Record<ConnectionStatus, string> = {
   error: "bg-destructive",
 };
 
-const STATUS_LABEL: Record<ConnectionStatus, string> = {
-  disconnected: "Disconnected",
-  connecting: "Connecting",
-  negotiating: "Negotiating",
-  connected: "Connected",
-  error: "Connection error",
-};
+
 
 /**
  * A small colored dot that reflects the ACP transport connection state.
@@ -41,16 +36,18 @@ export const ConnectionStatusDot = React.forwardRef<
   ConnectionStatusDotProps
 >(
   (
-    { status, pulse = true, label, size = 8, className, ...props },
+    { status, pulse = true, label: labelProp, size = 8, className, ...props },
     ref,
   ) => {
+    const { t } = useTranslation();
+    const label = labelProp ?? t(`connection.${status}`);
     const animated =
       pulse && (status === "connecting" || status === "negotiating");
     return (
       <span
         ref={ref}
         role="img"
-        aria-label={label ?? STATUS_LABEL[status]}
+        aria-label={label}
         className={cn(
           "relative inline-flex shrink-0 rounded-full",
           STATUS_COLOR[status],

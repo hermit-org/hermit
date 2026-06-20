@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -19,10 +20,11 @@ export function ProtocolBadge({
   className,
   ...props
 }: ProtocolBadgeProps): React.JSX.Element {
+  const { t } = useTranslation();
   return (
     <Badge variant="secondary" className={cn("gap-1", className)} {...props}>
       <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-primary" />
-      ACP v{version}
+      {t("connection.protocolBadge", { version })}
     </Badge>
   );
 }

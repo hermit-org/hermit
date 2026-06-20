@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn, formatRelativeTime } from "@/lib/utils";
 
 export interface TimestampProps

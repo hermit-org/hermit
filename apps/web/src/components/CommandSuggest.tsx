@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AvailableCommand } from "@hermit/acp";
 
 interface CommandSuggestProps {
@@ -22,6 +23,7 @@ export function CommandSuggest({
   input,
   onPick,
 }: CommandSuggestProps): React.JSX.Element | null {
+  const { t } = useTranslation();
   const { active, query } = parseSlashInput(input);
   const filtered = active
     ? commands.filter((cmd) =>
@@ -71,7 +73,7 @@ export function CommandSuggest({
 
   return (
     <div ref={containerRef} style={styles.container}>
-      <div style={styles.header}>Commands</div>
+      <div style={styles.header}>{t("common.commands")}</div>
       {filtered.map((cmd, i) => (
         <button
           key={cmd.name}

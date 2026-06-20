@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import {
   MoreHorizontal,
   Trash2,
@@ -95,80 +96,87 @@ export function SessionListItem({
   onResume,
   className,
 }: SessionListItemProps): React.JSX.Element {
+  const { t } = useTranslation();
   const handleSelect = React.useCallback(() => {
     onSelect?.(id);
   }, [id, onSelect]);
+  const titleRef = React.useRef<HTMLSpanElement>(null);
+  const [isTitleTruncated, setIsTitleTruncated] = React.useState(false);
+  React.useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    setIsTitleTruncated(el.scrollWidth > el.clientWidth);
+  }, [title]);
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <li
       data-active={active ? "" : undefined}
-      onClick={handleSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleSelect();
-        }
-      }}
       className={cn(
-        "group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm transition-colors",
-        "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "group flex items-center gap-2 rounded-md text-sm transition-colors",
+        "hover:bg-accent",
         active && "bg-accent",
         className,
       )}
     >
-      <span className="shrink-0 text-muted-foreground">
-        <SessionIcon modeId={modeId} size={16} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span
-            className={cn(
-              "truncate font-medium",
-              closed && "text-muted-foreground line-through",
-            )}
-          >
-            {title}
-          </span>
-          {loading ? (
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-blue-500" />
-          ) : null}
-        </div>
-        <div className="mt-0.5 flex items-center gap-1.5">
-          <Timestamp value={updatedAt} className="text-[11px]" />
-          {modeId ? (
-            <ModeBadge modeId={modeId} className="scale-90 px-1.5 py-0 text-[10px]" />
-          ) : null}
-          {closed ? (
-            <Badge variant="outline" className="scale-90 px-1.5 py-0 text-[10px] text-muted-foreground">
-              closed
-            </Badge>
-          ) : null}
-        </div>
-        {tags.length > 0 ? (
-          <div className="mt-1 flex flex-wrap gap-1">
-            {tags.map((t) => (
-              <span
-                key={t.id}
-                className={cn(
-                  "inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-medium",
-                  TAG_COLOR[t.color] ?? TAG_COLOR.slate,
-                )}
-              >
-                {t.name}
-              </span>
-            ))}
+      <button
+        type="button"
+        onClick={handleSelect}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 py-2 pr-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="shrink-0 text-muted-foreground">
+          <SessionIcon modeId={modeId} size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span
+              ref={titleRef}
+              title={isTitleTruncated ? title : undefined}
+              className={cn(
+                "min-w-0 flex-1 truncate font-medium",
+                closed && "text-muted-foreground line-through",
+              )}
+            >
+              {title}
+            </span>
+            {loading ? (
+              <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-blue-500" />
+            ) : null}
           </div>
-        ) : null}
-      </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            <Timestamp value={updatedAt} className="text-[11px]" />
+            {modeId ? (
+              <ModeBadge modeId={modeId} className="scale-90 px-1.5 py-0 text-[10px]" />
+            ) : null}
+            {closed ? (
+              <Badge variant="outline" className="scale-90 px-1.5 py-0 text-[10px] text-muted-foreground">
+                {t("sessionItem.closed")}
+              </Badge>
+            ) : null}
+          </div>
+          {tags.length > 0 ? (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {tags.map((t) => (
+                <span
+                  key={t.id}
+                  className={cn(
+                    "inline-flex max-w-full items-center truncate rounded border px-1.5 py-0 text-[10px] font-medium",
+                    TAG_COLOR[t.color] ?? TAG_COLOR.slate,
+                  )}
+                >
+                  {t.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label="Session actions"
-            className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+            aria-label={t("sessionItem.sessionActions")}
+            className="mr-2.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={(e) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
@@ -178,23 +186,23 @@ export function SessionListItem({
           {canResume ? (
             <DropdownMenuItem onClick={() => onResume?.(id)}>
               <RotateCcw />
-              Resume / load
+              {t("sessionItem.resumeLoad")}
             </DropdownMenuItem>
           ) : null}
           {canFork ? (
             <DropdownMenuItem onClick={() => onFork?.(id)}>
               <GitFork />
-              Fork
+              {t("sessionItem.fork")}
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem onClick={() => onDuplicate?.(id)}>
             <CopyIcon />
-            Duplicate
+            {t("sessionItem.duplicate")}
           </DropdownMenuItem>
           {canClose && !closed ? (
             <DropdownMenuItem onClick={() => onClose?.(id)}>
               <XCircle />
-              Close
+              {t("sessionItem.close")}
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuSeparator />
@@ -203,10 +211,10 @@ export function SessionListItem({
             onClick={() => onDelete?.(id)}
           >
             <Trash2 />
-            Delete
+            {t("common.delete")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </li>
   );
 }

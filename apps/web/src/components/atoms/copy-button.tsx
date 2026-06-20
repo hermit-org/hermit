@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,12 +25,14 @@ export interface CopyButtonProps
 export function CopyButton({
   value,
   onCopied,
-  label = "Copy",
+  label,
   size = 16,
   className,
   disabled,
   ...props
 }: CopyButtonProps): React.JSX.Element {
+  const { t } = useTranslation();
+  const effectiveLabel = label ?? t("common.copy");
   const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
@@ -68,8 +71,8 @@ export function CopyButton({
       )}
       onClick={handleCopy}
       disabled={disabled}
-      aria-label={label}
-      title={label}
+      aria-label={effectiveLabel}
+      title={effectiveLabel}
       {...props}
     >
       {copied ? (
