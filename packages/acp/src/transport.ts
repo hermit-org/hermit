@@ -7,7 +7,7 @@
  *
  * Concrete implementations live in each app:
  *   - web:    `apps/web/src/transport/stdio.ts` (fetch streaming)
- *   - mobile: `@hermit/stdio-to-sse_rn` `createStdioLikeSse`
+ *   - mobile: `@hermit-org/stdio-to-sse_rn` `createStdioLikeSse`
  */
 export interface StdioTransport {
   stdout: AsyncIterable<string>;

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { CornerDownLeft, Search } from "lucide-react";
-import type { AvailableCommand } from "@hermit/acp";
+import type { AvailableCommand } from "@hermit-org/acp";
 import { cn } from "@/lib/utils";
 
 export interface SlashCommandMenuProps {

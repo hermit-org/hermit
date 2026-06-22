@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, Eraser, SlashSquare, Layers } from "lucide-react";
-import type { AvailableCommand } from "@hermit/acp";
+import type { AvailableCommand } from "@hermit-org/acp";
 import { MessageComposer } from "@/components/molecules";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

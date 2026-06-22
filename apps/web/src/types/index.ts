@@ -4,7 +4,7 @@
  * Mirrors the mobile app's domain model so both clients share the same shape.
  */
 
-import type { ConfigOption } from "@hermit/acp";
+import type { ConfigOption } from "@hermit-org/acp";
 
 export interface Gateway {
   id: string;

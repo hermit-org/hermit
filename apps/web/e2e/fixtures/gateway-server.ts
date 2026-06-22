@@ -18,7 +18,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Import the real persistent gateway the CLI uses (packages/cli/src/lib/gateway.ts).
-// It is self-contained (only node built-ins + @hermit/stdio-to-sse) and Bun
+// It is self-contained (only node built-ins + @hermit-org/stdio-to-sse) and Bun
 // resolves the workspace package from the monorepo root.
 const { AcpGatewayServer } = await import(
   "../../../../packages/cli/src/lib/gateway.ts"

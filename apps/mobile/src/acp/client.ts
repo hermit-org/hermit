@@ -2,7 +2,7 @@ import {
   createStdioLikeSse,
   type StdioLikeSse,
   type RnSseEvent,
-} from "@hermit/stdio-to-sse_rn";
+} from "@hermit-org/stdio-to-sse_rn";
 import {
   type JsonRpcMessage,
   type JsonRpcRequest,

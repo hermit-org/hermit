@@ -1,5 +1,5 @@
 /**
- * Public API entry point for `@hermit/stdio-to-sse`.
+ * Public API entry point for `@hermit-org/stdio-to-sse`.
  *
  * This package bridges a stdio-based program to an HTTP POST -> SSE endpoint.
  * It exposes a server that spawns a child process and streams its stdout as

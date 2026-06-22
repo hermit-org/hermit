@@ -1,5 +1,5 @@
 {
-  "name": "@hermit/cli",
+  "name": "@hermit-org/cli",
   "version": "0.0.1",
   "type": "module",
   "module": "src/index.ts",
@@ -10,9 +10,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@hermit/types": "workspace:*",
-    "@hermit/utils": "workspace:*",
-    "@hermit/stdio-to-sse": "workspace:*",
+    "@hermit-org/types": "workspace:*",
+    "@hermit-org/utils": "workspace:*",
+    "@hermit-org/stdio-to-sse": "workspace:*",
     "commander": "^13.0.0",
     "qrcode": "^1.5.4"
   },

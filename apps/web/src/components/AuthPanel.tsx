@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { AuthMethod } from "@hermit/acp";
+import type { AuthMethod } from "@hermit-org/acp";
 
 interface AuthPanelProps {
   authMethods: AuthMethod[];

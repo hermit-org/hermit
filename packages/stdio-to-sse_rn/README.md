@@ -1,4 +1,4 @@
-# `@hermit/stdio-to-sse_rn`
+# `@hermit-org/stdio-to-sse_rn`
 
 React Native transport layer that turns an SSE endpoint into a stdio-like
 readable stream.
@@ -10,7 +10,7 @@ underlying EventSource implementation.
 ## Installation
 
 ```bash
-bun add @hermit/stdio-to-sse_rn react-native-sse
+bun add @hermit-org/stdio-to-sse_rn react-native-sse
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ bun add @hermit/stdio-to-sse_rn react-native-sse
 Low-level connection with automatic reconnection and heartbeat watchdog.
 
 ```ts
-import { RnSseConnection } from "@hermit/stdio-to-sse_rn";
+import { RnSseConnection } from "@hermit-org/stdio-to-sse_rn";
 
 const conn = new RnSseConnection({
   url: "http://192.168.1.5:8787",
@@ -51,7 +51,7 @@ Useful when the consumer expects separate `stdin` and `stdout` handles, such as
 a JSON-RPC client:
 
 ```ts
-import { createStdioLikeSse } from "@hermit/stdio-to-sse_rn";
+import { createStdioLikeSse } from "@hermit-org/stdio-to-sse_rn";
 
 const stdio = createStdioLikeSse({
   url: "http://192.168.1.5:8787",
@@ -71,7 +71,7 @@ await stdio.stdin.write('{"jsonrpc":"2.0","method":"ping"}\n');
 ### Send a one-off POST message
 
 ```ts
-import { sendMessage } from "@hermit/stdio-to-sse_rn";
+import { sendMessage } from "@hermit-org/stdio-to-sse_rn";
 
 await sendMessage({
   url: "http://192.168.1.5:8787/send",
@@ -87,7 +87,7 @@ import {
   extractLines,
   parseJsonRpcMessages,
   encodeJsonRpcMessage,
-} from "@hermit/stdio-to-sse_rn";
+} from "@hermit-org/stdio-to-sse_rn";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();

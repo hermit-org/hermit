@@ -29,7 +29,7 @@ import type {
   AcpClient,
   ImplementationInfo,
   ConfigOption,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 
 interface ChatScreenProps {
   sessionId: string;

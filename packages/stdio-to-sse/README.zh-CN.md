@@ -1,4 +1,4 @@
-# `@hermit/stdio-to-sse`
+# `@hermit-org/stdio-to-sse`
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 
@@ -12,7 +12,7 @@
 ## 安装
 
 ```bash
-bun add @hermit/stdio-to-sse
+bun add @hermit-org/stdio-to-sse
 ```
 
 > 需要 Node.js 18+ 或 [Bun](https://bun.sh/)。实现仅使用 Node.js 内置模块。
@@ -29,7 +29,7 @@ bun test
 ### 服务端
 
 ```ts
-import { StdioSseServer } from "@hermit/stdio-to-sse";
+import { StdioSseServer } from "@hermit-org/stdio-to-sse";
 
 const server = new StdioSseServer({
   command: "cat",
@@ -46,7 +46,7 @@ await stop();
 ### 客户端
 
 ```ts
-import { StdioSseClient } from "@hermit/stdio-to-sse";
+import { StdioSseClient } from "@hermit-org/stdio-to-sse";
 
 const client = new StdioSseClient({ url: "http://localhost:8080" });
 
@@ -60,7 +60,7 @@ for await (const payload of client.send("hello\nworld")) {
 ### 端到端示例
 
 ```ts
-import { StdioSseServer, StdioSseClient } from "@hermit/stdio-to-sse";
+import { StdioSseServer, StdioSseClient } from "@hermit-org/stdio-to-sse";
 
 const server = new StdioSseServer({ command: "cat", port: 8080 });
 const { url, stop } = await server.start();
@@ -110,7 +110,7 @@ class StdioSseClient {
 ### SSE 工具函数
 
 ```ts
-import { encodeSse, parseSse } from "@hermit/stdio-to-sse";
+import { encodeSse, parseSse } from "@hermit-org/stdio-to-sse";
 
 const frame = encodeSse("hello");
 // => "data: hello\n\n"
@@ -136,7 +136,7 @@ const { data, remainder } = parseSse(frame);
 （`/send`）端点：
 
 ```ts
-import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
   command: "npx",

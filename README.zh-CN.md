@@ -10,14 +10,14 @@ Gateway 场景设计，但传输层本身保持与协议无关。
 
 | 工作区 | 路径 | 说明 |
 |-----------|------|-------------|
-| `@hermit/types` | `packages/types` | 共享 TypeScript 领域类型 |
-| `@hermit/utils` | `packages/utils` | 共享 TypeScript 工具函数 |
-| `@hermit/stdio-to-sse` | `packages/stdio-to-sse` | 与协议无关的 stdio ↔ HTTP POST/SSE 桥接库（Node.js/Bun） |
-| `@hermit/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE 传输层，提供 stdio-like 接口 |
-| `@hermit/acp` | `packages/acp` | Agent Client Protocol (ACP) v1 客户端：类型化方法、session/update 分发 |
-| `@hermit/cli` | `packages/cli` | Bun CLI，启动 ACP Gateway 并管理配对 |
-| `@hermit/mobile` | `apps/mobile` | React Native 应用：Gateway 列表、会话、流式聊天 |
-| `@hermit/web` | `apps/web` | Vite + React Web 客户端：Gateway 列表、会话、流式聊天 |
+| `@hermit-org/types` | `packages/types` | 共享 TypeScript 领域类型 |
+| `@hermit-org/utils` | `packages/utils` | 共享 TypeScript 工具函数 |
+| `@hermit-org/stdio-to-sse` | `packages/stdio-to-sse` | 与协议无关的 stdio ↔ HTTP POST/SSE 桥接库（Node.js/Bun） |
+| `@hermit-org/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE 传输层，提供 stdio-like 接口 |
+| `@hermit-org/acp` | `packages/acp` | Agent Client Protocol (ACP) v1 客户端：类型化方法、session/update 分发 |
+| `@hermit-org/cli` | `packages/cli` | Bun CLI，启动 ACP Gateway 并管理配对 |
+| `@hermit-org/mobile` | `apps/mobile` | React Native 应用：Gateway 列表、会话、流式聊天 |
+| `@hermit-org/web` | `apps/web` | Vite + React Web 客户端：Gateway 列表、会话、流式聊天 |
 
 ## 技术栈
 
@@ -57,7 +57,7 @@ bun test packages/cli/src/lib/gateway.test.ts
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          CLI Host (Node.js)                         │
 │  ┌─────────────┐      ┌─────────────────────┐      ┌────────────┐  │
-│  │  本地 Agent │◄────►│ @hermit/stdio-to-sse│◄────►│  HTTP/SSE  │  │
+│  │  本地 Agent │◄────►│ @hermit-org/stdio-to-sse│◄────►│  HTTP/SSE  │  │
 │  │   (stdio)   │stdio │    （传输层桥接）    │      │  Gateway   │  │
 │  └─────────────┘      └─────────────────────┘      │  :8787     │  │
 └────────────────────────────────────────────────────┼────────────────┘
@@ -67,7 +67,7 @@ bun test packages/cli/src/lib/gateway.test.ts
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     Mobile Device (React Native)                    │
 │  ┌─────────────┐      ┌──────────────────────┐     ┌─────────────┐ │
-│  │   UI 页面   │◄────►│    @hermit/mobile    │◄───►│ @hermit/    │ │
+│  │   UI 页面   │◄────►│    @hermit-org/mobile    │◄───►│ @hermit-org/    │ │
 │  │  ServerList │      │   ACP 客户端 + UI    │     │ stdio-to-   │ │
 │  │ SessionList │      │                      │     │ sse_rn      │ │
 │  │    Chat     │      │                      │     │             │ │
@@ -148,7 +148,7 @@ bun packages/cli/src/index.ts start --web http://localhost:5180
 每个 HTTP POST 会启动一个子进程，并将其 stdout 以 SSE 返回：
 
 ```ts
-import { StdioSseServer, StdioSseClient } from "@hermit/stdio-to-sse";
+import { StdioSseServer, StdioSseClient } from "@hermit-org/stdio-to-sse";
 
 const server = new StdioSseServer({
   command: "cat",
@@ -168,7 +168,7 @@ await stop();
 CLI 使用此模式。一个子进程长期存活，客户端通过 SSE 读取、通过 `POST /send` 写入：
 
 ```ts
-import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
   command: "npx",
@@ -188,7 +188,7 @@ import {
   RnSseConnection,
   createStdioLikeSse,
   sendMessage,
-} from "@hermit/stdio-to-sse_rn";
+} from "@hermit-org/stdio-to-sse_rn";
 
 // 底层连接
 const conn = new RnSseConnection({

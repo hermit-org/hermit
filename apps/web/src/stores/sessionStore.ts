@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import type { Session, Message, MessageRole } from "../types";
-import type { ConfigOption } from "@hermit/acp";
+import type { ConfigOption } from "@hermit-org/acp";
 
 interface SessionState {
   sessions: Session[];

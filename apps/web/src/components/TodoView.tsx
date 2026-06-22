@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { PlanEntry } from "@hermit/acp";
+import type { PlanEntry } from "@hermit-org/acp";
 
 interface TodoViewProps {
   entries: PlanEntry[];

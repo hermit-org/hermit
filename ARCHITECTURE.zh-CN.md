@@ -14,7 +14,7 @@ bun install
 bunx tsc --noEmit
 
 # 1.3 更新受影响 package.json 的版本号
-#     对于 @hermit/stdio-to-sse，确认无 workspace:* 依赖残留
+#     对于 @hermit-org/stdio-to-sse，确认无 workspace:* 依赖残留
 
 # 1.4 npm 发布干跑
 bun publish --dry-run
@@ -37,7 +37,7 @@ Hermit 采用各包独立版本。
 
 ### 2.1 版本更新顺序
 
-如果 `@hermit/cli` 依赖了新版本 `@hermit/stdio-to-sse`，按以下顺序更新和发布：
+如果 `@hermit-org/cli` 依赖了新版本 `@hermit-org/stdio-to-sse`，按以下顺序更新和发布：
 
 ```
 stdio-to-sse → cli → server → mobile
@@ -61,7 +61,7 @@ bun install
 
 ---
 
-## 3. npm 发布（`@hermit/stdio-to-sse`）
+## 3. npm 发布（`@hermit-org/stdio-to-sse`）
 
 ### 3.1 发布前准备
 
@@ -73,7 +73,7 @@ grep -R "workspace:\*" packages/stdio-to-sse/package.json
 npm login
 
 # 确认 npm organization 已存在
-npm org ls @hermit
+npm org ls @hermit-org
 ```
 
 ### 3.2 发布步骤
@@ -91,7 +91,7 @@ bun publish --access public
 npm publish --access public
 
 # 确认版本已上线
-npm view @hermit/stdio-to-sse versions
+npm view @hermit-org/stdio-to-sse versions
 ```
 
 ### 3.3 打 tag
@@ -261,7 +261,7 @@ jobs:
 24 小时内发错版本：
 
 ```bash
-npm unpublish @hermit/stdio-to-sse@0.1.2 --force
+npm unpublish @hermit-org/stdio-to-sse@0.1.2 --force
 ```
 
 超过 24 小时则发布新的 patch 版本：
@@ -324,7 +324,7 @@ git push origin stdio-to-sse@0.1.3
 
 ### 8.3 npm Organization
 
-- 首次发布前必须将 `@hermit` scope 注册为 npm organization。
+- 首次发布前必须将 `@hermit-org` scope 注册为 npm organization。
 - scoped 包默认 private，首次发布必须使用 `--access public`。
 
 ---
@@ -334,9 +334,9 @@ git push origin stdio-to-sse@0.1.3
 | 坑点 | 现象 | 解决方案 |
 |---------|---------|-----|
 | 发布前未替换 `workspace:*` | `bun publish` 失败 | 发布前改为具体 semver 版本 |
-| npm org `@hermit` 未创建 | 402 / 权限错误 | 在 npmjs.com 创建 org，或用 `--access public` |
+| npm org `@hermit-org` 未创建 | 402 / 权限错误 | 在 npmjs.com 创建 org，或用 `--access public` |
 | Bun 安装 RN 依赖失败 | peer dependency / postinstall 报错 | 回退 `npm install` 或 `bun install --legacy-peer-deps` |
-| Metro 缓存未清 | `Unable to resolve @hermit/types` | `bun react-native start --reset-cache` |
+| Metro 缓存未清 | `Unable to resolve @hermit-org/types` | `bun react-native start --reset-cache` |
 | 版本提升后未重新生成 bun.lock | 安装不一致 | 每次版本变更后执行 `bun install` |
-| 发布了错误版本 | 生产环境代码错误 | 24h 内 `npm unpublish @hermit/stdio-to-sse@<ver> --force` |
+| 发布了错误版本 | 生产环境代码错误 | 24h 内 `npm unpublish @hermit-org/stdio-to-sse@<ver> --force` |
 | 热修复未打 tag | release 分支混乱 | hotfix 合并后必须打 tag：`git tag <pkg>@<ver>` |

@@ -1,4 +1,4 @@
-# `@hermit/cli`
+# `@hermit-org/cli`
 
 Hermit 的 Bun CLI。管理本地 ACP Agent，将其暴露为 SSE Gateway，并处理移动设备配对。
 
@@ -56,7 +56,7 @@ CLI 会从当前工作目录读取 `hermit.config.json`。
 ## 编程方式使用
 
 ```ts
-import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
   command: "npx",

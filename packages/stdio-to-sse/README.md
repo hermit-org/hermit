@@ -1,4 +1,4 @@
-# `@hermit/stdio-to-sse`
+# `@hermit-org/stdio-to-sse`
 
 [English](./README.md) | [中文](./README.zh-CN.md)
 
@@ -17,7 +17,7 @@ etc. are all treated as opaque byte streams.
 ## Installation
 
 ```bash
-bun add @hermit/stdio-to-sse
+bun add @hermit-org/stdio-to-sse
 ```
 
 > Requires Node.js 18+ or [Bun](https://bun.sh/). The implementation uses
@@ -35,7 +35,7 @@ bun test
 ### Server
 
 ```ts
-import { StdioSseServer } from "@hermit/stdio-to-sse";
+import { StdioSseServer } from "@hermit-org/stdio-to-sse";
 
 const server = new StdioSseServer({
   command: "cat",
@@ -52,7 +52,7 @@ await stop();
 ### Client
 
 ```ts
-import { StdioSseClient } from "@hermit/stdio-to-sse";
+import { StdioSseClient } from "@hermit-org/stdio-to-sse";
 
 const client = new StdioSseClient({ url: "http://localhost:8080" });
 
@@ -66,7 +66,7 @@ for await (const payload of client.send("hello\nworld")) {
 ### End-to-end example
 
 ```ts
-import { StdioSseServer, StdioSseClient } from "@hermit/stdio-to-sse";
+import { StdioSseServer, StdioSseClient } from "@hermit-org/stdio-to-sse";
 
 const server = new StdioSseServer({ command: "cat", port: 8080 });
 const { url, stop } = await server.start();
@@ -116,7 +116,7 @@ class StdioSseClient {
 ### SSE utilities
 
 ```ts
-import { encodeSse, parseSse } from "@hermit/stdio-to-sse";
+import { encodeSse, parseSse } from "@hermit-org/stdio-to-sse";
 
 const frame = encodeSse("hello");
 // => "data: hello\n\n"
@@ -143,7 +143,7 @@ For long-lived agents (ACP / MCP / JSON-RPC sessions), use the CLI's
 separate SSE (`/`) and stdin (`/send`) endpoints:
 
 ```ts
-import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
   command: "npx",

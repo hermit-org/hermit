@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { ConfigOption } from "@hermit/acp";
+import type { ConfigOption } from "@hermit-org/acp";
 
 interface ConfigChipProps {
   option: ConfigOption;

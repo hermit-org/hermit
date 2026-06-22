@@ -14,7 +14,7 @@ bun install
 bunx tsc --noEmit
 
 # 1.3 Update version numbers in affected package.json files
-#     For @hermit/stdio-to-sse, ensure no workspace:* dependencies remain.
+#     For @hermit-org/stdio-to-sse, ensure no workspace:* dependencies remain.
 
 # 1.4 Dry-run npm publish
 bun publish --dry-run
@@ -37,7 +37,7 @@ Hermit uses independent versioning per package.
 
 ### 2.1 Order of Version Updates
 
-If `@hermit/cli` depends on a new version of `@hermit/stdio-to-sse`, update and publish in this order:
+If `@hermit-org/cli` depends on a new version of `@hermit-org/stdio-to-sse`, update and publish in this order:
 
 ```
 stdio-to-sse → cli → server → mobile
@@ -61,7 +61,7 @@ bun install
 
 ---
 
-## 3. npm Publish (`@hermit/stdio-to-sse`)
+## 3. npm Publish (`@hermit-org/stdio-to-sse`)
 
 ### 3.1 Prepare for Publish
 
@@ -73,7 +73,7 @@ grep -R "workspace:\*" packages/stdio-to-sse/package.json
 npm login
 
 # Verify the npm organization exists
-npm org ls @hermit
+npm org ls @hermit-org
 ```
 
 ### 3.2 Publish Steps
@@ -91,7 +91,7 @@ bun publish --access public
 npm publish --access public
 
 # Verify the version is live
-npm view @hermit/stdio-to-sse versions
+npm view @hermit-org/stdio-to-sse versions
 ```
 
 ### 3.3 Tag the Release
@@ -261,7 +261,7 @@ jobs:
 If a wrong version was published within 24 hours:
 
 ```bash
-npm unpublish @hermit/stdio-to-sse@0.1.2 --force
+npm unpublish @hermit-org/stdio-to-sse@0.1.2 --force
 ```
 
 After 24 hours, publish a new patch version instead:
@@ -324,7 +324,7 @@ git push origin stdio-to-sse@0.1.3
 
 ### 8.3 npm Organization
 
-- The `@hermit` scope must be registered as an npm organization before the first publish.
+- The `@hermit-org` scope must be registered as an npm organization before the first publish.
 - First publish must use `--access public` because scoped packages default to private.
 
 ---
@@ -334,9 +334,9 @@ git push origin stdio-to-sse@0.1.3
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
 | `workspace:*` left in published package | `bun publish` fails | Replace with concrete semver version before publish |
-| npm org `@hermit` not created | 402 / permission error | Create org at npmjs.com or use `--access public` |
+| npm org `@hermit-org` not created | 402 / permission error | Create org at npmjs.com or use `--access public` |
 | Bun install RN deps fails | peer dependency / postinstall error | Fallback to `npm install` or `bun install --legacy-peer-deps` |
-| Metro cache stale | `Unable to resolve @hermit/types` | `bun react-native start --reset-cache` |
+| Metro cache stale | `Unable to resolve @hermit-org/types` | `bun react-native start --reset-cache` |
 | Missing `bun.lock` regeneration | Inconsistent installs after version bump | Run `bun install` after every version change |
-| Published wrong version | Wrong code in production | `npm unpublish @hermit/stdio-to-sse@<ver> --force` within 24h |
+| Published wrong version | Wrong code in production | `npm unpublish @hermit-org/stdio-to-sse@<ver> --force` within 24h |
 | Hotfix not tagged | Release branch confusion | Always tag after hotfix merge: `git tag <pkg>@<ver>` |

@@ -6,7 +6,7 @@ import type {
   ToolCallStatusUpdate,
   ToolCallContent,
   ContentBlock,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 
 /** A logical tool call accumulated from `tool_call` + `tool_call_update`. */
 export interface ToolCallState {

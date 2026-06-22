@@ -1,4 +1,4 @@
-import type { StdioTransport } from "@hermit/acp";
+import type { StdioTransport } from "@hermit-org/acp";
 import {
   WebSseConnection,
   type WebSseConnectionOptions,

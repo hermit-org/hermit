@@ -6,7 +6,7 @@ import { MessageComposerPanel } from "@/components/organisms/message-composer-pa
 import { SessionInfoBar } from "@/components/molecules/session-info-bar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/atoms";
-import type { AvailableCommand } from "@hermit/acp";
+import type { AvailableCommand } from "@hermit-org/acp";
 import type { SessionTag, UsageStats } from "@/components/domain";
 
 export interface SessionPageProps {

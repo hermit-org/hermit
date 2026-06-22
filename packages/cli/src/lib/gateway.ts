@@ -1,7 +1,7 @@
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
-import { encodeSse, encodeSseKeepAlive } from "@hermit/stdio-to-sse";
+import { encodeSse, encodeSseKeepAlive } from "@hermit-org/stdio-to-sse";
 
 /**
  * Configuration for `AcpGatewayServer`.

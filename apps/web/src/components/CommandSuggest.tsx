@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { AvailableCommand } from "@hermit/acp";
+import type { AvailableCommand } from "@hermit-org/acp";
 
 interface CommandSuggestProps {
   commands: AvailableCommand[];

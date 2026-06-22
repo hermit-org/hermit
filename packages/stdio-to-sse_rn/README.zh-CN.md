@@ -1,4 +1,4 @@
-# `@hermit/stdio-to-sse_rn`
+# `@hermit-org/stdio-to-sse_rn`
 
 React Native 传输层，将 SSE 端点转换为类似 stdio 的可读流。
 
@@ -9,7 +9,7 @@ EventSource 实现。
 ## 安装
 
 ```bash
-bun add @hermit/stdio-to-sse_rn react-native-sse
+bun add @hermit-org/stdio-to-sse_rn react-native-sse
 ```
 
 ## 使用方式
@@ -19,7 +19,7 @@ bun add @hermit/stdio-to-sse_rn react-native-sse
 底层连接，支持自动重连与心跳看门狗。
 
 ```ts
-import { RnSseConnection } from "@hermit/stdio-to-sse_rn";
+import { RnSseConnection } from "@hermit-org/stdio-to-sse_rn";
 
 const conn = new RnSseConnection({
   url: "http://192.168.1.5:8787",
@@ -49,7 +49,7 @@ for await (const line of conn) {
 适合需要独立 `stdin` / `stdout` 句柄的场景，例如 JSON-RPC 客户端：
 
 ```ts
-import { createStdioLikeSse } from "@hermit/stdio-to-sse_rn";
+import { createStdioLikeSse } from "@hermit-org/stdio-to-sse_rn";
 
 const stdio = createStdioLikeSse({
   url: "http://192.168.1.5:8787",
@@ -69,7 +69,7 @@ await stdio.stdin.write('{"jsonrpc":"2.0","method":"ping"}\n');
 ### 发送一次性 POST 消息
 
 ```ts
-import { sendMessage } from "@hermit/stdio-to-sse_rn";
+import { sendMessage } from "@hermit-org/stdio-to-sse_rn";
 
 await sendMessage({
   url: "http://192.168.1.5:8787/send",
@@ -85,7 +85,7 @@ import {
   extractLines,
   parseJsonRpcMessages,
   encodeJsonRpcMessage,
-} from "@hermit/stdio-to-sse_rn";
+} from "@hermit-org/stdio-to-sse_rn";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();

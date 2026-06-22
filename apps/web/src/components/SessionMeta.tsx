@@ -5,7 +5,7 @@ import type {
   UsageUpdate,
   SessionModeState,
   AvailableCommand,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 
 const PRIORITY_COLOR: Record<string, string> = {
   high: "#ea4335",

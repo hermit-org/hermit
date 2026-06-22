@@ -1,4 +1,4 @@
-# `@hermit/cli`
+# `@hermit-org/cli`
 
 Bun CLI for Hermit. Manages local ACP agents, exposes them as an SSE gateway,
 and handles mobile device pairing.
@@ -57,7 +57,7 @@ When running `start`, the CLI exposes:
 ## Programmatic usage
 
 ```ts
-import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
   command: "npx",

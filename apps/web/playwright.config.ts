@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /**
- * Playwright config for the @hermit/web app.
+ * Playwright config for the @hermit-org/web app.
  *
  * Run from apps/web:
  *   bunx playwright test          # headless

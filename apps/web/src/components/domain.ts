@@ -1,10 +1,10 @@
 /**
  * UI-layer domain types for the ACP client.
  *
- * These extend / re-export the protocol types from `@hermit/acp` with the
+ * These extend / re-export the protocol types from `@hermit-org/acp` with the
  * small amount of view-model state the components need (tags, connection
  * states, accumulated tool-call state, etc.). Keeping them here avoids a
- * circular dependency between `@hermit/acp` and the web UI.
+ * circular dependency between `@hermit-org/acp` and the web UI.
  */
 
 import type {
@@ -19,7 +19,7 @@ import type {
   PermissionOption,
   PlanEntry,
   PlanStatus,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 
 /** Re-exported so components import a single source of truth. */
 export type {

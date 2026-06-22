@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Paperclip, Slash } from "lucide-react";
-import type { AvailableCommand } from "@hermit/acp";
+import type { AvailableCommand } from "@hermit-org/acp";
 import { SendButton, StopButton } from "@/components/atoms";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { Textarea } from "@/components/ui/textarea";

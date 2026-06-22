@@ -23,6 +23,7 @@ jobs:
         with:
           bun-version: latest
           registry-url: "https://registry.npmjs.org"
+          scope: "@hermit-org"
 
       - name: Determine version
         id: version
@@ -49,7 +50,6 @@ jobs:
             "packages/types"
             "packages/utils"
             "packages/stdio-to-sse"
-            "packages/stdio-to-sse_rn"
             "packages/cli"
           )
 
@@ -65,32 +65,31 @@ jobs:
             "
           done
 
-      - name: Publish @hermit/types
+      - name: Configure npm auth
+        run: echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @hermit-org/types
         run: bun publish --access public
         working-directory: packages/types
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @hermit/utils
+      - name: Publish @hermit-org/utils
         run: bun publish --access public
         working-directory: packages/utils
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @hermit/stdio-to-sse
+      - name: Publish @hermit-org/stdio-to-sse
         run: bun publish --access public
         working-directory: packages/stdio-to-sse
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish @hermit/stdio-to-sse_rn
-        run: bun publish --access public
-        working-directory: packages/stdio-to-sse_rn
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish @hermit/cli
+      - name: Publish @hermit-org/cli
         run: bun publish --access public
         working-directory: packages/cli
         env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

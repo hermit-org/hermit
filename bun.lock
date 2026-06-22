@@ -11,13 +11,13 @@
       },
     },
     "apps/mobile": {
-      "name": "@hermit/mobile",
+      "name": "@hermit-org/mobile",
       "version": "0.0.1",
       "dependencies": {
         "@babel/runtime": "^7.25.0",
-        "@hermit/stdio-to-sse_rn": "workspace:*",
-        "@hermit/types": "workspace:*",
-        "@hermit/utils": "workspace:*",
+        "@hermit-org/stdio-to-sse_rn": "workspace:*",
+        "@hermit-org/types": "workspace:*",
+        "@hermit-org/utils": "workspace:*",
         "@react-navigation/native": "^6.1.18",
         "@react-navigation/native-stack": "^6.11.0",
         "i18next": "^23.16.0",
@@ -43,11 +43,11 @@
       },
     },
     "apps/web": {
-      "name": "@hermit/web",
+      "name": "@hermit-org/web",
       "version": "0.0.1",
       "dependencies": {
-        "@hermit/acp": "workspace:*",
-        "@hermit/types": "workspace:*",
+        "@hermit-org/acp": "workspace:*",
+        "@hermit-org/types": "workspace:*",
         "@radix-ui/react-avatar": "^1.2.0",
         "@radix-ui/react-checkbox": "^1.3.5",
         "@radix-ui/react-dialog": "^1.1.17",
@@ -86,22 +86,22 @@
       },
     },
     "packages/acp": {
-      "name": "@hermit/acp",
+      "name": "@hermit-org/acp",
       "version": "0.0.1",
       "dependencies": {
-        "@hermit/types": "workspace:*",
+        "@hermit-org/types": "workspace:*",
       },
     },
     "packages/cli": {
-      "name": "@hermit/cli",
+      "name": "@hermit-org/cli",
       "version": "0.0.1",
       "bin": {
         "hermit": "./src/index.ts",
       },
       "dependencies": {
-        "@hermit/stdio-to-sse": "workspace:*",
-        "@hermit/types": "workspace:*",
-        "@hermit/utils": "workspace:*",
+        "@hermit-org/stdio-to-sse": "workspace:*",
+        "@hermit-org/types": "workspace:*",
+        "@hermit-org/utils": "workspace:*",
         "commander": "^13.0.0",
         "qrcode": "^1.5.4",
       },
@@ -110,11 +110,11 @@
       },
     },
     "packages/stdio-to-sse": {
-      "name": "@hermit/stdio-to-sse",
+      "name": "@hermit-org/stdio-to-sse",
       "version": "0.0.1",
     },
     "packages/stdio-to-sse_rn": {
-      "name": "@hermit/stdio-to-sse_rn",
+      "name": "@hermit-org/stdio-to-sse_rn",
       "version": "0.0.1",
       "devDependencies": {
         "react-native-sse": "^1.0.0",
@@ -124,11 +124,11 @@
       },
     },
     "packages/types": {
-      "name": "@hermit/types",
+      "name": "@hermit-org/types",
       "version": "0.0.1",
     },
     "packages/utils": {
-      "name": "@hermit/utils",
+      "name": "@hermit-org/utils",
       "version": "0.0.1",
     },
   },
@@ -446,21 +446,21 @@
 
     "@hapi/topo": ["@hapi/topo@5.1.0", "", { "dependencies": { "@hapi/hoek": "^9.0.0" } }, "sha512-foQZKJig7Ob0BMAYBfcJk8d77QtOe7Wo4ox7ff1lQYoNNAb6jwcY1ncdoy2e9wQZzvNy7ODZCYJkK8kzmcAnAg=="],
 
-    "@hermit/acp": ["@hermit/acp@workspace:packages/acp"],
+    "@hermit-org/acp": ["@hermit-org/acp@workspace:packages/acp"],
 
-    "@hermit/cli": ["@hermit/cli@workspace:packages/cli"],
+    "@hermit-org/cli": ["@hermit-org/cli@workspace:packages/cli"],
 
-    "@hermit/mobile": ["@hermit/mobile@workspace:apps/mobile"],
+    "@hermit-org/mobile": ["@hermit-org/mobile@workspace:apps/mobile"],
 
-    "@hermit/stdio-to-sse": ["@hermit/stdio-to-sse@workspace:packages/stdio-to-sse"],
+    "@hermit-org/stdio-to-sse": ["@hermit-org/stdio-to-sse@workspace:packages/stdio-to-sse"],
 
-    "@hermit/stdio-to-sse_rn": ["@hermit/stdio-to-sse_rn@workspace:packages/stdio-to-sse_rn"],
+    "@hermit-org/stdio-to-sse_rn": ["@hermit-org/stdio-to-sse_rn@workspace:packages/stdio-to-sse_rn"],
 
-    "@hermit/types": ["@hermit/types@workspace:packages/types"],
+    "@hermit-org/types": ["@hermit-org/types@workspace:packages/types"],
 
-    "@hermit/utils": ["@hermit/utils@workspace:packages/utils"],
+    "@hermit-org/utils": ["@hermit-org/utils@workspace:packages/utils"],
 
-    "@hermit/web": ["@hermit/web@workspace:apps/web"],
+    "@hermit-org/web": ["@hermit-org/web@workspace:apps/web"],
 
     "@isaacs/ttlcache": ["@isaacs/ttlcache@1.4.1", "", {}, "sha512-RQgQ4uQ+pLbqXfOmieB91ejmLwvSgv9nLx6sT6sD83s7umBypgg+OIBOBbEUiJXrfpnp9j0mRhYYdzp9uqq3lA=="],
 

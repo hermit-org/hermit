@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGatewayStore, useSessionStore } from "../stores";
 import { useAcpClient } from "../acp/hooks";
-import type { SessionInfo } from "@hermit/acp";
+import type { SessionInfo } from "@hermit-org/acp";
 
 interface SessionListScreenProps {
   gatewayId: string;

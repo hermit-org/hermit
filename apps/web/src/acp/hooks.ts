@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createAcpClient, type AcpClient } from "@hermit/acp";
-import type { AuthMethod } from "@hermit/acp";
+import { createAcpClient, type AcpClient } from "@hermit-org/acp";
+import type { AuthMethod } from "@hermit-org/acp";
 import { createWebTransport } from "../transport/stdio";
 import type { WebSseEvent } from "../transport/connection";
 import { usePermissionStore } from "../stores";
@@ -83,7 +83,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
       // direct filesystem/terminal access; advertising these client caps
       // would misdirect the agent to route fs/terminal requests through an
       // incapable browser (which can neither resolve absolute paths nor
-      // spawn processes). The `@hermit/acp` library fully supports both —
+      // spawn processes). The `@hermit-org/acp` library fully supports both —
       // native clients that CAN fulfil them should add the handlers here.
       clientCapabilities: {},
       handlers: {

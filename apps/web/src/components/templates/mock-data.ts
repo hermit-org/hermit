@@ -5,7 +5,7 @@
 import type {
   SessionMode,
   ContentBlock,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 import type {
   ConnectionStatus,
   SessionTag,

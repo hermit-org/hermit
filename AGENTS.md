@@ -8,12 +8,12 @@ This file is written for AI coding agents. It describes the actual structure, to
 
 Hermit is a Bun-based monorepo that bridges a local ACP (Agent Client Protocol) agent to a React Native mobile app via Server-Sent Events (SSE).
 
-- `@hermit/types` — shared TypeScript domain types.
-- `@hermit/utils` — shared TypeScript helpers.
-- `@hermit/stdio-to-sse` — Node.js server library that exposes a local stdio ACP agent as an SSE gateway.
-- `@hermit/stdio-to-sse_rn` — React Native transport library that turns an SSE endpoint into a stdio-like readable stream.
-- `@hermit/cli` — Bun CLI that starts the gateway and manages mobile pairing.
-- `@hermit/mobile` — React Native app that connects to gateways, manages sessions, and renders streaming chat.
+- `@hermit-org/types` — shared TypeScript domain types.
+- `@hermit-org/utils` — shared TypeScript helpers.
+- `@hermit-org/stdio-to-sse` — Node.js server library that exposes a local stdio ACP agent as an SSE gateway.
+- `@hermit-org/stdio-to-sse_rn` — React Native transport library that turns an SSE endpoint into a stdio-like readable stream.
+- `@hermit-org/cli` — Bun CLI that starts the gateway and manages mobile pairing.
+- `@hermit-org/mobile` — React Native app that connects to gateways, manages sessions, and renders streaming chat.
 
 The repository uses Bun workspaces with the root `package.json` declaring `apps/*` and `packages/*` as workspaces.
 
@@ -25,7 +25,7 @@ The repository uses Bun workspaces with the root `package.json` declaring `apps/
 - **Workspace model:** Bun workspaces via `workspaces` in root `package.json`.
 - **Language:** TypeScript, with strict mode enabled.
 - **Module system:**
-  - Packages (`@hermit/cli`, `@hermit/types`, `@hermit/utils`, `@hermit/stdio-to-sse`, `@hermit/stdio-to-sse_rn`) are ESM (`"type": "module"`).
+  - Packages (`@hermit-org/cli`, `@hermit-org/types`, `@hermit-org/utils`, `@hermit-org/stdio-to-sse`, `@hermit-org/stdio-to-sse_rn`) are ESM (`"type": "module"`).
   - The React Native app uses CommonJS for its Metro config and entry file (`metro.config.js`, `index.js`).
 - **Mobile framework:** React Native `0.76.0` with React `18.3.1`.
 - **Navigation:** `@react-navigation/native` + `@react-navigation/native-stack`.
@@ -46,7 +46,7 @@ hermit/
 ├── tsconfig.json             # Shared TypeScript config (strict, ESNext, bundler resolution)
 ├── bun.lock                  # Bun lockfile
 ├── apps/
-│   └── mobile/               # React Native app: @hermit/mobile
+│   └── mobile/               # React Native app: @hermit-org/mobile
 │       ├── package.json
 │       ├── tsconfig.json
 │       ├── metro.config.js   # Watches ../../packages for workspace imports
@@ -61,7 +61,7 @@ hermit/
 │           ├── screens/      # ServerList, SessionList, Chat
 │           └── components/   # MarkdownRenderer, CodeBlock, ChatMessage, StreamingText
 └── packages/
-    ├── cli/                  # @hermit/cli — Bun CLI
+    ├── cli/                  # @hermit-org/cli — Bun CLI
     │   ├── package.json
     │   └── src/
     │       ├── index.ts
@@ -92,8 +92,8 @@ hermit/
     │       ├── framing.ts            # UTF-8 safe JSON-RPC line framing
     │       ├── http.ts               # POST helper for gateway /send
     │       └── stdio.ts              # createStdioLikeSse() helper
-    ├── types/                # @hermit/types
-    └── utils/                # @hermit/utils
+    ├── types/                # @hermit-org/types
+    └── utils/                # @hermit-org/utils
 ```
 
 ---
@@ -162,11 +162,11 @@ Metro watches `../../packages`, so all workspace packages resolve directly.
 - **React Native app** uses JSX with `jsx: react-native` and imports shared packages as workspace dependencies (`workspace:*`).
 - **CLI command discovery:** Each command file (or `index.ts` inside a command directory) exports a `command` object that is an instance of `commander.Command`.
 - **Shared package exports:**
-  - `@hermit/types` exports `User`, `Post`.
-  - `@hermit/utils` exports `formatId`, `clamp`.
+  - `@hermit-org/types` exports `User`, `Post`.
+  - `@hermit-org/utils` exports `formatId`, `clamp`.
 - **Environment isolation:**
-  - `@hermit/stdio-to-sse` is Node-only (server, gateway).
-  - `@hermit/stdio-to-sse_rn` is RN/browser-only and must not import Node built-ins.
+  - `@hermit-org/stdio-to-sse` is Node-only (server, gateway).
+  - `@hermit-org/stdio-to-sse_rn` is RN/browser-only and must not import Node built-ins.
 - **File naming:** Source files use lowercase names (`post.ts`, `web.ts`, `index.ts`).
 - **Comments and documentation** are minimal in source files; the project’s working language is English.
 

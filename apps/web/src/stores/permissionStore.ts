@@ -3,7 +3,7 @@ import type {
   RequestPermissionParams,
   RequestPermissionResult,
   ToolCallUpdate,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 
 /**
  * A pending permission request raised by the agent via

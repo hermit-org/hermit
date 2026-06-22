@@ -29,7 +29,7 @@ import type {
   ConfigOption,
   SessionMode,
   PlanEntry,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 import type {
   ConnectionStatus,
   PendingPermission,

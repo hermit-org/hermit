@@ -1,6 +1,6 @@
 # Web E2E tests (Playwright)
 
-End-to-end tests for the **legacy web UI** of `@hermit/web` (`apps/web`) — the
+End-to-end tests for the **legacy web UI** of `@hermit-org/web` (`apps/web`) — the
 `src/screens/` UI served at `/legacy`, which is the web frontend in active use.
 Driven by [Playwright](https://playwright.dev) with Chromium.
 

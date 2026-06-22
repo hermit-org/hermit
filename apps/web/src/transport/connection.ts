@@ -1,7 +1,7 @@
 /**
  * Minimal Server-Sent Events (SSE) frame parser.
  *
- * Inlined from `@hermit/stdio-to-sse` so the web client does not pull in the
+ * Inlined from `@hermit-org/stdio-to-sse` so the web client does not pull in the
  * Node-only `server.ts`/`client.ts` modules (which reference `node:http`,
  * `Buffer`, etc.) during type-checking.
  */
@@ -94,7 +94,7 @@ export interface WebSseConnectionOptions {
  * support headers, to read the persistent SSE stream.
  *
  * The shape intentionally mirrors `RnSseConnection` from
- * `@hermit/stdio-to-sse_rn` so that the ACP client is portable between web and
+ * `@hermit-org/stdio-to-sse_rn` so that the ACP client is portable between web and
  * React Native.
  */
 export class WebSseConnection {

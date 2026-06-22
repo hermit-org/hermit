@@ -32,7 +32,7 @@ import type {
   SessionSetupResult,
   SessionUpdate,
   UsageUpdate,
-} from "@hermit/acp";
+} from "@hermit-org/acp";
 
 import { useAcpClient } from "../acp/hooks";
 import { useGatewayStore } from "../stores/gatewayStore";

@@ -11,14 +11,14 @@ protocol-agnostic.
 
 | Workspace | Path | Description |
 |-----------|------|-------------|
-| `@hermit/types` | `packages/types` | Shared TypeScript domain types |
-| `@hermit/utils` | `packages/utils` | Shared TypeScript utility helpers |
-| `@hermit/stdio-to-sse` | `packages/stdio-to-sse` | Protocol-agnostic stdio ↔ HTTP POST/SSE bridge (Node.js/Bun) |
-| `@hermit/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE transport with stdio-like interface |
-| `@hermit/acp` | `packages/acp` | Agent Client Protocol (ACP) v1 client: typed methods, session/update dispatch |
-| `@hermit/cli` | `packages/cli` | Bun CLI that starts the ACP gateway and manages pairing |
-| `@hermit/mobile` | `apps/mobile` | React Native app: gateway list, sessions, streaming chat |
-| `@hermit/web` | `apps/web` | Vite + React web client: gateway list, sessions, streaming chat |
+| `@hermit-org/types` | `packages/types` | Shared TypeScript domain types |
+| `@hermit-org/utils` | `packages/utils` | Shared TypeScript utility helpers |
+| `@hermit-org/stdio-to-sse` | `packages/stdio-to-sse` | Protocol-agnostic stdio ↔ HTTP POST/SSE bridge (Node.js/Bun) |
+| `@hermit-org/stdio-to-sse_rn` | `packages/stdio-to-sse_rn` | React Native SSE transport with stdio-like interface |
+| `@hermit-org/acp` | `packages/acp` | Agent Client Protocol (ACP) v1 client: typed methods, session/update dispatch |
+| `@hermit-org/cli` | `packages/cli` | Bun CLI that starts the ACP gateway and manages pairing |
+| `@hermit-org/mobile` | `apps/mobile` | React Native app: gateway list, sessions, streaming chat |
+| `@hermit-org/web` | `apps/web` | Vite + React web client: gateway list, sessions, streaming chat |
 
 ## Tech Stack
 
@@ -58,7 +58,7 @@ bun test packages/cli/src/lib/gateway.test.ts
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          CLI Host (Node.js)                         │
 │  ┌─────────────┐      ┌─────────────────────┐      ┌────────────┐  │
-│  │ Local Agent │◄────►│ @hermit/stdio-to-sse│◄────►│  HTTP/SSE  │  │
+│  │ Local Agent │◄────►│ @hermit-org/stdio-to-sse│◄────►│  HTTP/SSE  │  │
 │  │ (stdio)     │stdio │  (transport bridge) │      │  Gateway   │  │
 │  └─────────────┘      └─────────────────────┘      │  :8787     │  │
 └────────────────────────────────────────────────────┼────────────────┘
@@ -68,7 +68,7 @@ bun test packages/cli/src/lib/gateway.test.ts
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     Mobile Device (React Native)                    │
 │  ┌─────────────┐      ┌──────────────────────┐     ┌─────────────┐ │
-│  │  UI Screens │◄────►│   @hermit/mobile     │◄───►│ @hermit/    │ │
+│  │  UI Screens │◄────►│   @hermit-org/mobile     │◄───►│ @hermit-org/    │ │
 │  │ ServerList  │      │   ACP client + UI    │     │ stdio-to-   │ │
 │  │ SessionList │      │                      │     │ sse_rn      │ │
 │  │    Chat     │      │                      │     │             │ │
@@ -152,7 +152,7 @@ Protocol-agnostic stdio ↔ SSE bridge. Two server modes are provided:
 One HTTP POST spawns one child process and returns its stdout as SSE:
 
 ```ts
-import { StdioSseServer, StdioSseClient } from "@hermit/stdio-to-sse";
+import { StdioSseServer, StdioSseClient } from "@hermit-org/stdio-to-sse";
 
 const server = new StdioSseServer({
   command: "cat",
@@ -173,7 +173,7 @@ Used by the CLI. A single child process stays alive; clients read via SSE and
 write via `POST /send`:
 
 ```ts
-import { AcpGatewayServer } from "@hermit/cli/src/lib/gateway";
+import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
   command: "npx",
@@ -193,7 +193,7 @@ import {
   RnSseConnection,
   createStdioLikeSse,
   sendMessage,
-} from "@hermit/stdio-to-sse_rn";
+} from "@hermit-org/stdio-to-sse_rn";
 
 // Low-level connection
 const conn = new RnSseConnection({
