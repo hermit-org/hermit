@@ -5,6 +5,7 @@ import "./src/i18n";
 import { changeAppLanguage } from "./src/i18n";
 import { useSettingsStore } from "./src/stores";
 import { RootNavigator } from "./src/navigation/RootNavigator";
+import { GlobalLoading } from "./src/components/GlobalLoading";
 
 export default function App(): React.JSX.Element {
   const language = useSettingsStore((state) => state.language);
@@ -17,6 +18,7 @@ export default function App(): React.JSX.Element {
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
       <RootNavigator />
+      <GlobalLoading />
     </SafeAreaProvider>
   );
 }

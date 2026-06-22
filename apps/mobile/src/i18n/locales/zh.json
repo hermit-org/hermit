@@ -24,7 +24,10 @@
     "retry": "重试",
     "later": "稍后",
     "connect": "连接",
-    "copy": "复制"
+    "copy": "复制",
+    "loading": "加载中...",
+    "sending": "发送中...",
+    "connecting": "连接中..."
   },
   "serverList": {
     "title": "网关",
@@ -50,6 +53,8 @@
     "reconnect": "重新连接",
     "messagePlaceholder": "输入消息...",
     "send": "发送",
+    "sending": "发送中...",
+    "connectingMessage": "正在连接网关...",
     "errorPrefix": "\n\n错误：{{message}}"
   },
   "qrScanner": {

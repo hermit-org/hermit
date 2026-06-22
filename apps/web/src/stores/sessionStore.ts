@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import type { Session, Message, MessageRole } from "../types";
 import type { ConfigOption } from "@hermit-org/acp";
 
@@ -34,130 +33,130 @@ function generateId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export const useSessionStore = create<SessionState>()(
-  persist(
-    (set, get) => ({
-      sessions: [],
-      messages: [],
-      activeSessionId: null,
+/**
+ * In-memory session store.
+ *
+ * Sessions and messages are NOT persisted to localStorage — the gateway is the
+ * single source of truth. On connect the adapter fetches `session/list` and
+ * rebuilds the sidebar from the agent's records. Message history for the active
+ * session is loaded on demand via `session/load` / `session/resume`.
+ */
+export const useSessionStore = create<SessionState>((set, get) => ({
+  sessions: [],
+  messages: [],
+  activeSessionId: null,
 
-      createSession(gatewayId, title, acpSessionId) {
-        const now = Date.now();
-        const session: Session = {
-          id: generateId("sess"),
-          gatewayId,
-          title: title ?? "New session",
-          createdAt: now,
-          updatedAt: now,
-          ...(acpSessionId ? { acpSessionId } : {}),
-        };
-        set((state) => ({
-          sessions: [session, ...state.sessions],
-          activeSessionId: session.id,
-        }));
-        return session;
-      },
+  createSession(gatewayId, title, acpSessionId) {
+    const now = Date.now();
+    const session: Session = {
+      id: generateId("sess"),
+      gatewayId,
+      title: title ?? "New session",
+      createdAt: now,
+      updatedAt: now,
+      ...(acpSessionId ? { acpSessionId } : {}),
+    };
+    set((state) => ({
+      sessions: [session, ...state.sessions],
+      activeSessionId: session.id,
+    }));
+    return session;
+  },
 
-      deleteSession(id) {
-        set((state) => ({
-          sessions: state.sessions.filter((s) => s.id !== id),
-          messages: state.messages.filter((m) => m.sessionId !== id),
-          activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
-        }));
-      },
+  deleteSession(id) {
+    set((state) => ({
+      sessions: state.sessions.filter((s) => s.id !== id),
+      messages: state.messages.filter((m) => m.sessionId !== id),
+      activeSessionId: state.activeSessionId === id ? null : state.activeSessionId,
+    }));
+  },
 
-      setActiveSession(id) {
-        set({ activeSessionId: id });
-      },
+  setActiveSession(id) {
+    set({ activeSessionId: id });
+  },
 
-      setSessionAcpId(id, acpSessionId) {
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === id ? { ...s, acpSessionId, updatedAt: Date.now() } : s,
-          ),
-        }));
-      },
+  setSessionAcpId(id, acpSessionId) {
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === id ? { ...s, acpSessionId, updatedAt: Date.now() } : s,
+      ),
+    }));
+  },
 
-      setSessionConfig(id, configOptions) {
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === id ? { ...s, configOptions } : s,
-          ),
-        }));
-      },
+  setSessionConfig(id, configOptions) {
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === id ? { ...s, configOptions } : s,
+      ),
+    }));
+  },
 
-      setSessionTitle(id, title) {
-        const trimmed = title.trim();
-        if (!trimmed) return;
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === id ? { ...s, title: trimmed, updatedAt: Date.now() } : s,
-          ),
-        }));
-      },
+  setSessionTitle(id, title) {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === id ? { ...s, title: trimmed, updatedAt: Date.now() } : s,
+      ),
+    }));
+  },
 
-      setSessionClosed(id, closed) {
-        set((state) => ({
-          sessions: state.sessions.map((s) =>
-            s.id === id ? { ...s, closed, updatedAt: Date.now() } : s,
-          ),
-        }));
-      },
+  setSessionClosed(id, closed) {
+    set((state) => ({
+      sessions: state.sessions.map((s) =>
+        s.id === id ? { ...s, closed, updatedAt: Date.now() } : s,
+      ),
+    }));
+  },
 
-      addMessage(sessionId, role, content) {
-        const message: Message = {
-          id: generateId("msg"),
-          sessionId,
-          role,
-          content,
-          createdAt: Date.now(),
-        };
-        set((state) => ({
-          messages: [...state.messages, message],
-          sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, updatedAt: Date.now() } : s,
-          ),
-        }));
-        return message;
-      },
+  addMessage(sessionId, role, content) {
+    const message: Message = {
+      id: generateId("msg"),
+      sessionId,
+      role,
+      content,
+      createdAt: Date.now(),
+    };
+    set((state) => ({
+      messages: [...state.messages, message],
+      sessions: state.sessions.map((s) =>
+        s.id === sessionId ? { ...s, updatedAt: Date.now() } : s,
+      ),
+    }));
+    return message;
+  },
 
-      setMessages(sessionId, history) {
-        const now = Date.now();
-        const rebuilt: Message[] = history.map((m, i) => ({
-          id: generateId("msg"),
-          sessionId,
-          role: m.role,
-          content: m.content,
-          createdAt: now + i,
-        }));
-        set((state) => ({
-          messages: [
-            ...state.messages.filter((m) => m.sessionId !== sessionId),
-            ...rebuilt,
-          ],
-          sessions: state.sessions.map((s) =>
-            s.id === sessionId ? { ...s, updatedAt: now } : s,
-          ),
-        }));
-      },
+  setMessages(sessionId, history) {
+    const now = Date.now();
+    const rebuilt: Message[] = history.map((m, i) => ({
+      id: generateId("msg"),
+      sessionId,
+      role: m.role,
+      content: m.content,
+      createdAt: now + i,
+    }));
+    set((state) => ({
+      messages: [
+        ...state.messages.filter((m) => m.sessionId !== sessionId),
+        ...rebuilt,
+      ],
+      sessions: state.sessions.map((s) =>
+        s.id === sessionId ? { ...s, updatedAt: now } : s,
+      ),
+    }));
+  },
 
-      appendToMessage(messageId, delta) {
-        set((state) => ({
-          messages: state.messages.map((m) =>
-            m.id === messageId ? { ...m, content: m.content + delta } : m,
-          ),
-        }));
-      },
+  appendToMessage(messageId, delta) {
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id === messageId ? { ...m, content: m.content + delta } : m,
+      ),
+    }));
+  },
 
-      getSessionMessages(sessionId) {
-        return get().messages
-          .filter((m) => m.sessionId === sessionId)
-          .sort((a, b) => a.createdAt - b.createdAt);
-      },
-    }),
-    {
-      name: "hermit-sessions",
-      storage: createJSONStorage(() => localStorage),
-    },
-  ),
-);
+  getSessionMessages(sessionId) {
+    return get().messages
+      .filter((m) => m.sessionId === sessionId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+  },
+}));

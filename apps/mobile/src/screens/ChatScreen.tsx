@@ -15,8 +15,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useGatewayStore, useSessionStore } from "../stores";
 import { useAcpClient } from "../acp/hooks";
+import { useLoading } from "../hooks/useLoading";
 import { ChatMessage } from "../components/ChatMessage";
 import { StreamingText } from "../components/StreamingText";
+import { Loading } from "../components/Loading";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { Gateway, JsonRpcMessage, Message } from "../types";
 
@@ -27,6 +29,7 @@ export function ChatScreen(): React.JSX.Element {
   const route = useRoute<ChatRoute>();
   const { sessionId } = route.params;
   const insets = useSafeAreaInsets();
+  const { showLoading, hideLoading, withLoading } = useLoading();
 
   const session = useSessionStore((state: { sessions: Array<{ id: string; gatewayId: string }> }) =>
     state.sessions.find((s) => s.id === sessionId),
@@ -42,6 +45,7 @@ export function ChatScreen(): React.JSX.Element {
 
   const [input, setInput] = useState("");
   const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
 
   const { client, connected, state: connectionState, connect } = useAcpClient({
@@ -49,11 +53,26 @@ export function ChatScreen(): React.JSX.Element {
     autoConnect: true,
   });
 
+  const isConnecting = !connected && !!gateway;
+
   useEffect(() => {
     if (!gateway) {
       Alert.alert(t("chat.gatewayNotFoundTitle"), t("chat.gatewayNotFoundMessage"));
     }
   }, [gateway, t]);
+
+  // Tie the global loading overlay to the connection lifecycle. This picks up
+  // the loading that SessionListScreen started and keeps it visible until the
+  // gateway is reachable. The cleanup also ensures the overlay is hidden when
+  // the screen unmounts.
+  useEffect(() => {
+    if (isConnecting) {
+      showLoading(t("chat.connectingMessage"));
+    }
+    return () => {
+      hideLoading();
+    };
+  }, [isConnecting, showLoading, hideLoading, t]);
 
   useEffect(() => {
     const unsubscribe = client?.onNotification((message: JsonRpcMessage) => {
@@ -70,7 +89,7 @@ export function ChatScreen(): React.JSX.Element {
   }, [client, streamingId, appendToMessage]);
 
   const handleSend = useCallback(async () => {
-    if (!input.trim() || !client || !connected) return;
+    if (!input.trim() || !client || !connected || sending) return;
 
     const userText = input.trim();
     setInput("");
@@ -79,11 +98,14 @@ export function ChatScreen(): React.JSX.Element {
     // Create a placeholder assistant message that will be streamed into.
     const assistantMessage = addMessage(sessionId, "assistant", "");
     setStreamingId(assistantMessage.id);
+    setSending(true);
 
     try {
-      // This example uses a generic `$/prompt` method; replace with the
-      // actual method exposed by your ACP agent.
-      const result = await client.request<string, { content?: string }>("$/prompt", userText);
+      // Show global loading while waiting for the agent's first response.
+      const result = await withLoading(
+        () => client.request<string, { content?: string }>("$/prompt", userText),
+        t("chat.sending"),
+      );
       if (result?.content) {
         appendToMessage(assistantMessage.id, result.content);
       }
@@ -94,8 +116,9 @@ export function ChatScreen(): React.JSX.Element {
       );
     } finally {
       setStreamingId(null);
+      setSending(false);
     }
-  }, [input, client, connected, sessionId, addMessage, appendToMessage, t]);
+  }, [input, client, connected, sending, sessionId, addMessage, appendToMessage, t, withLoading]);
 
   const renderItem = useCallback(
     ({ item }: { item: Message }) => {
@@ -152,11 +175,18 @@ export function ChatScreen(): React.JSX.Element {
           maxLength={4000}
         />
         <TouchableOpacity
-          style={[localStyles.sendButton, (!input.trim() || !connected) && localStyles.sendDisabled]}
+          style={[
+            localStyles.sendButton,
+            (!input.trim() || !connected || sending) && localStyles.sendDisabled,
+          ]}
           onPress={handleSend}
-          disabled={!input.trim() || !connected}
+          disabled={!input.trim() || !connected || sending}
         >
-          <Text style={localStyles.sendButtonText}>{t("chat.send")}</Text>
+          {sending ? (
+            <Loading variant="inline" size="small" color="#fff" />
+          ) : (
+            <Text style={localStyles.sendButtonText}>{t("chat.send")}</Text>
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

@@ -24,7 +24,10 @@
     "retry": "Retry",
     "later": "Later",
     "connect": "Connect",
-    "copy": "Copy"
+    "copy": "Copy",
+    "loading": "Loading...",
+    "sending": "Sending...",
+    "connecting": "Connecting..."
   },
   "serverList": {
     "title": "Gateways",
@@ -50,6 +53,8 @@
     "reconnect": "Reconnect",
     "messagePlaceholder": "Message...",
     "send": "Send",
+    "sending": "Sending...",
+    "connectingMessage": "Connecting to gateway...",
     "errorPrefix": "\n\nError: {{message}}"
   },
   "qrScanner": {

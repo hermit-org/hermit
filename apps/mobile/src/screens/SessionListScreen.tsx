@@ -10,6 +10,7 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NavigationProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useGatewayStore, useSessionStore } from "../stores";
+import { useLoading } from "../hooks/useLoading";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type SessionListRoute = RouteProp<RootStackParamList, "SessionList">;
@@ -20,6 +21,7 @@ export function SessionListScreen(): React.JSX.Element {
   const route = useRoute<SessionListRoute>();
   const navigation = useNavigation<SessionListNavigation>();
   const { gatewayId } = route.params;
+  const { showLoading } = useLoading();
 
   const gateway = useGatewayStore((state: { gateways: Array<{ id: string; name: string }> }) =>
     state.gateways.find((g) => g.id === gatewayId),
@@ -36,6 +38,9 @@ export function SessionListScreen(): React.JSX.Element {
   };
 
   const handleOpenSession = (sessionId: string) => {
+    // Show global loading immediately — it stays visible until ChatScreen
+    // establishes the gateway connection.
+    showLoading(t("common.loading"));
     navigation.navigate("Chat", { sessionId });
   };
 

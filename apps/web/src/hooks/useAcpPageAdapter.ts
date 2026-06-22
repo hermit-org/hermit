@@ -538,41 +538,70 @@ export function useAcpPageAdapter(
     setQueueDepth(0);
   }, [activeSessionId, activeSession?.configOptions]);
 
-  // Auto-create a session when connected to a gateway with no sessions yet.
-  // The legacy flow did this through the SessionListScreen's "New chat"
-  // button; in the single-page new UI we create one automatically so the
-  // user can start chatting immediately instead of seeing an empty canvas.
-  useEffect(() => {
-    if (!gateway || !acp.connected) return;
-    if (gatewaySessions.length > 0) return;
-    const s = createSession(gateway.id, "New chat");
-    setActiveSession(s.id);
-  }, [gateway, acp.connected, gatewaySessions.length, createSession, setActiveSession]);
-
-  // Fetch the agent-side session list when the agent advertises the `list`
-  // capability. These are the authoritative history (matching the legacy
-  // SessionListScreen) and get merged into the sidebar below.
+  // The gateway is the single source of truth for sessions. On connect we
+  // fetch `session/list` (when supported) and populate the in-memory store
+  // from the agent's records. If the agent has no sessions (or does not
+  // support `list`) we fall back to creating one so the user can start
+  // chatting immediately.
   const supportsList =
     acp.client?.initializeResult?.agentCapabilities?.sessionCapabilities?.list !=
     null;
   useEffect(() => {
-    if (!acp.client || !acp.connected || !supportsList) return;
+    if (!gateway || !acp.connected || !acp.client) return;
     let cancelled = false;
-    acp.client
-      .sessionList()
-      .then((res) => {
-        if (!cancelled) setAgentSessions(res.sessions);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled)
-          setSetupError(
-            `session/list failed: ${e instanceof Error ? e.message : String(e)}`,
-          );
-      });
+
+    if (supportsList) {
+      acp.client
+        .sessionList()
+        .then((res) => {
+          if (cancelled) return;
+          setAgentSessions(res.sessions);
+          // Populate the in-memory session store from the agent's list.
+          const store = useSessionStore.getState();
+          for (const info of res.sessions) {
+            const existing = store.sessions.find(
+              (s) => s.acpSessionId === info.sessionId,
+            );
+            if (!existing) {
+              store.createSession(
+                gateway.id,
+                info.title ?? "Agent session",
+                info.sessionId,
+              );
+            }
+          }
+          // If the agent returned an empty list, auto-create one.
+          if (
+            res.sessions.length === 0 &&
+            useSessionStore.getState().sessions.filter(
+              (s) => s.gatewayId === gateway.id,
+            ).length === 0
+          ) {
+            const s = store.createSession(gateway.id, "New chat");
+            store.setActiveSession(s.id);
+          }
+        })
+        .catch((e: unknown) => {
+          if (!cancelled)
+            setSetupError(
+              `session/list failed: ${e instanceof Error ? e.message : String(e)}`,
+            );
+        });
+    } else {
+      // Agent does not advertise `list` — create a fresh session so the
+      // user can start chatting.
+      const store = useSessionStore.getState();
+      const has = store.sessions.some((s) => s.gatewayId === gateway.id);
+      if (!has) {
+        const s = store.createSession(gateway.id, "New chat");
+        store.setActiveSession(s.id);
+      }
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [acp.client, acp.connected, supportsList]);
+  }, [gateway, acp.client, acp.connected, supportsList]);
 
   // ---- actions ---------------------------------------------------------
   // Drain the prompt queue one turn at a time. Each question is sent as a
