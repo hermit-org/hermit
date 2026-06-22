@@ -23,27 +23,32 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install dependencies
+        run: bun install
+
+      - name: Setup Node.js for npm publishing
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+          scope: "@hermit-org"
+
       - name: Determine version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
           else
-            # 从 git tag 提取版本号 (去掉 v 前缀)
             TAG="${{ github.ref_name }}"
             VERSION="${TAG#v}"
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           fi
 
-      - name: Install dependencies
-        run: bun install
-
-      - name: Update package versions
+      - name: Update package versions and resolve workspace deps
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           echo "Updating packages to version $VERSION"
 
-          # 需要发布的所有包 (非 private 的包)
           PACKAGES=(
             "packages/types"
             "packages/utils"
@@ -53,33 +58,45 @@ jobs:
 
           for pkg in "${PACKAGES[@]}"; do
             echo "Setting $pkg version to $VERSION"
-            # 使用 node 更新 package.json 中的 version 字段
             node -e "
               const fs = require('fs');
-              const path = '$pkg/package.json';
-              const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+              const p = '$pkg/package.json';
+              const pkg = JSON.parse(fs.readFileSync(p, 'utf8'));
               pkg.version = '$VERSION';
-              fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+              // 将 workspace:* 解析为实际版本号，npm publish 需要
+              for (const depType of ['dependencies', 'devDependencies', 'peerDependencies']) {
+                if (pkg[depType]) {
+                  for (const [name, version] of Object.entries(pkg[depType])) {
+                    if (typeof version === 'string' && version.startsWith('workspace:')) {
+                      pkg[depType][name] = '^$VERSION';
+                    }
+                  }
+                }
+              }
+              fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + '\n');
             "
           done
 
-      - name: Configure npm auth
-        run: npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Publish @hermit-org/types
-        run: bun publish --access public
+        run: npm publish --access public
         working-directory: packages/types
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/utils
-        run: bun publish --access public
+        run: npm publish --access public
         working-directory: packages/utils
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/stdio-to-sse
-        run: bun publish --access public
+        run: npm publish --access public
         working-directory: packages/stdio-to-sse
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/cli
-        run: bun publish --access public
+        run: npm publish --access public
         working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
