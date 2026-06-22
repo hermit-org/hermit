@@ -1,0 +1,96 @@
+name: Publish Packages to npm
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号 (例如 0.1.0)"
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            # 从 git tag 提取版本号 (去掉 v 前缀)
+            TAG="${{ github.ref_name }}"
+            VERSION="${TAG#v}"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Update package versions
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Updating packages to version $VERSION"
+
+          # 需要发布的所有包 (非 private 的包)
+          PACKAGES=(
+            "packages/types"
+            "packages/utils"
+            "packages/stdio-to-sse"
+            "packages/stdio-to-sse_rn"
+            "packages/cli"
+          )
+
+          for pkg in "${PACKAGES[@]}"; do
+            echo "Setting $pkg version to $VERSION"
+            # 使用 node 更新 package.json 中的 version 字段
+            node -e "
+              const fs = require('fs');
+              const path = '$pkg/package.json';
+              const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
+              pkg.version = '$VERSION';
+              fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+            "
+          done
+
+      - name: Publish @hermit/types
+        run: bun publish --access public
+        working-directory: packages/types
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @hermit/utils
+        run: bun publish --access public
+        working-directory: packages/utils
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @hermit/stdio-to-sse
+        run: bun publish --access public
+        working-directory: packages/stdio-to-sse
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @hermit/stdio-to-sse_rn
+        run: bun publish --access public
+        working-directory: packages/stdio-to-sse_rn
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @hermit/cli
+        run: bun publish --access public
+        working-directory: packages/cli
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
