@@ -22,8 +22,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-          registry-url: "https://registry.npmjs.org"
-          scope: "@hermit-org"
 
       - name: Determine version
         id: version
@@ -66,8 +64,7 @@ jobs:
           done
 
       - name: Configure npm auth
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+        run: npm config set //registry.npmjs.org/:_authToken $NPM_TOKEN
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
