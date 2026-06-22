@@ -66,30 +66,23 @@ jobs:
           done
 
       - name: Configure npm auth
-        run: echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" > ~/.npmrc
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/types
         run: bun publish --access public
         working-directory: packages/types
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/utils
         run: bun publish --access public
         working-directory: packages/utils
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/stdio-to-sse
         run: bun publish --access public
         working-directory: packages/stdio-to-sse
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @hermit-org/cli
         run: bun publish --access public
         working-directory: packages/cli
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
