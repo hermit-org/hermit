@@ -222,7 +222,57 @@
     },
     "terminal": "终端",
     "kind": {
-      "fallback": "工具"
+      "fallback": "工具",
+      "read": "读取",
+      "edit": "编辑",
+      "delete": "删除",
+      "move": "移动",
+      "search": "搜索",
+      "execute": "执行",
+      "think": "思考",
+      "fetch": "获取",
+      "switch_mode": "切换模式",
+      "other": "其他"
+    },
+    "read": {
+      "fileContent": "文件内容"
+    },
+    "edit": {
+      "diff": "差异",
+      "added": "新增",
+      "removed": "移除"
+    },
+    "delete": {
+      "deleted": "已删除",
+      "paths": "路径"
+    },
+    "move": {
+      "from": "从",
+      "to": "到"
+    },
+    "search": {
+      "matches": "匹配项",
+      "noMatches": "无匹配项",
+      "context": "上下文"
+    },
+    "execute": {
+      "command": "命令",
+      "exitCode": "退出码",
+      "output": "输出",
+      "running": "运行中"
+    },
+    "think": {
+      "reasoning": "推理"
+    },
+    "fetch": {
+      "url": "地址",
+      "method": "方法",
+      "status": "状态",
+      "response": "响应"
+    },
+    "switch_mode": {
+      "from": "从",
+      "to": "到"
     }
   },
 

@@ -1,10 +1,8 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { MessagesSquare, BrainCog } from "lucide-react";
-import {
-  MessageBubble,
-  ToolCallCard,
-} from "@/components/molecules";
+import { MessageBubble } from "@/components/molecules";
+import { ToolCallRenderer } from "@/components/tool-calls";
 import {
   ScrollToBottomButton,
   EmptyState,
@@ -184,7 +182,7 @@ export function ChatArea({
                       />
                     ) : item.kind === "tool_call" ? (
                       <div className="px-4 py-1.5">
-                        <ToolCallCard call={item.call} />
+                        <ToolCallRenderer call={item.call} />
                       </div>
                     ) : (
                       <ThoughtBlock

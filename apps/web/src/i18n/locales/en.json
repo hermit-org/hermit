@@ -222,7 +222,57 @@
     },
     "terminal": "terminal",
     "kind": {
-      "fallback": "tool"
+      "fallback": "tool",
+      "read": "read",
+      "edit": "edit",
+      "delete": "delete",
+      "move": "move",
+      "search": "search",
+      "execute": "execute",
+      "think": "think",
+      "fetch": "fetch",
+      "switch_mode": "switch mode",
+      "other": "other"
+    },
+    "read": {
+      "fileContent": "File content"
+    },
+    "edit": {
+      "diff": "Diff",
+      "added": "added",
+      "removed": "removed"
+    },
+    "delete": {
+      "deleted": "Deleted",
+      "paths": "Paths"
+    },
+    "move": {
+      "from": "From",
+      "to": "To"
+    },
+    "search": {
+      "matches": "Matches",
+      "noMatches": "No matches",
+      "context": "Context"
+    },
+    "execute": {
+      "command": "Command",
+      "exitCode": "Exit code",
+      "output": "Output",
+      "running": "Running"
+    },
+    "think": {
+      "reasoning": "Reasoning"
+    },
+    "fetch": {
+      "url": "URL",
+      "method": "Method",
+      "status": "Status",
+      "response": "Response"
+    },
+    "switch_mode": {
+      "from": "From",
+      "to": "To"
     }
   },
 
