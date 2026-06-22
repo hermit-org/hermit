@@ -68,13 +68,28 @@ function mergeConfig(base: HermitConfig, override: HermitConfig): HermitConfig {
 }
 
 /**
- * Load the Hermit configuration from the current working directory, falling
- * back to defaults when the file is absent or invalid.
+ * Expand a leading `~` to the user's home directory.
+ * Handles `~`, `~/path`, and `~user/path` (current user only).
+ */
+function expandTilde(path: string): string {
+  if (path === "~") return homedir();
+  if (path.startsWith("~/")) return join(homedir(), path.slice(2));
+  return path;
+}
+
+/**
+ * Load the Hermit configuration.
+ *
+ * When `configPath` is provided, the file at that exact path is used
+ * (with `~` expanded). Otherwise the default path
+ * `~/.hermit/hermit.config.json` is tried.
+ * Falls back to built-in defaults when the file is absent or invalid.
  */
 export async function loadConfig(
-  cwd: string = process.cwd(),
+  configPath?: string,
 ): Promise<HermitConfig> {
-  const path = join(cwd, CONFIG_FILE_NAME);
+  const defaultPath = join(getHermitDataDir(), CONFIG_FILE_NAME);
+  const path = configPath ? expandTilde(configPath) : defaultPath;
 
   try {
     await access(path);
@@ -90,13 +105,19 @@ export async function loadConfig(
 }
 
 /**
- * Write the configuration back to `hermit.config.json` in the given directory.
+ * Write the configuration back to a `hermit.config.json` file.
+ *
+ * When `configPath` is provided, the file is written at that exact path
+ * (with `~` expanded). Otherwise the default path
+ * `~/.hermit/hermit.config.json` is used, creating the directory if needed.
  */
 export async function saveConfig(
   config: HermitConfig,
-  cwd: string = process.cwd(),
+  configPath?: string,
 ): Promise<void> {
-  const path = join(cwd, CONFIG_FILE_NAME);
+  const defaultPath = join(getHermitDataDir(), CONFIG_FILE_NAME);
+  const path = configPath ? expandTilde(configPath) : defaultPath;
+  await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(config, null, 2)}\n`, "utf-8");
 }
 

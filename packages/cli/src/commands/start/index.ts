@@ -232,8 +232,34 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
   });
 }
 
-async function startAction(options: { web?: string }): Promise<void> {
-  const config = await loadConfig();
+async function startAction(options: {
+  web?: string;
+  config?: string;
+  command?: string;
+  args?: string;
+}): Promise<void> {
+  const config = await loadConfig(options.config);
+
+  // CLI overrides take precedence over config file values.
+  // --command resets the agent: args default to [] unless --args is given.
+  if (options.command) {
+    config.agent = {
+      command: options.command,
+      args: options.args
+        ? options.args
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+    };
+  } else if (options.args) {
+    config.agent = config.agent ?? { command: "" };
+    config.agent.args = options.args
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
   await startServer(config, options.web);
 }
 
@@ -243,5 +269,14 @@ export const command = new Command("start")
     "--web <url>",
     "web client base URL; prints a pre-configured link when set",
     "http://localhost:5180",
+  )
+  .option(
+    "--config <path>",
+    "path to hermit.config.json (default: ~/.hermit/hermit.config.json)",
+  )
+  .option("--command <cmd>", "override agent.command from config")
+  .option(
+    "--args <items>",
+    "override agent.args, comma-separated (e.g. --args '--acp,--model,kimi-k2')",
   )
   .action(startAction);
