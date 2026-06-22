@@ -4,23 +4,15 @@ import { useSyncExternalStore } from "react";
  * All navigable routes in the web app. Pathname → Route is handled by
  * `parseRoute`.
  *
- *   /                                 → gateways (landing / manager)
- *   /gateways                         → gateways (alias)
- *   /g/:gatewayId                     → real chat for a gateway
- *   /showcase                         → design preview (mock data)
- *   /settings                         → settings page
- *   /legacy                           → legacy gateway list
- *   /legacy/g/:gatewayId              → legacy session list
- *   /legacy/g/:gatewayId/s/:sessionId → legacy chat
+ *   /                 → gateways (landing / manager)
+ *   /gateways         → gateways (alias)
+ *   /g/:gatewayId     → real chat for a gateway
+ *   /settings         → settings page
  */
 export type Route =
   | { name: "gateways" }
   | { name: "real"; gatewayId: string }
-  | { name: "showcase" }
   | { name: "settings" }
-  | { name: "legacy-server-list" }
-  | { name: "legacy-session-list"; gatewayId: string }
-  | { name: "legacy-chat"; gatewayId: string; sessionId: string }
   | { name: "not-found"; path: string };
 
 const subscribers = new Set<() => void>();
@@ -51,22 +43,7 @@ export function parseRoute(pathname: string): Route {
   if (parts[0] === "g" && parts[1]) {
     return { name: "real", gatewayId: decode(parts[1]) };
   }
-  if (parts[0] === "showcase") return { name: "showcase" };
   if (parts[0] === "settings") return { name: "settings" };
-  if (parts[0] === "legacy") {
-    if (parts.length === 1) return { name: "legacy-server-list" };
-    if (parts[1] === "g" && parts[2]) {
-      const gatewayId = decode(parts[2]);
-      if (parts[3] === "s" && parts[4]) {
-        return {
-          name: "legacy-chat",
-          gatewayId,
-          sessionId: decode(parts[4]),
-        };
-      }
-      return { name: "legacy-session-list", gatewayId };
-    }
-  }
 
   return { name: "not-found", path: pathname };
 }
@@ -74,19 +51,6 @@ export function parseRoute(pathname: string): Route {
 /** Build a path for a gateway in the new UI. */
 export function realGatewayPath(gatewayId: string): string {
   return `/g/${encodeURIComponent(gatewayId)}`;
-}
-
-/** Build a path for a gateway within the legacy flow. */
-export function legacyGatewayPath(gatewayId: string): string {
-  return `/legacy/g/${encodeURIComponent(gatewayId)}`;
-}
-
-/** Build a path for a session within the legacy flow. */
-export function legacySessionPath(
-  gatewayId: string,
-  sessionId: string,
-): string {
-  return `/legacy/g/${encodeURIComponent(gatewayId)}/s/${encodeURIComponent(sessionId)}`;
 }
 
 // Snapshot cache: parseRoute returns a new object each call, so we must

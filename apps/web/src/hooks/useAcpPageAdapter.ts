@@ -149,7 +149,7 @@ export interface UseAcpPageAdapterResult {
     request: PendingPermission,
     outcome: string | "cancelled",
   ) => void;
-  onAuthenticate: (methodId: string, _apiKey: string) => void;
+  onAuthenticate: (methodId: string) => void;
   onLogout: () => void;
   onReconnect: () => void;
   onDismissError: () => void;

@@ -6,17 +6,11 @@
     "switch": "Switch language (currently {{language}})"
   },
   "layout": {
-    "newUi": "New UI",
     "gateways": "Gateways",
-    "preview": "Preview",
     "settings": "Settings",
-    "legacy": "Legacy",
     "toggleSidebar": "Toggle sidebar",
-    "toggleOrientation": "Toggle orientation",
-    "stacked": "stacked",
-    "sideBySide": "side-by-side",
-    "chat": "Chat",
-    "terminal": "Terminal"
+    "toggleRightPanel": "Toggle right panel",
+    "chat": "Chat"
   },
   "common": {
     "copy": "Copy",
@@ -159,7 +153,6 @@
     "note": "Note"
   },
   "auth": {
-    "required": "Authentication required",
     "signIn": "Sign in",
     "signOut": "Sign out",
     "signedIn": "Signed in",
@@ -172,8 +165,7 @@
     "oauthDescription": "Sign in via OAuth provider",
     "apiKeyPlaceholder": "sk-…",
     "authenticating": "Authenticating…",
-    "authenticated": "Authenticated",
-    "stillBrowse": "You can still browse — sign in to send prompts."
+    "authenticated": "Authenticated"
   },
   "connect": {
     "paste": "Paste connection string",
@@ -233,52 +225,10 @@
       "fallback": "tool"
     }
   },
-  "terminal": {
-    "killProcess": "Kill process",
-    "closeTerminal": "Close terminal",
-    "waitingForOutput": "Waiting for output…",
-    "typeAndEnter": "Type and press Enter to send…",
-    "autoScrollPaused": "Auto-scroll paused — scroll to bottom to resume",
-    "running": "running",
-    "idle": "idle",
-    "exit": "exit",
-    "idLabel": "[terminal {{id}}]"
-  },
-  "mcp": {
-    "servers": "MCP servers",
-    "addServer": "Add server",
-    "addMcpServer": "Add MCP server",
-    "name": "Name",
-    "transport": "Transport",
-    "command": "Command",
-    "arguments": "Arguments (space-separated)",
-    "url": "URL",
-    "namePlaceholder": "my-server",
-    "commandPlaceholder": "npx",
-    "argumentsPlaceholder": "-y @modelcontextprotocol/server-filesystem /tmp",
-    "urlPlaceholder": "https://example.com/mcp",
-    "stdio": "stdio",
-    "http": "http",
-    "sse": "sse",
-    "test": "Test",
-    "testing": "Testing",
-    "edit": "Edit",
-    "delete": "Delete",
-    "enable": "Enable {{name}}",
-    "serverActions": "Server actions",
-    "noServersTitle": "No MCP servers",
-    "noServersDescription": "Add an MCP server to extend the agent's tools.",
-    "state": {
-      "connected": "connected",
-      "disconnected": "disconnected",
-      "connecting": "connecting",
-      "error": "error"
-    }
-  },
+
   "settings": {
     "title": "Settings",
     "back": "Back",
-    "mcpServers": "MCP servers",
     "appearance": "Appearance",
     "shortcuts": "Shortcuts",
     "language": "Language",
@@ -287,15 +237,11 @@
     "themeHint": "Toggle between light and dark mode.",
     "darkMode": "Dark mode",
     "darkModeHint": "Uses the system preference when off.",
-    "fontSize": "Font size",
-    "fontSizeHint": "Base font size for the chat transcript.",
     "keyboardShortcuts": "Keyboard shortcuts",
-    "shortcutsHint": "Customize key bindings for common actions.",
+    "shortcutsHint": "Available keyboard shortcuts.",
     "sendMessage": "Send message",
     "newLine": "New line",
-    "commandPalette": "Command palette",
     "toggleSidebar": "Toggle sidebar",
-    "toggleTerminal": "Toggle terminal",
     "cancelGeneration": "Cancel generation"
   },
   "session": {
@@ -322,29 +268,16 @@
     "sessionActions": "Session actions",
     "closed": "closed"
   },
-  "fileManager": {
-    "files": "Files",
-    "noFilesTitle": "No files",
-    "emptyDirectory": "The working directory is empty.",
-    "noFileSelectedTitle": "No file selected",
-    "selectFile": "Select a file from the tree to preview or edit.",
-    "unsaved": "unsaved",
-    "save": "Save",
-    "refresh": "Refresh",
-    "collapse": "Collapse",
-    "expand": "Expand",
-    "fileActions": "File actions",
-    "edit": "Edit",
-    "download": "Download",
-    "location": "📄 {{path}}"
-  },
+
   "composer": {
     "placeholder": "Message the agent… (Shift+Enter for newline)",
     "attachFile": "Attach file",
     "clearInput": "Clear input",
     "navigateHint": "to navigate",
     "noCommands": "No matching commands",
-    "slashCommands": "Slash commands"
+    "slashCommands": "Slash commands",
+    "authRequired": "Authentication required",
+    "authHint": "You can still browse — sign in to send prompts."
   },
   "statusBar": {
     "generating": "generating",
@@ -367,14 +300,7 @@
     "default": "Mode",
     "sessionMode": "Session mode"
   },
-  "showcase": {
-    "preview": "Preview",
-    "acpClient": "ACP Client",
-    "mainLayout": "Main Layout",
-    "splitLayout": "Split Layout",
-    "settings": "Settings",
-    "atomicDesign": "Atomic Design · Shadcn/ui"
-  },
+
   "config": {
     "closeSession": "Close session"
   }

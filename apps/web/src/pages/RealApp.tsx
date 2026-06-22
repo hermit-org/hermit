@@ -29,8 +29,7 @@ export interface RealAppProps {
 }
 
 /**
- * New UI wired to the real ACP runtime. Render this by default; fall back to
- * the legacy screens via `?legacy` (handled in `App.tsx`).
+ * New UI wired to the real ACP runtime.
  *
  * @example
  * <RealApp />

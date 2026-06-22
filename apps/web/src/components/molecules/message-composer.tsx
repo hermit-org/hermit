@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Paperclip, Slash } from "lucide-react";
+import { LogIn, Paperclip, Slash } from "lucide-react";
 import type { AvailableCommand } from "@hermit-org/acp";
 import { SendButton, StopButton } from "@/components/atoms";
 import { SlashCommandMenu } from "./slash-command-menu";
@@ -29,6 +29,12 @@ export interface MessageComposerProps {
   onAttach?: () => void;
   /** Disable submit (e.g. not connected). */
   disabled?: boolean;
+  /** Whether authentication is required before the user can type. */
+  requireAuth?: boolean;
+  /** Agent-reported auth methods shown on the auth prompt. */
+  authMethods?: { id: string; name: string; description?: string }[];
+  /** Trigger authentication for the given method. */
+  onAuthenticate?: (methodId: string) => void;
   /** Auto-grow the textarea up to this max height (px). */
   maxRows?: number;
   className?: string;
@@ -53,6 +59,9 @@ export function MessageComposer({
   onCommand,
   onAttach,
   disabled,
+  requireAuth,
+  authMethods = [],
+  onAuthenticate,
   maxRows = 8,
   className,
 }: MessageComposerProps): React.JSX.Element {
@@ -156,16 +165,24 @@ export function MessageComposer({
             <Paperclip className="h-4 w-4" />
           </Button>
         ) : null}
-        <Textarea
-          ref={taRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={placeholder}
-          rows={1}
-          disabled={disabled}
-          className="max-h-[220px] min-h-[40px] flex-1 resize-none border-0 bg-transparent p-1.5 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-        />
+        <div className="relative flex-1">
+          <Textarea
+            ref={taRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            rows={1}
+            disabled={disabled || requireAuth}
+            className="max-h-[220px] min-h-[40px] w-full resize-none border-0 bg-transparent p-1.5 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+          {requireAuth ? (
+            <AuthOverlay
+              authMethods={authMethods}
+              onAuthenticate={onAuthenticate}
+            />
+          ) : null}
+        </div>
         {showMenu ? (
           <span className="mb-1 hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
             <Slash className="h-3 w-3" />
@@ -175,9 +192,52 @@ export function MessageComposer({
         {busy ? (
           <StopButton onClick={onCancel} />
         ) : (
-          <SendButton disabled={!value.trim() || disabled} />
+          <SendButton disabled={!value.trim() || disabled || requireAuth} />
         )}
       </form>
+    </div>
+  );
+}
+
+function AuthOverlay({
+  authMethods,
+  onAuthenticate,
+}: {
+  authMethods: { id: string; name: string; description?: string }[];
+  onAuthenticate?: (methodId: string) => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const method = authMethods[0];
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-between gap-2 rounded-2xl bg-card/95 px-3 py-2 backdrop-blur-sm">
+      <div className="flex min-w-0 flex-col">
+        <div className="flex items-center gap-2 text-sm">
+          <LogIn className="h-4 w-4 shrink-0 text-primary" />
+          <span className="font-medium text-foreground">
+            {t("composer.authRequired")}
+          </span>
+          {method ? (
+            <span className="truncate text-muted-foreground">
+              {method.description ?? method.name}
+            </span>
+          ) : null}
+        </div>
+        <span className="truncate text-xs text-muted-foreground">
+          {t("composer.authHint")}
+        </span>
+      </div>
+      {method ? (
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => onAuthenticate?.(method.id)}
+          className="shrink-0"
+        >
+          <LogIn className="mr-1.5 h-3.5 w-3.5" />
+          {method.name}
+        </Button>
+      ) : null}
     </div>
   );
 }

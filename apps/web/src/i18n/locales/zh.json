@@ -6,17 +6,11 @@
     "switch": "切换语言（当前 {{language}}）"
   },
   "layout": {
-    "newUi": "新界面",
     "gateways": "网关",
-    "preview": "预览",
     "settings": "设置",
-    "legacy": "旧版",
     "toggleSidebar": "切换侧边栏",
-    "toggleOrientation": "切换方向",
-    "stacked": "堆叠",
-    "sideBySide": "并排",
-    "chat": "对话",
-    "terminal": "终端"
+    "toggleRightPanel": "切换右侧面板",
+    "chat": "对话"
   },
   "common": {
     "copy": "复制",
@@ -159,7 +153,6 @@
     "note": "备注"
   },
   "auth": {
-    "required": "需要认证",
     "signIn": "登录",
     "signOut": "退出登录",
     "signedIn": "已登录",
@@ -172,8 +165,7 @@
     "oauthDescription": "通过 OAuth 提供商登录",
     "apiKeyPlaceholder": "sk-…",
     "authenticating": "正在认证…",
-    "authenticated": "已认证",
-    "stillBrowse": "仍可浏览界面——登录后即可发送提示。"
+    "authenticated": "已认证"
   },
   "connect": {
     "paste": "粘贴连接字符串",
@@ -233,52 +225,10 @@
       "fallback": "工具"
     }
   },
-  "terminal": {
-    "killProcess": "终止进程",
-    "closeTerminal": "关闭终端",
-    "waitingForOutput": "等待输出…",
-    "typeAndEnter": "输入后按回车发送…",
-    "autoScrollPaused": "自动滚动已暂停——滚动到底部以恢复",
-    "running": "运行中",
-    "idle": "空闲",
-    "exit": "退出码",
-    "idLabel": "[终端 {{id}}]"
-  },
-  "mcp": {
-    "servers": "MCP 服务器",
-    "addServer": "添加服务器",
-    "addMcpServer": "添加 MCP 服务器",
-    "name": "名称",
-    "transport": "传输方式",
-    "command": "命令",
-    "arguments": "参数（空格分隔）",
-    "url": "地址",
-    "namePlaceholder": "my-server",
-    "commandPlaceholder": "npx",
-    "argumentsPlaceholder": "-y @modelcontextprotocol/server-filesystem /tmp",
-    "urlPlaceholder": "https://example.com/mcp",
-    "stdio": "stdio",
-    "http": "http",
-    "sse": "sse",
-    "test": "测试",
-    "testing": "测试中",
-    "edit": "编辑",
-    "delete": "删除",
-    "enable": "启用 {{name}}",
-    "serverActions": "服务器操作",
-    "noServersTitle": "暂无 MCP 服务器",
-    "noServersDescription": "添加 MCP 服务器以扩展智能体的工具。",
-    "state": {
-      "connected": "已连接",
-      "disconnected": "已断开",
-      "connecting": "连接中",
-      "error": "错误"
-    }
-  },
+
   "settings": {
     "title": "设置",
     "back": "返回",
-    "mcpServers": "MCP 服务器",
     "appearance": "外观",
     "shortcuts": "快捷键",
     "language": "语言",
@@ -287,15 +237,11 @@
     "themeHint": "在浅色与深色模式之间切换。",
     "darkMode": "深色模式",
     "darkModeHint": "关闭时跟随系统偏好。",
-    "fontSize": "字体大小",
-    "fontSizeHint": "聊天内容的基础字体大小。",
     "keyboardShortcuts": "键盘快捷键",
-    "shortcutsHint": "自定义常用操作的键位。",
+    "shortcutsHint": "可用的键盘快捷键。",
     "sendMessage": "发送消息",
     "newLine": "换行",
-    "commandPalette": "命令面板",
     "toggleSidebar": "切换侧边栏",
-    "toggleTerminal": "切换终端",
     "cancelGeneration": "取消生成"
   },
   "session": {
@@ -322,29 +268,16 @@
     "sessionActions": "会话操作",
     "closed": "已关闭"
   },
-  "fileManager": {
-    "files": "文件",
-    "noFilesTitle": "暂无文件",
-    "emptyDirectory": "工作目录为空。",
-    "noFileSelectedTitle": "未选择文件",
-    "selectFile": "在文件树中选择一个文件以预览或编辑。",
-    "unsaved": "未保存",
-    "save": "保存",
-    "refresh": "刷新",
-    "collapse": "收起",
-    "expand": "展开",
-    "fileActions": "文件操作",
-    "edit": "编辑",
-    "download": "下载",
-    "location": "📄 {{path}}"
-  },
+
   "composer": {
     "placeholder": "给智能体发送消息…（Shift+Enter 换行）",
     "attachFile": "附加文件",
     "clearInput": "清空输入",
     "navigateHint": "导航",
     "noCommands": "没有匹配的命令",
-    "slashCommands": "斜杠命令"
+    "slashCommands": "斜杠命令",
+    "authRequired": "需要认证",
+    "authHint": "仍可浏览界面——登录后即可发送提示。"
   },
   "statusBar": {
     "generating": "生成中",
@@ -367,14 +300,7 @@
     "default": "模式",
     "sessionMode": "会话模式"
   },
-  "showcase": {
-    "preview": "预览",
-    "acpClient": "ACP 客户端",
-    "mainLayout": "主布局",
-    "splitLayout": "分屏布局",
-    "settings": "设置",
-    "atomicDesign": "Atomic Design · Shadcn/ui"
-  },
+
   "config": {
     "closeSession": "关闭会话"
   }

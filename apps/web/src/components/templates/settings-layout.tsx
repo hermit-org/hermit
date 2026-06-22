@@ -1,11 +1,9 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Server, Palette, Keyboard, ArrowLeft, Languages } from "lucide-react";
-import { MCPConfigPanel } from "@/components/organisms/mcp-config-panel";
+import { Palette, Keyboard, ArrowLeft, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -17,53 +15,33 @@ import {
 import { cn } from "@/lib/utils";
 import { useSettingsStore, type AppLanguage } from "@/stores/settingsStore";
 import { changeAppLanguage } from "@/i18n";
-import { MOCK_MCP_SERVERS } from "./mock-data";
-import type { McpServerConfig, McpServerEntry } from "@/components/domain";
 
 export interface SettingsLayoutProps {
   /** Initial active section. */
   defaultSection?: SettingsSection;
   /** Go back to the previous view. */
   onBack?: () => void;
-  /** MCP servers (defaults to mock data). */
-  servers?: McpServerEntry[];
-  /** Enabled MCP server names. */
-  enabledNames?: Set<string>;
-  /** MCP server lifecycle handlers. */
-  onAddServer?: (config: McpServerConfig) => void;
-  onUpdateServer?: (name: string, config: McpServerConfig) => void;
-  onRemoveServer?: (name: string) => void;
-  onTestServer?: (name: string) => void;
-  onToggleServer?: (name: string, enabled: boolean) => void;
   className?: string;
 }
 
-export type SettingsSection = "mcp" | "appearance" | "shortcuts";
+export type SettingsSection = "appearance" | "shortcuts";
 
-const SECTIONS: { id: SettingsSection; labelKey: string; icon: typeof Server }[] =
+const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] =
   [
-    { id: "mcp", labelKey: "settings.mcpServers", icon: Server },
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
   ];
 
 /**
  * Settings page layout template: a left navigation of sections and a content
- * pane that swaps between MCP config, appearance, and shortcuts.
+ * pane that swaps between appearance and shortcuts.
  *
  * @example
  * <SettingsLayout onBack={goBack} />
  */
 export function SettingsLayout({
-  defaultSection = "mcp",
+  defaultSection = "appearance",
   onBack,
-  servers = MOCK_MCP_SERVERS,
-  enabledNames,
-  onAddServer,
-  onUpdateServer,
-  onRemoveServer,
-  onTestServer,
-  onToggleServer,
   className,
 }: SettingsLayoutProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -110,22 +88,7 @@ export function SettingsLayout({
         </nav>
 
         <div className="min-w-0 flex-1 overflow-auto">
-          {section === "mcp" ? (
-            <MCPConfigPanel
-              servers={servers}
-              enabledNames={enabledNames}
-              onAdd={onAddServer}
-              onUpdate={onUpdateServer}
-              onRemove={onRemoveServer}
-              onTest={onTestServer}
-              onToggleEnabled={onToggleServer}
-              className="h-full"
-            />
-          ) : section === "appearance" ? (
-            <AppearanceSection />
-          ) : (
-            <ShortcutsSection />
-          )}
+          {section === "appearance" ? <AppearanceSection /> : <ShortcutsSection />}
         </div>
       </div>
     </div>
@@ -183,14 +146,6 @@ function AppearanceSection(): React.JSX.Element {
           }}
         />
       </div>
-      <Separator />
-      <div>
-        <h3 className="text-sm font-semibold">{t("settings.fontSize")}</h3>
-        <p className="text-xs text-muted-foreground">
-          {t("settings.fontSizeHint")}
-        </p>
-      </div>
-      <Input type="number" defaultValue={15} min={12} max={20} />
     </div>
   );
 }
@@ -200,9 +155,7 @@ function ShortcutsSection(): React.JSX.Element {
   const shortcuts = [
     { keys: "Enter", actionKey: "settings.sendMessage" },
     { keys: "Shift+Enter", actionKey: "settings.newLine" },
-    { keys: "Ctrl+K", actionKey: "settings.commandPalette" },
     { keys: "Ctrl+B", actionKey: "settings.toggleSidebar" },
-    { keys: "Ctrl+J", actionKey: "settings.toggleTerminal" },
     { keys: "Esc", actionKey: "settings.cancelGeneration" },
   ];
   return (

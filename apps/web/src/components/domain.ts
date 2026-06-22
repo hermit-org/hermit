@@ -13,7 +13,6 @@ import type {
   ToolCallContent,
   ToolCallStatus,
   ToolKind,
-  McpServerConfig,
   SessionMode,
   ContentBlock,
   PermissionOption,
@@ -27,7 +26,6 @@ export type {
   ToolKind,
   ToolCallContent,
   ContentBlock,
-  McpServerConfig,
   SessionMode,
   PermissionOption,
   PlanEntry,
@@ -71,40 +69,6 @@ export interface ToolCallState {
   rawInput?: unknown;
   rawOutput?: unknown;
   locations: { path: string; line?: number }[];
-}
-
-/** A file/directory node in the file tree. */
-export interface FileNode {
-  path: string;
-  name: string;
-  isDirectory: boolean;
-  size?: number;
-  children?: FileNode[];
-}
-
-/** A running terminal session. */
-export interface TerminalSession {
-  id: string;
-  command: string;
-  cwd: string;
-  /** Combined stdout/stderr output lines. */
-  output: string;
-  exitStatus: number | null;
-  running: boolean;
-}
-
-/** Connection state of an MCP server as seen by the UI. */
-export type McpConnectionState =
-  | "connected"
-  | "disconnected"
-  | "connecting"
-  | "error";
-
-/** A configured MCP server with UI-side connection state. */
-export interface McpServerEntry {
-  config: McpServerConfig;
-  state: McpConnectionState;
-  lastError?: string;
 }
 
 /** A pending permission request awaiting a user decision. */

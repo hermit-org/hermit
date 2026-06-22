@@ -20,6 +20,12 @@ export interface MessageComposerPanelProps {
   busy?: boolean;
   /** Disable the composer (e.g. no active session). */
   disabled?: boolean;
+  /** Whether authentication is required before the user can type. */
+  requireAuth?: boolean;
+  /** Agent-reported auth methods shown on the auth prompt. */
+  authMethods?: { id: string; name: string; description?: string }[];
+  /** Trigger authentication for the given method. */
+  onAuthenticate?: (methodId: string) => void;
   /** Available slash commands. */
   commands?: AvailableCommand[];
   /** Attach a file. */
@@ -52,6 +58,9 @@ export function MessageComposerPanel({
   onQuickCommand,
   onClear,
   queueDepth,
+  requireAuth,
+  authMethods,
+  onAuthenticate,
   className,
 }: MessageComposerPanelProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -102,6 +111,9 @@ export function MessageComposerPanel({
             onCancel={onCancel}
             busy={busy}
             disabled={disabled}
+            requireAuth={requireAuth}
+            authMethods={authMethods}
+            onAuthenticate={onAuthenticate}
             commands={commands}
             onCommand={onQuickCommand}
             onAttach={onAttach}

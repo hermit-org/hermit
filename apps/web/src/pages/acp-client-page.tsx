@@ -1,17 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus } from "lucide-react";
-import {
-  MOCK_CHAT_ITEMS,
-  MOCK_COMMANDS,
-  MOCK_CONNECTION,
-  MOCK_MODES,
-  MOCK_PERMISSIONS,
-  MOCK_SESSIONS,
-  MOCK_TAGS,
-  MOCK_TOOL_CALLS,
-  MOCK_USAGE,
-} from "@/components/templates";
 import { ConnectionBar } from "@/components/organisms/connection-bar";
 import { SessionSidebar, type SessionSummary } from "@/components/organisms/session-sidebar";
 import { ChatArea, type ChatItem } from "@/components/organisms/chat-area";
@@ -33,6 +22,7 @@ import type {
 import type {
   ConnectionStatus,
   PendingPermission,
+  SessionTag,
   ToolCallState,
   UsageStats,
   AnsweredPermissionView,
@@ -78,7 +68,7 @@ export interface ACPClientPageProps {
   /** Pending permission requests. */
   permissions?: PendingPermission[];
   /** Known tags. */
-  tags?: typeof MOCK_TAGS;
+  tags?: SessionTag[];
   /** Runtime / setup error to surface (dismissable). */
   error?: string | null;
   /** Dismiss the displayed error. */
@@ -119,43 +109,42 @@ export interface ACPClientPageProps {
   /** Open settings. */
   onOpenSettings?: () => void;
   /** Authenticate. */
-  onAuthenticate?: (methodId: string, apiKey: string) => void;
+  onAuthenticate?: (methodId: string) => void;
   /** Log out. */
   onLogout?: () => void;
 }
 
 /**
  * ACP client main page. Orchestrates global state (connection, auth, sessions,
- * transcript, permissions) and composes the full layout. When props are
- * omitted it falls back to mock data so the UI is immediately previewable.
+ * transcript, permissions) and composes the full layout.
  *
- * Wraps the tree in an ErrorBoundary and shows the LoginPage as a route guard
- * when `requireAuth` is true.
+ * Wraps the tree in an ErrorBoundary and shows an inline auth banner when
+ * `requireAuth` is true.
  *
  * @example
  * <ACPClientPage connectionStatus="connected" sessions={sessions} chatItems={items} onPrompt={send} />
  */
 export function ACPClientPage({
-  connectionStatus = MOCK_CONNECTION,
+  connectionStatus = "disconnected",
   requireAuth,
   protocolVersion = "1",
   agentName,
   capabilities = [],
   authenticated = true,
   canLogout = false,
-  modes = MOCK_MODES,
+  modes = [],
   currentModeId,
   configOptions = [],
-  sessions = MOCK_SESSIONS,
-  activeSessionId = MOCK_SESSIONS[0]?.id,
-  chatItems = MOCK_CHAT_ITEMS,
-  toolCalls = MOCK_TOOL_CALLS,
+  sessions = [],
+  activeSessionId,
+  chatItems = [],
+  toolCalls = [],
   draft = "",
-  commands = MOCK_COMMANDS,
+  commands = [],
   busy = false,
-  usage = MOCK_USAGE,
-  permissions = MOCK_PERMISSIONS,
-  tags = MOCK_TAGS,
+  usage,
+  permissions = [],
+  tags = [],
   error,
   onDismissError,
   onReconnect,
@@ -223,16 +212,6 @@ export function ACPClientPage({
 
           {error ? (
             <ErrorBanner message={error} onDismiss={onDismissError} />
-          ) : null}
-
-          {/* Inline auth banner — mirrors the legacy AuthPanel: it does NOT
-              gate the UI. The chat stays visible and usable; signing in is
-              just an optional action when the agent advertises auth methods. */}
-          {requireAuth ? (
-            <AuthBanner
-              methods={authMethods}
-              onAuthenticate={onAuthenticate}
-            />
           ) : null}
 
           <div className="flex min-h-0 flex-1">
@@ -350,6 +329,9 @@ export function ACPClientPage({
                 onCancel={onCancel}
                 busy={busy}
                 disabled={!activeSessionId}
+                requireAuth={requireAuth}
+                authMethods={authMethods}
+                onAuthenticate={onAuthenticate}
                 commands={commands}
                 queueDepth={queueDepth}
                 onQuickCommand={(cmd) =>
@@ -449,41 +431,6 @@ function ConfigOptionBar({
           {t("config.closeSession")}
         </button>
       ) : null}
-    </div>
-  );
-}
-
-/**
- * Non-blocking inline auth banner, shown when the agent advertises auth
- * methods and the user has not yet authenticated. Mirrors the legacy
- * `AuthPanel`: it does NOT gate the UI — the chat stays visible and usable.
- * Signing in is an optional action (one button per advertised method).
- */
-function AuthBanner({
-  methods,
-  onAuthenticate,
-}: {
-  methods: { id: string; name: string; description?: string }[];
-  onAuthenticate?: (methodId: string, apiKey: string) => void;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">
-      <span className="font-semibold">{t("auth.required")}</span>
-      {methods.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          className="rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
-          title={m.description}
-          onClick={() => onAuthenticate?.(m.id, "")}
-        >
-          {m.name}
-        </button>
-      ))}
-      <span className="text-muted-foreground">
-        {t("auth.stillBrowse")}
-      </span>
     </div>
   );
 }
