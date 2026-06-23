@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { LogIn, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
+import type { AgentCapabilities } from "@hermit-org/acp";
 import {
   ConnectionStatusDot,
   ProtocolBadge,
@@ -20,6 +21,10 @@ export interface ConnectionBarProps {
   status: ConnectionStatus;
   /** Negotiated ACP protocol version. */
   protocolVersion?: string;
+  /** Agent capabilities advertised via `initialize` (drives the protocol panel). */
+  agentCapabilities?: AgentCapabilities;
+  /** Whether the `initialize` handshake completed. */
+  initialized?: boolean;
   /** Agent implementation name (e.g. "Codex"). */
   agentName?: string;
   /** Agent-reported capability badges. */
@@ -53,6 +58,8 @@ export interface ConnectionBarProps {
 export function ConnectionBar({
   status,
   protocolVersion,
+  agentCapabilities,
+  initialized,
   agentName,
   capabilities = [],
   authenticated,
@@ -79,7 +86,11 @@ export function ConnectionBar({
           {agentName ?? t("connection.agentFallback")}
         </span>
       </div>
-      <ProtocolBadge version={protocolVersion} />
+      <ProtocolBadge
+        version={protocolVersion}
+        agentCapabilities={agentCapabilities}
+        initialized={initialized}
+      />
 
       {capabilities.length > 0 ? (
         <div className="hidden items-center gap-1 md:flex">

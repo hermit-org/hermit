@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AcpClient,
+  AgentCapabilities,
   AvailableCommand,
   ConfigOption,
   ContentBlock,
@@ -66,6 +67,34 @@ const EMPTY_TURN: LiveTurn = {
   toolCalls: new Map(),
 };
 
+/** Entries buffered while replaying history via `session/load`. */
+type HistoryBufferEntry =
+  | { kind: "message"; role: "user" | "assistant"; content: string }
+  | { kind: "thought"; content: string };
+
+/** Convert a buffered history entry into a collapsed ChatItem for display. */
+function historyEntryToChatItem(
+  entry: HistoryBufferEntry,
+  index: number,
+  sessionId: string,
+  baseTs: number,
+): ChatItem {
+  if (entry.kind === "thought") {
+    return {
+      kind: "thought",
+      key: `hist_${sessionId}_${index}`,
+      content: entry.content,
+    };
+  }
+  return {
+    kind: "message",
+    key: `hist_${sessionId}_${index}`,
+    role: entry.role,
+    content: entry.content,
+    createdAt: baseTs + index,
+  };
+}
+
 /** Agent-reported session meta that survives across turns. */
 interface SessionMeta {
   modes: SessionModeState | null;
@@ -105,6 +134,10 @@ export interface UseAcpPageAdapterResult {
   connectionStatus: ConnectionStatus;
   requireAuth: boolean;
   protocolVersion: string;
+  /** Agent capabilities advertised via `initialize` (drives the protocol panel). */
+  agentCapabilities?: AgentCapabilities;
+  /** Whether the `initialize` handshake completed. */
+  initialized: boolean;
   agentName: string;
   /** Agent-reported capability badges derived from `initialize`. */
   capabilities: string[];
@@ -122,6 +155,8 @@ export interface UseAcpPageAdapterResult {
   configOptions: ConfigOption[];
   sessions: SessionSummary[];
   activeSessionId: string | null;
+  /** Whether the user is in "new session" composition mode (no session yet). */
+  composingNew: boolean;
   chatItems: ChatItem[];
   toolCalls: ToolCallState[];
   commands: AvailableCommand[];
@@ -218,7 +253,17 @@ export function useAcpPageAdapter(
   const activeSessionIdRef = useRef<string | null>(null);
   useEffect(() => {
     activeSessionIdRef.current = activeSessionId;
+    // Leaving composition mode whenever a real session becomes active covers
+    // session selection and connect-time auto-select without sprinkling resets
+    // across every call site.
+    if (activeSessionId) setComposingNew(false);
   }, [activeSessionId]);
+
+  // "New session" composition mode: the user clicked "new session" but has not
+  // sent the first message yet. No session is created on the agent until the
+  // first prompt is sent (lazy creation). The composer stays enabled in this
+  // mode even though `activeSessionId` is null.
+  const [composingNew, setComposingNew] = useState(false);
 
   // Message history loaded from the agent (session/load). Only the active
   // session's history is held in state for rendering; it is discarded when the
@@ -238,6 +283,13 @@ export function useAcpPageAdapter(
   useEffect(() => {
     archivedRef.current = archivedSessions.archived;
   }, [archivedSessions.archived]);
+  // Mirror the archive mutator too, for the same reason as the open list.
+  const archivedSessionsAddRef = useRef(archivedSessions.add);
+  const archivedSessionsRemoveRef = useRef(archivedSessions.remove);
+  useEffect(() => {
+    archivedSessionsAddRef.current = archivedSessions.add;
+    archivedSessionsRemoveRef.current = archivedSessions.remove;
+  });
 
   // Sessions opened on this client via `session/new` or `session/load`. The
   // open list is persisted (keyed by gateway id) so a page reload keeps
@@ -248,6 +300,18 @@ export function useAcpPageAdapter(
   useEffect(() => {
     openRef.current = openSessions.open;
   }, [openSessions.open]);
+  // Hold the latest mutators in refs so callbacks/effects can call them without
+  // depending on the (unstable) `openSessions` API object. This breaks the
+  // render loop where an effect runs -> mutates `open` -> `openSessions`
+  // identity changes -> the effect re-runs.
+  const openSessionsAddRef = useRef(openSessions.add);
+  const openSessionsRemoveRef = useRef(openSessions.remove);
+  const openSessionsSyncRef = useRef(openSessions.syncWith);
+  useEffect(() => {
+    openSessionsAddRef.current = openSessions.add;
+    openSessionsRemoveRef.current = openSessions.remove;
+    openSessionsSyncRef.current = openSessions.syncWith;
+  });
 
   // Auto-archive threshold from persisted settings. `""` disables it.
   const autoArchiveThreshold = useSettingsStore((s) => s.autoArchiveThreshold);
@@ -268,7 +332,7 @@ export function useAcpPageAdapter(
       const liveIds = sessions.map((s) => s.sessionId);
 
       // State consistency: prune open ids that no longer exist on the agent.
-      openSessions.syncWith(liveIds);
+      openSessionsSyncRef.current(liveIds);
 
       const archived = archivedRef.current;
       const open = openRef.current;
@@ -283,7 +347,7 @@ export function useAcpPageAdapter(
         archived,
       );
       if (toArchive.size > 0) {
-        for (const id of toArchive) archivedSessions.add(id);
+        for (const id of toArchive) archivedSessionsAddRef.current(id);
       }
 
       // Combine the pre-existing archive set with the newly auto-archived ids
@@ -297,14 +361,17 @@ export function useAcpPageAdapter(
       setAllAgentSessions(sessions);
       return visible;
     },
-    [openSessions, archivedSessions],
+    // Intentionally empty: all mutable inputs are read via refs so this
+    // callback is stable and won't retrigger the connect effect in a loop.
+    [],
   );
 
-  // While replaying history via `session/load`, message chunks are diverted
-  // into this buffer instead of the live turn — the agent's record is
-  // authoritative and gets flushed to `historyItems` once the replay completes.
+  // While replaying history via `session/load`, message and thought chunks
+  // are diverted into this buffer instead of the live turn — the agent's
+  // record is authoritative and gets flushed to `historyItems` once the
+  // replay completes.
   const isLoadingHistoryRef = useRef(false);
-  const historyBufferRef = useRef<{ role: "user" | "assistant"; content: string }[]>([]);
+  const historyBufferRef = useRef<HistoryBufferEntry[]>([]);
 
   // Track sessions created via `createNewSession` so the setup effect knows to
   // skip `session/load` (they have no history yet and are already initialised).
@@ -371,10 +438,10 @@ export function useAcpPageAdapter(
           if (isLoadingHistoryRef.current) {
             const buf = historyBufferRef.current;
             const last = buf[buf.length - 1];
-            if (last && last.role === role) {
+            if (last && last.kind === "message" && last.role === role) {
               last.content += text;
             } else {
-              buf.push({ role, content: text });
+              buf.push({ kind: "message", role, content: text });
             }
             break;
           }
@@ -424,6 +491,19 @@ export function useAcpPageAdapter(
         case "agent_thought_chunk": {
           const text = contentToText(update.content);
           if (!text) break;
+          // While replaying history, divert thought chunks into the history
+          // buffer so they end up in `historyItems` with streaming=false
+          // (collapsed by default) rather than stuck in the live turn.
+          if (isLoadingHistoryRef.current) {
+            const buf = historyBufferRef.current;
+            const last = buf[buf.length - 1];
+            if (last && last.kind === "thought") {
+              last.content += text;
+            } else {
+              buf.push({ kind: "thought", content: text });
+            }
+            break;
+          }
           setLiveTurn((prev) => {
             const items = [...prev.items];
             const last = items[items.length - 1];
@@ -546,28 +626,39 @@ export function useAcpPageAdapter(
 
       try {
         if (supportsLoad) {
-          // The agent replays the full conversation history over
-          // session/update. Treat that record as authoritative.
+          // `session/load` should replay the full conversation history over
+          // session/update and return null. Some agents (e.g. Kimi Code CLI)
+          // deviate: they return a SessionSetupResult with configOptions/modes
+          // and do NOT replay history. We handle both cases.
           historyBufferRef.current = [];
           isLoadingHistoryRef.current = true;
+          let loadResult: unknown = null;
           try {
-            await client.sessionLoad({ sessionId: activeSessionId, cwd: "/" });
+            loadResult = await client.sessionLoad({ sessionId: activeSessionId, cwd: "/" });
           } finally {
             isLoadingHistoryRef.current = false;
           }
           if (cancelled) return;
+
+          // If the agent returned a non-null result (non-standard but observed
+          // with some agents), extract configOptions/modes from it.
+          if (loadResult && typeof loadResult === "object") {
+            const r = loadResult as {
+              modes?: import("@hermit-org/acp").SessionModeState;
+              configOptions?: import("@hermit-org/acp").ConfigOption[];
+            };
+            if (r.modes) setMeta((m) => ({ ...m, modes: r.modes ?? null }));
+            if (r.configOptions) setConfigOptions(r.configOptions);
+          }
+
           const replayed = historyBufferRef.current;
           historyBufferRef.current = [];
           if (replayed.length > 0) {
             const now = Date.now();
             setHistoryItems(
-              replayed.map((m, i) => ({
-                kind: "message" as const,
-                key: `hist_${activeSessionId}_${i}`,
-                role: m.role,
-                content: m.content,
-                createdAt: now + i,
-              })),
+              replayed.map((entry, i) =>
+                historyEntryToChatItem(entry, i, activeSessionId, now),
+              ),
             );
           }
         } else if (supportsResume) {
@@ -581,7 +672,7 @@ export function useAcpPageAdapter(
           if (result.configOptions) setConfigOptions(result.configOptions);
         }
         // Whether loaded or resumed, this session is now open on the client.
-        openSessions.add(activeSessionId);
+        openSessionsAddRef.current(activeSessionId);
         const info = client.initializeResult?.agentInfo ?? null;
         if (info) setMeta((m) => ({ ...m, agentName: info.title ?? info.name }));
         setSetupError(null);
@@ -594,7 +685,7 @@ export function useAcpPageAdapter(
     return () => {
       cancelled = true;
     };
-  }, [gateway, acp.client, acp.connected, activeSessionId, openSessions]);
+  }, [gateway, acp.client, acp.connected, activeSessionId]);
 
   const supportsList =
     acp.client?.initializeResult?.agentCapabilities?.sessionCapabilities?.list !=
@@ -611,10 +702,14 @@ export function useAcpPageAdapter(
       const newInfo: SessionInfo = { sessionId: result.sessionId, cwd: "/" };
       setAgentSessions((prev) => [newInfo, ...prev]);
       // Track this session as open on this client.
-      openSessions.add(result.sessionId);
+      openSessionsAddRef.current(result.sessionId);
       // Mark as newly created so the setup effect skips session/load.
       newlyCreatedRef.current.add(result.sessionId);
+      // Eagerly update the ref so an immediately-following `pumpQueue` (lazy
+      // creation path) sees the new session id without waiting for a re-render.
+      activeSessionIdRef.current = result.sessionId;
       setActiveSessionId(result.sessionId);
+      setComposingNew(false);
       if (result.modes)
         setMeta((m) => ({ ...m, modes: result.modes ?? null }));
       if (result.configOptions) setConfigOptions(result.configOptions);
@@ -627,7 +722,7 @@ export function useAcpPageAdapter(
       setSetupError(e instanceof Error ? e.message : String(e));
       return null;
     }
-  }, [openSessions]);
+  }, []);
 
   /**
    * Re-fetch `session/list` from the agent, reconcile archive/open lists,
@@ -670,13 +765,9 @@ export function useAcpPageAdapter(
       historyBufferRef.current = [];
       const now = Date.now();
       setHistoryItems(
-        replayed.map((m, i) => ({
-          kind: "message" as const,
-          key: `hist_${activeSessionId}_${i}`,
-          role: m.role,
-          content: m.content,
-          createdAt: now + i,
-        })),
+        replayed.map((entry, i) =>
+          historyEntryToChatItem(entry, i, activeSessionId, now),
+        ),
       );
     } catch (e) {
       setSetupError(e instanceof Error ? e.message : String(e));
@@ -703,9 +794,9 @@ export function useAcpPageAdapter(
             // Auto-select the first session only if none is active yet.
             setActiveSessionId((prev) => prev ?? visible[0].sessionId);
           } else if (!activeSessionIdRef.current) {
-            // No sessions on the agent — create one so the user can start
-            // chatting immediately.
-            void createNewSession();
+            // No sessions on the agent — enter composition mode so the user can
+            // start typing. A session is created lazily on the first prompt.
+            setComposingNew(true);
           }
         })
         .catch((e: unknown) => {
@@ -715,16 +806,17 @@ export function useAcpPageAdapter(
             );
         });
     } else {
-      // Agent does not advertise `list` — create a fresh session.
+      // Agent does not advertise `list` — enter composition mode so the user
+      // can start typing; a session is created lazily on the first prompt.
       if (!activeSessionIdRef.current) {
-        void createNewSession();
+        setComposingNew(true);
       }
     }
 
     return () => {
       cancelled = true;
     };
-  }, [gateway, acp.client, acp.connected, supportsList, createNewSession, reconcileSessions]);
+  }, [gateway, acp.client, acp.connected, supportsList, reconcileSessions]);
 
   // ---- actions ---------------------------------------------------------
   // Drain the prompt queue one turn at a time. Each question is sent as a
@@ -733,7 +825,11 @@ export function useAcpPageAdapter(
   const pumpQueue = useCallback(async () => {
     if (processingRef.current) return;
     const client = clientRef.current;
-    if (!client || !activeSessionId) return;
+    // Read the session id from the ref (not the closure) so the lazy-creation
+    // path in `onPrompt` — which creates a session and pumps in the same tick —
+    // picks up the freshly-created id.
+    const sessionId = activeSessionIdRef.current;
+    if (!client || !sessionId) return;
     const next = queueRef.current.shift();
     if (next === undefined) return;
 
@@ -756,7 +852,7 @@ export function useAcpPageAdapter(
 
     try {
       const prompt: ContentBlock[] = [{ type: "text", text: next }];
-      await client.sessionPrompt({ sessionId: activeSessionId, prompt });
+      await client.sessionPrompt({ sessionId, prompt });
       // Commit the full live turn into history, preserving the interleaved
       // order of thoughts, tool calls and the assistant message so the
       // thinking content is not lost when the turn completes (consistent
@@ -788,18 +884,27 @@ export function useAcpPageAdapter(
         setBusy(false);
       }
     }
-  }, [activeSessionId]);
+  }, []);
 
   const onPrompt = useCallback(
-    (value: string) => {
+    async (value: string) => {
       const text = value.trim();
-      if (!text || !activeSessionId) return;
+      if (!text) return;
+      // Lazy session creation: when there is no active session (e.g. the user
+      // clicked "new session" and is now sending the first message), create
+      // the session on the agent before queueing the prompt. `createNewSession`
+      // eagerly updates `activeSessionIdRef` so the subsequent `pumpQueue` sees
+      // the new id.
+      if (!activeSessionIdRef.current) {
+        const result = await createNewSession();
+        if (!result) return;
+      }
       setDraft("");
       queueRef.current.push(text);
       setQueueDepth((n) => n + 1);
       void pumpQueue();
     },
-    [activeSessionId, pumpQueue],
+    [createNewSession, pumpQueue],
   );
 
   const onCancel = useCallback(async () => {
@@ -839,8 +944,8 @@ export function useAcpPageAdapter(
       // Session IDs are ACP session IDs directly — no local indirection.
       // If the session is currently archived, un-archive it first so it is
       // visible again before loading.
-      if (archivedSessions.has(id)) {
-        archivedSessions.remove(id);
+      if (archivedRef.current.has(id)) {
+        archivedSessionsRemoveRef.current(id);
         // Compute the post-removal archive set locally — the hook's state
         // update is asynchronous, so `archivedSessions.all()` would lag.
         const archived = new Set(archivedRef.current);
@@ -852,12 +957,30 @@ export function useAcpPageAdapter(
       }
       setActiveSessionId(id);
     },
-    [archivedSessions, allAgentSessions],
+    [allAgentSessions],
   );
 
   const onCreateSession = useCallback(() => {
-    void createNewSession();
-  }, [createNewSession]);
+    // Enter "new session" composition mode. No session is created on the agent
+    // until the first message is sent — the session is created lazily inside
+    // `onPrompt`. This avoids creating empty sessions when the user just wants
+    // to start typing.
+    setComposingNew(true);
+    setActiveSessionId(null);
+    activeSessionIdRef.current = null;
+    // Reset ephemeral view state so the chat area is clean.
+    setHistoryItems([]);
+    setLiveTurn(EMPTY_TURN);
+    setBusy(false);
+    setUsage(undefined);
+    setSetupError(null);
+    setMeta(EMPTY_META);
+    setConfigOptions([]);
+    setPlan([]);
+    queueRef.current = [];
+    setQueueDepth(0);
+    setDraft("");
+  }, []);
 
   const onResolvePermission = useCallback(
     (request: PendingPermission, outcome: string | "cancelled") => {
@@ -927,18 +1050,24 @@ export function useAcpPageAdapter(
       if (!id) return;
       const client = clientRef.current;
       if (!client) return;
-      try {
-        await client.sessionClose({ sessionId: id });
-      } catch (e) {
-        setSetupError(
-          `session/close failed: ${e instanceof Error ? e.message : String(e)}`,
-        );
-        return;
+      const supportsClose =
+        !!client.initializeResult?.agentCapabilities?.sessionCapabilities
+          ?.close;
+      if (supportsClose) {
+        try {
+          await client.sessionClose({ sessionId: id });
+        } catch (e) {
+          setSetupError(
+            `session/close failed: ${e instanceof Error ? e.message : String(e)}`,
+          );
+          return;
+        }
       }
-      // Released on the agent — drop from the open list, but keep visible.
-      openSessions.remove(id);
+      // Released on the agent (or agent doesn't support close) — drop from
+      // the open list, but keep visible.
+      openSessionsRemoveRef.current(id);
     },
-    [openSessions],
+    [],
   );
 
   /**
@@ -953,8 +1082,12 @@ export function useAcpPageAdapter(
       if (!window.confirm("Archive this session?")) return;
 
       const client = clientRef.current;
-      // If this session is open on the client, close it on the agent first.
-      if (openSessions.has(id) && client) {
+      const supportsClose =
+        !!client?.initializeResult?.agentCapabilities?.sessionCapabilities
+          ?.close;
+      // If this session is open on the client, close it on the agent first
+      // (only if the agent supports session/close).
+      if (openRef.current.has(id) && client && supportsClose) {
         try {
           await client.sessionClose({ sessionId: id });
         } catch (e) {
@@ -963,13 +1096,16 @@ export function useAcpPageAdapter(
           );
           return;
         }
-        openSessions.remove(id);
+        openSessionsRemoveRef.current(id);
+      } else if (openRef.current.has(id)) {
+        // Agent doesn't support close — just remove from the open list.
+        openSessionsRemoveRef.current(id);
       }
 
       // Hide from the visible list.
       setAgentSessions((prev) => prev.filter((s) => s.sessionId !== id));
       // Duplicate-archive is a silent no-op in the hook.
-      archivedSessions.add(id);
+      archivedSessionsAddRef.current(id);
 
       // If this was the active session, switch to another visible one.
       if (activeSessionId === id) {
@@ -977,7 +1113,7 @@ export function useAcpPageAdapter(
         setActiveSessionId(remaining[0]?.sessionId ?? null);
       }
     },
-    [activeSessionId, archivedSessions, openSessions, agentSessions],
+    [activeSessionId, agentSessions],
   );
 
   /**
@@ -986,7 +1122,7 @@ export function useAcpPageAdapter(
    */
   const onUnarchiveSession = useCallback(
     (id: string) => {
-      archivedSessions.remove(id);
+      archivedSessionsRemoveRef.current(id);
       // Compute the post-removal archive set locally — the hook's state
       // update is asynchronous, so `archivedSessions.all()` would lag.
       const archived = new Set(archivedRef.current);
@@ -996,7 +1132,7 @@ export function useAcpPageAdapter(
         : allAgentSessions;
       setAgentSessions(visible);
     },
-    [archivedSessions, allAgentSessions],
+    [allAgentSessions],
   );
 
   // Delete a session on the agent (when supported) and remove it from the
@@ -1014,8 +1150,8 @@ export function useAcpPageAdapter(
 
       // Remove from local state.
       setAgentSessions((prev) => prev.filter((s) => s.sessionId !== acpId));
-      archivedSessions.remove(acpId);
-      openSessions.remove(acpId);
+      archivedSessionsRemoveRef.current(acpId);
+      openSessionsRemoveRef.current(acpId);
 
       // If this was the active session, switch to another (or none).
       if (activeSessionId === acpId) {
@@ -1035,7 +1171,7 @@ export function useAcpPageAdapter(
         }
       }
     },
-    [agentSessions, activeSessionId, archivedSessions, openSessions],
+    [agentSessions, activeSessionId],
   );
 
   // ---- map state -> UI props -------------------------------------------
@@ -1163,6 +1299,8 @@ export function useAcpPageAdapter(
     connectionStatus,
     requireAuth,
     protocolVersion,
+    agentCapabilities: acp.client?.initializeResult?.agentCapabilities,
+    initialized: acp.connected,
     agentName,
     capabilities,
     authenticated: acp.authenticated,
@@ -1175,6 +1313,7 @@ export function useAcpPageAdapter(
     archivedSessions: archivedSessionSummaries,
     openSessionIds: openSessions.open,
     activeSessionId,
+    composingNew,
     chatItems,
     toolCalls,
     commands: meta.commands,

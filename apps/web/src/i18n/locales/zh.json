@@ -178,7 +178,23 @@
     "connected": "已连接",
     "error": "连接错误",
     "protocolBadge": "ACP v{{version}}",
-    "agentFallback": "ACP 智能体"
+    "agentFallback": "ACP 智能体",
+    "protocolPanel": {
+      "title": "ACP v{{version}} 协议详情",
+      "status": {
+        "supported": "已支持",
+        "partial": "部分支持",
+        "unsupported": "不支持"
+      },
+      "categories": {
+        "core": "核心协议",
+        "session": "会话生命周期",
+        "interaction": "会话交互",
+        "auth": "认证",
+        "prompt": "提示能力",
+        "mcp": "MCP 集成"
+      }
+    }
   },
   "commands": {
     "title": "可用命令",

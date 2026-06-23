@@ -14,6 +14,7 @@ import { ErrorBoundary } from "./error-boundary";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
 import type {
+  AgentCapabilities,
   AvailableCommand,
   ConfigOption,
   SessionMode,
@@ -35,6 +36,10 @@ export interface ACPClientPageProps {
   requireAuth?: boolean;
   /** Protocol version. */
   protocolVersion?: string;
+  /** Agent capabilities advertised via `initialize` (drives the protocol panel). */
+  agentCapabilities?: AgentCapabilities;
+  /** Whether the `initialize` handshake completed. */
+  initialized?: boolean;
   /** Agent implementation name. */
   agentName?: string;
   /** Agent-reported capability badges. */
@@ -57,6 +62,8 @@ export interface ACPClientPageProps {
   openSessionIds?: Set<string>;
   /** Active session id. */
   activeSessionId?: string;
+  /** Whether the user is in "new session" composition mode (no session yet). */
+  composingNew?: boolean;
   /** Chat transcript items. */
   chatItems?: ChatItem[];
   /** Tool calls for the side panel (defaults to mock data). */
@@ -146,6 +153,8 @@ export function ACPClientPage({
   connectionStatus = "disconnected",
   requireAuth,
   protocolVersion = "1",
+  agentCapabilities,
+  initialized = false,
   agentName,
   capabilities = [],
   authenticated = true,
@@ -157,6 +166,7 @@ export function ACPClientPage({
   archivedSessions = [],
   openSessionIds,
   activeSessionId,
+  composingNew = false,
   chatItems = [],
   toolCalls = [],
   draft = "",
@@ -227,6 +237,8 @@ export function ACPClientPage({
           <ConnectionBar
             status={connectionStatus}
             protocolVersion={protocolVersion}
+            agentCapabilities={agentCapabilities}
+            initialized={initialized}
             agentName={assistantDisplayName}
             capabilities={capabilities}
             authenticated={authenticated}
@@ -391,7 +403,7 @@ export function ACPClientPage({
                 onSubmit={handlePrompt}
                 onCancel={onCancel}
                 busy={busy}
-                disabled={!activeSessionId}
+                disabled={!activeSessionId && !composingNew}
                 requireAuth={requireAuth}
                 authMethods={authMethods}
                 onAuthenticate={onAuthenticate}

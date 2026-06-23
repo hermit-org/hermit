@@ -178,7 +178,23 @@
     "connected": "Connected",
     "error": "Connection error",
     "protocolBadge": "ACP v{{version}}",
-    "agentFallback": "ACP Agent"
+    "agentFallback": "ACP Agent",
+    "protocolPanel": {
+      "title": "ACP v{{version}} Protocol Details",
+      "status": {
+        "supported": "Supported",
+        "partial": "Partial",
+        "unsupported": "Unsupported"
+      },
+      "categories": {
+        "core": "Core Protocol",
+        "session": "Session Lifecycle",
+        "interaction": "Session Interaction",
+        "auth": "Authentication",
+        "prompt": "Prompt Capabilities",
+        "mcp": "MCP Integration"
+      }
+    }
   },
   "commands": {
     "title": "Available commands",
