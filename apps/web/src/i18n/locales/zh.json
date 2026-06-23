@@ -131,7 +131,8 @@
     "emptyDefaultDescription": "发送一条消息开始对话。",
     "ready": "就绪",
     "working": "工作中",
-    "contextTokens": "上下文令牌已用 / 总量"
+    "contextTokens": "上下文令牌已用 / 总量",
+    "refreshSession": "重新加载会话历史"
   },
   "permission": {
     "title": "工具授权",
@@ -307,7 +308,8 @@
     "noSessions": "暂无会话",
     "noMatchingSessions": "无匹配会话",
     "tryDifferentFilter": "尝试其他搜索或筛选条件。",
-    "createSession": "创建一个会话开始对话。"
+    "createSession": "创建一个会话开始对话。",
+    "refresh": "刷新会话列表"
   },
   "sessionItem": {
     "resumeLoad": "恢复 / 加载",

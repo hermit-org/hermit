@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus, RotateCcw, Loader2 } from "lucide-react";
 import { ConnectionBar } from "@/components/organisms/connection-bar";
 import { SessionSidebar, type SessionSummary } from "@/components/organisms/session-sidebar";
 import { ChatArea, type ChatItem } from "@/components/organisms/chat-area";
@@ -112,6 +112,14 @@ export interface ACPClientPageProps {
   onAuthenticate?: (methodId: string) => void;
   /** Log out. */
   onLogout?: () => void;
+  /** Re-fetch the session list from the agent. */
+  onRefreshSessions?: () => void;
+  /** Whether a session-list refresh is in progress. */
+  refreshing?: boolean;
+  /** Reload the active session's authoritative history. */
+  onRefreshSession?: () => void;
+  /** Whether an active-session refresh is in progress. */
+  refreshingSession?: boolean;
 }
 
 /**
@@ -165,6 +173,10 @@ export function ACPClientPage({
   onOpenSettings,
   onAuthenticate,
   onLogout,
+  onRefreshSessions,
+  refreshing = false,
+  onRefreshSession,
+  refreshingSession = false,
 }: ACPClientPageProps): React.JSX.Element {
   const { t } = useTranslation();
   const assistantDisplayName = agentName ?? t("chat.agent");
@@ -232,6 +244,8 @@ export function ACPClientPage({
                   onSelect={onSelectSession}
                   onCreate={onCreateSession}
                   onDelete={onDeleteSession}
+                  onRefresh={onRefreshSessions}
+                  refreshing={refreshing}
                 />
               ) : null}
             </div>
@@ -272,6 +286,28 @@ export function ACPClientPage({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{t("sessionSidebar.newSession")}</TooltipContent>
+                  </Tooltip>
+                ) : null}
+                {onRefreshSession ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        disabled={refreshingSession || !activeSessionId}
+                        aria-label={t("chat.refreshSession")}
+                        onClick={onRefreshSession}
+                      >
+                        {refreshingSession ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("chat.refreshSession")}</TooltipContent>
                   </Tooltip>
                 ) : null}
                 <Tooltip>

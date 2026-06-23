@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCirclePlus, Search, MessageSquarePlus, Filter } from "lucide-react";
+import { MessageCirclePlus, Search, MessageSquarePlus, Filter, RotateCcw, Loader2 } from "lucide-react";
 import { SessionListItem } from "@/components/molecules";
 import { EmptyState } from "@/components/atoms";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,10 @@ export interface SessionSidebarProps {
   onDelete?: (id: string) => void;
   onClose?: (id: string) => void;
   onResume?: (id: string) => void;
+  /** Refresh the session list from the agent. */
+  onRefresh?: () => void;
+  /** Whether a refresh is in progress. */
+  refreshing?: boolean;
   className?: string;
 }
 
@@ -64,6 +68,8 @@ export function SessionSidebar({
   onDelete,
   onClose,
   onResume,
+  onRefresh,
+  refreshing = false,
   className,
 }: SessionSidebarProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -91,7 +97,7 @@ export function SessionSidebar({
         className,
       )}
     >
-      <div className="flex items-center gap-2 border-b border-border p-2">
+      <div className="flex items-center gap-1 border-b border-border p-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -101,6 +107,23 @@ export function SessionSidebar({
             className="h-8 pl-7 text-xs"
           />
         </div>
+        {onRefresh ? (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            disabled={refreshing}
+            aria-label={t("sessionSidebar.refresh")}
+            title={t("sessionSidebar.refresh")}
+            onClick={onRefresh}
+          >
+            {refreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCcw className="h-4 w-4" />
+            )}
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="icon-sm"

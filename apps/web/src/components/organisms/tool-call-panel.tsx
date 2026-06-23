@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Wrench, Filter } from "lucide-react";
-import { ToolCallCard } from "@/components/molecules";
+import { ToolCallRenderer } from "@/components/tool-calls";
 import { EmptyState } from "@/components/atoms";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,6 @@ export interface ToolCallPanelProps {
   calls: ToolCallState[];
   /** Filter by status; undefined shows all. */
   statusFilter?: ToolCallStatus | "all";
-  /** Expand all cards by default. */
-  defaultExpanded?: boolean;
   className?: string;
 }
 
@@ -34,7 +32,6 @@ const STATUS_ORDER: ToolCallStatus[] = [
 export function ToolCallPanel({
   calls,
   statusFilter,
-  defaultExpanded,
   className,
 }: ToolCallPanelProps): React.JSX.Element {
   const { t } = useTranslation();
@@ -106,10 +103,9 @@ export function ToolCallPanel({
             />
           ) : (
             visible.map((call) => (
-              <ToolCallCard
+              <ToolCallRenderer
                 key={call.toolCallId}
                 call={call}
-                defaultCollapsed={!defaultExpanded}
               />
             ))
           )}

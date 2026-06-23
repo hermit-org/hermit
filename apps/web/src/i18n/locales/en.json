@@ -131,7 +131,8 @@
     "emptyDefaultDescription": "Send a message to start the conversation.",
     "ready": "ready",
     "working": "working",
-    "contextTokens": "Context tokens used / size"
+    "contextTokens": "Context tokens used / size",
+    "refreshSession": "Reload session history"
   },
   "permission": {
     "title": "Tool approval",
@@ -307,7 +308,8 @@
     "noSessions": "No sessions yet",
     "noMatchingSessions": "No matching sessions",
     "tryDifferentFilter": "Try a different search or filter.",
-    "createSession": "Create a session to start chatting."
+    "createSession": "Create a session to start chatting.",
+    "refresh": "Refresh sessions"
   },
   "sessionItem": {
     "resumeLoad": "Resume / load",
