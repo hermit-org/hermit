@@ -36,6 +36,7 @@ import type {
 import { useAcpClient } from "../acp/hooks";
 import { useGatewayStore } from "../stores/gatewayStore";
 import { usePermissionStore } from "../stores/permissionStore";
+import { useArchivedSessions } from "./useArchivedSessions";
 import type { Gateway } from "../types";
 
 import type {
@@ -108,6 +109,8 @@ export interface UseAcpPageAdapterResult {
   authenticated: boolean;
   /** Whether the agent supports `logout`. */
   canLogout: boolean;
+  /** Whether the agent supports `session/delete`. */
+  canDeleteSession: boolean;
   /** Negotiated operating modes (may be empty until a session is set up). */
   modes: SessionMode[];
   /** Current operating mode id. */
@@ -141,7 +144,8 @@ export interface UseAcpPageAdapterResult {
   onDraftChange: (value: string) => void;
   onPrompt: (value: string) => void;
   onCancel: () => void;
-  onCloseSession: () => void;
+  /** Archive a session by id (client-side only). */
+  onArchiveSession: (id: string) => void;
   onConfigChange: (optionId: string, value: string) => void;
   onResolvePermission: (
     request: PendingPermission,
@@ -193,16 +197,32 @@ export function useAcpPageAdapter(
   // The active session is identified directly by its ACP session ID. There is
   // no local session store — the agent is the sole source of truth.
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  // Mirror `activeSessionId` into a ref so the connect-time session-list effect
+  // can read the current value without re-running every time the active
+  // session changes (which would reload the list and undo local deletes).
+  const activeSessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
 
   // Message history loaded from the agent (session/load). Only the active
   // session's history is held in state for rendering; it is discarded when the
   // user switches sessions and re-loaded on demand.
   const [historyItems, setHistoryItems] = useState<ChatItem[]>([]);
 
-  // Track sessions that have been closed on the agent side (session/close).
-  const [closedSessions, setClosedSessions] = useState<Set<string>>(
-    () => new Set(),
-  );
+  // Sessions archived on the client side. The archive list is persisted to
+  // localStorage (keyed by gateway id) so archived sessions stay hidden after
+  // a page reload. `session/list` results are filtered against this set before
+  // being rendered.
+  const gatewayId = gateway?.id ?? null;
+  const archivedSessions = useArchivedSessions(gatewayId);
+  // Mirror the archived set into a ref so async callbacks (e.g. the
+  // connect-time session-list effect) always read the latest value without
+  // depending on the archive API object.
+  const archivedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    archivedRef.current = archivedSessions.archived;
+  }, [archivedSessions.archived]);
 
   // While replaying history via `session/load`, message chunks are diverted
   // into this buffer instead of the live turn — the agent's record is
@@ -244,7 +264,6 @@ export function useAcpPageAdapter(
     setActiveSessionId(null);
     setAgentSessions([]);
     setHistoryItems([]);
-    setClosedSessions(new Set());
     setLiveTurn(EMPTY_TURN);
     setBusy(false);
     setUsage(undefined);
@@ -530,14 +549,21 @@ export function useAcpPageAdapter(
     }
   }, []);
 
-  /** Re-fetch `session/list` from the agent. */
+  /** Re-fetch `session/list` from the agent, then drop any sessions that
+   * have been archived on the client side. */
   const refreshSessions = useCallback(async () => {
     const client = clientRef.current;
     if (!client || !supportsList) return;
     setRefreshing(true);
     try {
       const res = await client.sessionList();
-      setAgentSessions(res.sessions);
+      // Filter out archived sessions — the archive list is the client-side
+      // source of truth for what should be visible.
+      const archived = archivedRef.current;
+      const visible = archived.size
+        ? res.sessions.filter((s) => !archived.has(s.sessionId))
+        : res.sessions;
+      setAgentSessions(visible);
     } catch (e) {
       console.error("[ACP adapter] session/list refresh failed:", e);
     } finally {
@@ -592,11 +618,17 @@ export function useAcpPageAdapter(
         .sessionList()
         .then((res) => {
           if (cancelled) return;
-          setAgentSessions(res.sessions);
-          if (res.sessions.length > 0) {
+          // Filter out archived sessions — the archive list is the
+          // client-side source of truth for what should be visible.
+          const archived = archivedRef.current;
+          const visible = archived.size
+            ? res.sessions.filter((s) => !archived.has(s.sessionId))
+            : res.sessions;
+          setAgentSessions(visible);
+          if (visible.length > 0) {
             // Auto-select the first session only if none is active yet.
-            setActiveSessionId((prev) => prev ?? res.sessions[0].sessionId);
-          } else if (!activeSessionId) {
+            setActiveSessionId((prev) => prev ?? visible[0].sessionId);
+          } else if (!activeSessionIdRef.current) {
             // No sessions on the agent — create one so the user can start
             // chatting immediately.
             void createNewSession();
@@ -610,7 +642,7 @@ export function useAcpPageAdapter(
         });
     } else {
       // Agent does not advertise `list` — create a fresh session.
-      if (!activeSessionId) {
+      if (!activeSessionIdRef.current) {
         void createNewSession();
       }
     }
@@ -618,7 +650,7 @@ export function useAcpPageAdapter(
     return () => {
       cancelled = true;
     };
-  }, [gateway, acp.client, acp.connected, supportsList, activeSessionId, createNewSession]);
+  }, [gateway, acp.client, acp.connected, supportsList, createNewSession]);
 
   // ---- actions ---------------------------------------------------------
   // Drain the prompt queue one turn at a time. Each question is sent as a
@@ -776,7 +808,7 @@ export function useAcpPageAdapter(
       try {
         const result = await client.sessionSetConfigOption({
           sessionId: activeSessionId,
-          id: optionId,
+          configId: optionId,
           value,
         });
         if (result.configOption) {
@@ -794,18 +826,23 @@ export function useAcpPageAdapter(
     [activeSessionId, configOptions],
   );
 
-  // Close the agent-side session via `session/close`.
-  const onCloseSession = useCallback(async () => {
-    const client = clientRef.current;
-    if (!client || !activeSessionId) return;
-    if (!window.confirm("Close this session on the agent?")) return;
-    try {
-      await client.sessionClose({ sessionId: activeSessionId });
-      setClosedSessions((prev) => new Set(prev).add(activeSessionId));
-    } catch (e) {
-      setSetupError(e instanceof Error ? e.message : String(e));
-    }
-  }, [activeSessionId]);
+  // Archive a session on the client side. The session stays on the agent; it
+  // is only hidden from the sidebar via the persisted archive list.
+  const onArchiveSession = useCallback(
+    async (id: string) => {
+      if (!id) return;
+      if (!window.confirm("Archive this session?")) return;
+      // Remove from the current view immediately.
+      setAgentSessions((prev) => prev.filter((s) => s.sessionId !== id));
+      archivedSessions.add(id);
+      // If this was the active session, switch to another (or none).
+      if (activeSessionId === id) {
+        const remaining = agentSessions.filter((s) => s.sessionId !== id);
+        setActiveSessionId(remaining[0]?.sessionId ?? null);
+      }
+    },
+    [activeSessionId, archivedSessions, agentSessions],
+  );
 
   // Delete a session on the agent (when supported) and remove it from the
   // local view.
@@ -817,17 +854,12 @@ export function useAcpPageAdapter(
           ?.delete != null;
       const acpId = id; // IDs are ACP session IDs directly.
 
-      if (supportsDelete && client) {
-        if (!window.confirm("Delete this session?")) return;
-      }
+      // Only confirm when the agent will actually be asked to delete.
+      if (supportsDelete && !window.confirm("Delete this session?")) return;
 
       // Remove from local state.
       setAgentSessions((prev) => prev.filter((s) => s.sessionId !== acpId));
-      setClosedSessions((prev) => {
-        const next = new Set(prev);
-        next.delete(acpId);
-        return next;
-      });
+      archivedSessions.remove(acpId);
 
       // If this was the active session, switch to another (or none).
       if (activeSessionId === acpId) {
@@ -835,6 +867,8 @@ export function useAcpPageAdapter(
         setActiveSessionId(remaining[0]?.sessionId ?? null);
       }
 
+      // Only send `session/delete` when the agent advertises support —
+      // otherwise the removal is local-only.
       if (supportsDelete && client) {
         try {
           await client.sessionDelete({ sessionId: acpId });
@@ -845,7 +879,7 @@ export function useAcpPageAdapter(
         }
       }
     },
-    [agentSessions, activeSessionId],
+    [agentSessions, activeSessionId, archivedSessions],
   );
 
   // ---- map state -> UI props -------------------------------------------
@@ -860,10 +894,9 @@ export function useAcpPageAdapter(
           updatedAt: info.updatedAt
             ? new Date(info.updatedAt).getTime()
             : Date.now(),
-          closed: closedSessions.has(info.sessionId),
         }))
         .sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt)),
-    [agentSessions, closedSessions],
+    [agentSessions],
   );
 
   const chatItems: ChatItem[] = useMemo(
@@ -923,6 +956,15 @@ export function useAcpPageAdapter(
 
   const modes = meta.modes?.availableModes ?? [];
 
+  // Whether the agent implements the optional `session/delete` method.
+  // Used to gate the delete action in the UI (hide it when unsupported).
+  const canDeleteSession = useMemo(
+    () =>
+      acp.client?.initializeResult?.agentCapabilities?.sessionCapabilities
+        ?.delete != null,
+    [acp.client?.initializeResult?.agentCapabilities],
+  );
+
   // Surface runtime/setup errors (setupError takes precedence over a raw
   // transport error).
   const error = setupError ?? (acp.error ? acp.error.message : null);
@@ -956,6 +998,7 @@ export function useAcpPageAdapter(
     capabilities,
     authenticated: acp.authenticated,
     canLogout: acp.canLogout,
+    canDeleteSession,
     modes,
     currentModeId: meta.modes?.currentModeId,
     configOptions,
@@ -979,7 +1022,7 @@ export function useAcpPageAdapter(
     onDraftChange,
     onPrompt,
     onCancel,
-    onCloseSession,
+    onArchiveSession,
     onConfigChange,
     onDeleteSession,
     onResolvePermission,

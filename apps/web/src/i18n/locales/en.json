@@ -90,8 +90,6 @@
     "deleteAgentConfirm": "Delete this session on the agent too?",
     "deleteAgentOnly": "Delete agent session?",
     "openAgent": "Open",
-    "close": "Close",
-    "closed": "closed",
     "loadingTitle": "Loading session…",
     "failedTitle": "Failed to load session",
     "newChat": "New chat",
@@ -106,8 +104,6 @@
     "reconnect": "Reconnect",
     "gatewayNotFound": "Gateway not found.",
     "back": "Back",
-    "closeSession": "Close session",
-    "closeSessionConfirm": "Close this session on the agent?",
     "switchMode": "Switch mode",
     "multiMode": "Multi",
     "singleMode": "Single",
@@ -315,10 +311,9 @@
     "resumeLoad": "Resume / load",
     "fork": "Fork",
     "duplicate": "Duplicate",
-    "close": "Close",
+    "archive": "Archive",
     "delete": "Delete",
-    "sessionActions": "Session actions",
-    "closed": "closed"
+    "sessionActions": "Session actions"
   },
 
   "composer": {
@@ -354,6 +349,6 @@
   },
 
   "config": {
-    "closeSession": "Close session"
+    "archiveSession": "Archive session"
   }
 }

@@ -90,8 +90,6 @@
     "deleteAgentConfirm": "是否同时删除 Agent 端的会话？",
     "deleteAgentOnly": "删除 Agent 端会话？",
     "openAgent": "打开",
-    "close": "关闭",
-    "closed": "已关闭",
     "loadingTitle": "正在加载会话…",
     "failedTitle": "加载会话失败",
     "newChat": "新对话",
@@ -106,8 +104,6 @@
     "reconnect": "重新连接",
     "gatewayNotFound": "未找到网关。",
     "back": "返回",
-    "closeSession": "关闭会话",
-    "closeSessionConfirm": "是否在 Agent 端关闭此会话？",
     "switchMode": "切换模式",
     "multiMode": "多问题",
     "singleMode": "单问题",
@@ -315,10 +311,9 @@
     "resumeLoad": "恢复 / 加载",
     "fork": "分叉",
     "duplicate": "复制",
-    "close": "关闭",
+    "archive": "归档",
     "delete": "删除",
-    "sessionActions": "会话操作",
-    "closed": "已关闭"
+    "sessionActions": "会话操作"
   },
 
   "composer": {
@@ -354,6 +349,6 @@
   },
 
   "config": {
-    "closeSession": "关闭会话"
+    "archiveSession": "归档会话"
   }
 }

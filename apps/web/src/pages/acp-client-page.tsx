@@ -97,8 +97,10 @@ export interface ACPClientPageProps {
   onPrompt?: (value: string) => void;
   /** Cancel the current turn. */
   onCancel?: () => void;
-  /** Close the active agent-side session. */
-  onCloseSession?: () => void;
+  /** Archive a session by id (client-side only). */
+  onArchiveSession?: (id: string) => void;
+  /** Whether the agent supports `session/delete`. */
+  canDeleteSession?: boolean;
   /** Change an agent config option. */
   onConfigChange?: (optionId: string, value: string) => void;
   /** Resolve a permission request. */
@@ -167,7 +169,8 @@ export function ACPClientPage({
   onDraftChange,
   onPrompt,
   onCancel,
-  onCloseSession,
+  onArchiveSession,
+  canDeleteSession,
   onConfigChange,
   onResolvePermission,
   onOpenSettings,
@@ -240,10 +243,12 @@ export function ACPClientPage({
                   sessions={sessions}
                   activeId={activeSessionId}
                   availableTags={tags}
-                  canClose
+                  canArchive
+                  canDelete={canDeleteSession}
                   onSelect={onSelectSession}
                   onCreate={onCreateSession}
                   onDelete={onDeleteSession}
+                  onArchive={onArchiveSession}
                   onRefresh={onRefreshSessions}
                   refreshing={refreshing}
                 />
@@ -342,10 +347,14 @@ export function ACPClientPage({
                   }
                 />
               </div>
-              {configOptions.length > 0 || onCloseSession ? (
+              {configOptions.length > 0 || onArchiveSession ? (
                 <ConfigOptionBar
                   options={configOptions}
-                  onClose={onCloseSession}
+                  onArchive={
+                    activeSessionId && onArchiveSession
+                      ? () => onArchiveSession(activeSessionId)
+                      : undefined
+                  }
                   onChange={onConfigChange}
                 />
               ) : null}
@@ -416,16 +425,16 @@ export function ACPClientPage({
  */
 function ConfigOptionBar({
   options,
-  onClose,
+  onArchive,
   onChange,
 }: {
   options: ConfigOption[];
-  onClose?: () => void;
+  onArchive?: () => void;
   onChange?: (optionId: string, value: string) => void;
 }): React.JSX.Element | null {
   const { t } = useTranslation();
   const selectable = options.filter((o) => o.type === "select");
-  if (selectable.length === 0 && !onClose) return null;
+  if (selectable.length === 0 && !onArchive) return null;
   return (
     <div className="flex flex-wrap items-center gap-1.5 border-t border-border bg-muted/30 px-3 py-1.5">
       {selectable.map((opt) => {
@@ -457,14 +466,14 @@ function ConfigOptionBar({
           </label>
         );
       })}
-      {onClose ? (
+      {onArchive ? (
         <button
           type="button"
           className="ml-auto rounded-md border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
-          onClick={onClose}
-          title={t("config.closeSession")}
+          onClick={onArchive}
+          title={t("config.archiveSession")}
         >
-          {t("config.closeSession")}
+          {t("config.archiveSession")}
         </button>
       ) : null}
     </div>

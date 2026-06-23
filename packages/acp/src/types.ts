@@ -265,7 +265,7 @@ export interface SessionCloseParams {
 
 export interface SessionSetConfigOptionParams {
   sessionId: string;
-  id: string;
+  configId: string;
   value: string;
 }
 

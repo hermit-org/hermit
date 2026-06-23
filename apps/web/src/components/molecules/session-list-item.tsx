@@ -5,11 +5,10 @@ import {
   Trash2,
   Copy as CopyIcon,
   GitFork,
-  XCircle,
+  Archive,
   RotateCcw,
 } from "lucide-react";
 import { SessionIcon, ModeBadge, Timestamp } from "@/components/atoms";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { SessionTag } from "@/components/domain";
 import {
@@ -33,14 +32,13 @@ export interface SessionListItemProps {
   tags?: SessionTag[];
   /** Whether this item is the active selection. */
   active?: boolean;
-  /** Whether the agent-side session has been closed. */
-  closed?: boolean;
   /** Whether the session is being resumed/loaded. */
   loading?: boolean;
   /** Capabilities controlling which menu actions are available. */
   canFork?: boolean;
   canResume?: boolean;
-  canClose?: boolean;
+  canArchive?: boolean;
+  canDelete?: boolean;
   /** Select this session. */
   onSelect?: (id: string) => void;
   /** Request a fork of this session. */
@@ -49,8 +47,8 @@ export interface SessionListItemProps {
   onDuplicate?: (id: string) => void;
   /** Delete the session. */
   onDelete?: (id: string) => void;
-  /** Close the agent-side session. */
-  onClose?: (id: string) => void;
+  /** Archive the session (client-side only). */
+  onArchive?: (id: string) => void;
   /** Resume / load the session history. */
   onResume?: (id: string) => void;
   className?: string;
@@ -71,7 +69,7 @@ const TAG_COLOR: Record<string, string> = {
 
 /**
  * Sidebar list item for a session with mode badge, tags, and a kebab menu of
- * lifecycle actions (fork / duplicate / close / resume / delete).
+ * lifecycle actions (fork / duplicate / archive / resume / delete).
  *
  * @example
  * <SessionListItem id="s1" title="Refactor" updatedAt={Date.now()} modeId="code" active onSelect={open} />
@@ -83,16 +81,16 @@ export function SessionListItem({
   modeId,
   tags = [],
   active,
-  closed,
   loading,
   canFork,
   canResume,
-  canClose,
+  canArchive,
+  canDelete,
   onSelect,
   onFork,
   onDuplicate,
   onDelete,
-  onClose,
+  onArchive,
   onResume,
   className,
 }: SessionListItemProps): React.JSX.Element {
@@ -133,7 +131,6 @@ export function SessionListItem({
               title={isTitleTruncated ? title : undefined}
               className={cn(
                 "min-w-0 flex-1 truncate font-medium",
-                closed && "text-muted-foreground line-through",
               )}
             >
               {title}
@@ -146,11 +143,6 @@ export function SessionListItem({
             <Timestamp value={updatedAt} className="text-[11px]" />
             {modeId ? (
               <ModeBadge modeId={modeId} className="scale-90 px-1.5 py-0 text-[10px]" />
-            ) : null}
-            {closed ? (
-              <Badge variant="outline" className="scale-90 px-1.5 py-0 text-[10px] text-muted-foreground">
-                {t("sessionItem.closed")}
-              </Badge>
             ) : null}
           </div>
           {tags.length > 0 ? (
@@ -199,20 +191,24 @@ export function SessionListItem({
             <CopyIcon />
             {t("sessionItem.duplicate")}
           </DropdownMenuItem>
-          {canClose && !closed ? (
-            <DropdownMenuItem onClick={() => onClose?.(id)}>
-              <XCircle />
-              {t("sessionItem.close")}
+          {canArchive ? (
+            <DropdownMenuItem onClick={() => onArchive?.(id)}>
+              <Archive />
+              {t("sessionItem.archive")}
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="text-destructive focus:text-destructive"
-            onClick={() => onDelete?.(id)}
-          >
-            <Trash2 />
-            {t("common.delete")}
-          </DropdownMenuItem>
+          {canDelete ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDelete?.(id)}
+              >
+                <Trash2 />
+                {t("common.delete")}
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
     </li>

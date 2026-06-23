@@ -15,7 +15,6 @@ export interface SessionSummary {
   updatedAt: number | string | Date;
   modeId?: string;
   tags?: SessionTag[];
-  closed?: boolean;
   loading?: boolean;
 }
 
@@ -29,7 +28,8 @@ export interface SessionSidebarProps {
   /** Capabilities forwarded to each SessionListItem. */
   canFork?: boolean;
   canResume?: boolean;
-  canClose?: boolean;
+  canArchive?: boolean;
+  canDelete?: boolean;
   /** Select a session. */
   onSelect?: (id: string) => void;
   /** Create a new session. */
@@ -38,7 +38,7 @@ export interface SessionSidebarProps {
   onFork?: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onClose?: (id: string) => void;
+  onArchive?: (id: string) => void;
   onResume?: (id: string) => void;
   /** Refresh the session list from the agent. */
   onRefresh?: () => void;
@@ -60,13 +60,14 @@ export function SessionSidebar({
   availableTags = [],
   canFork,
   canResume,
-  canClose,
+  canArchive,
+  canDelete,
   onSelect,
   onCreate,
   onFork,
   onDuplicate,
   onDelete,
-  onClose,
+  onArchive,
   onResume,
   onRefresh,
   refreshing = false,
@@ -202,17 +203,17 @@ export function SessionSidebar({
                   updatedAt={s.updatedAt}
                   modeId={s.modeId}
                   tags={s.tags}
-                  closed={s.closed}
                   loading={s.loading}
                   active={s.id === activeId}
                   canFork={canFork}
                   canResume={canResume}
-                  canClose={canClose}
+                  canArchive={canArchive}
+                  canDelete={canDelete}
                   onSelect={onSelect}
                   onFork={onFork}
                   onDuplicate={onDuplicate}
                   onDelete={onDelete}
-                  onClose={onClose}
+                  onArchive={onArchive}
                   onResume={onResume}
                 />
               ))}
