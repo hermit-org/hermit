@@ -651,23 +651,23 @@ export function useAcpPageAdapter(
     try {
       const prompt: ContentBlock[] = [{ type: "text", text: next }];
       await client.sessionPrompt({ sessionId: activeSessionId, prompt });
-      const assistantText = liveTurnRef.current.items
-        .filter(
-          (it): it is Extract<ChatItem, { kind: "message" }> =>
-            it.kind === "message" && it.role === "assistant",
-        )
-        .map((it) => it.content)
-        .join("");
-      if (assistantText) {
+      // Commit the full live turn into history, preserving the interleaved
+      // order of thoughts, tool calls and the assistant message so the
+      // thinking content is not lost when the turn completes (consistent
+      // with how it was displayed live). User-role messages are skipped:
+      // the user's text was already added to history before the prompt was
+      // sent, and some agents echo it back as a user_message_chunk.
+      const committed = liveTurnRef.current.items.filter(
+        (it) => !(it.kind === "message" && it.role === "user"),
+      );
+      if (committed.length > 0) {
         setHistoryItems((prev) => [
           ...prev,
-          {
-            kind: "message",
-            key: `a_${Date.now()}`,
-            role: "assistant",
-            content: assistantText,
-            createdAt: Date.now(),
-          },
+          ...committed.map((it) =>
+            it.kind === "message" || it.kind === "thought"
+              ? { ...it, streaming: false }
+              : it,
+          ),
         ]);
       }
       setLiveTurn({ items: [], toolCalls: new Map() });
