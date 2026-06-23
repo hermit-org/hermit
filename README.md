@@ -7,6 +7,19 @@ Native mobile app via Server-Sent Events (SSE). It is designed around the ACP
 (Agent Client Protocol) remote/gateway scenario, but the transport layers remain
 protocol-agnostic.
 
+## Supported Agents
+
+Hermit works with any local stdio-based agent that implements the
+[Agent Client Protocol](https://agentclientprotocol.com/). Tested and supported
+agents include:
+
+- [Kimi Code](https://www.kimi.com/code)
+- [GitHub Copilot CLI](https://github.com/features/copilot/cli/)
+- [Kilo](https://kilo.ai/)
+
+For a full list of ACP-compatible agents, see
+[agentclientprotocol.com/get-started/agents](https://agentclientprotocol.com/get-started/agents).
+
 ## Packages & Apps
 
 | Workspace | Path | Description |
