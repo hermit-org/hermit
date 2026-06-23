@@ -7,7 +7,6 @@ import {
   ProtocolBadge,
 } from "@/components/atoms";
 import { ModeSelector } from "@/components/molecules";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -91,20 +90,6 @@ export function ConnectionBar({
         agentCapabilities={agentCapabilities}
         initialized={initialized}
       />
-
-      {capabilities.length > 0 ? (
-        <div className="hidden items-center gap-1 md:flex">
-          {capabilities.slice(0, 4).map((cap) => (
-            <Badge
-              key={cap}
-              variant="outline"
-              className="px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
-            >
-              {cap}
-            </Badge>
-          ))}
-        </div>
-      ) : null}
 
       <div className="ml-auto flex items-center gap-2">
         {onReconnect && (status === "disconnected" || status === "error") ? (

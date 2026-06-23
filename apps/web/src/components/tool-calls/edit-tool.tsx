@@ -36,8 +36,32 @@ function collectDiffs(call: ToolCallState): {
   }
 
   const input = asObject(call.rawInput);
-  const inOld = firstString(input, "oldText", "old_text", "old");
-  const inNew = firstString(input, "newText", "new_text", "new");
+  // Common field-name variants across agents:
+  // - `oldText`/`newText`        — Zed, ACP examples
+  // - `old_string`/`new_string`  — Claude str_replace_editor
+  // - `old_str`/`new_str`        — short-form variants
+  // - `oldString`/`newString`    — camelCase variants
+  // - `search`/`replace`        — search-and-replace style
+  // - `find`/`replace`          — find-and-replace style
+  const inOld = firstString(
+    input,
+    "oldText",
+    "old_string",
+    "old_str",
+    "oldString",
+    "search",
+    "find",
+    "old",
+  );
+  const inNew = firstString(
+    input,
+    "newText",
+    "new_string",
+    "new_str",
+    "newString",
+    "replace",
+    "new",
+  );
   const inPath =
     firstString(input, "path", "file", "file_path") ?? call.locations[0]?.path;
   if (inNew !== undefined && diffs.length === 0) {

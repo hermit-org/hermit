@@ -1,7 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { ToolStatusIcon } from "@/components/atoms";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
 import { getKindMeta } from "./meta";
@@ -53,7 +52,7 @@ export function ToolCallShell({
   const isCollapsed = isControlled ? collapsed : internal;
 
   const meta = getKindMeta(call.kind);
-  const { Icon, tone, labelKey } = meta;
+  const { Icon, tone } = meta;
 
   const canToggle = hasBody;
   const toggle = React.useCallback(() => {
@@ -100,14 +99,7 @@ export function ToolCallShell({
         {iconSlot ?? (
           <Icon className={cn("h-4 w-4 shrink-0", tone)} aria-hidden />
         )}
-        {badge ?? (
-          <Badge
-            variant="outline"
-            className="px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide"
-          >
-            {t(`tool.kind.${labelKey}` as const)}
-          </Badge>
-        )}
+        {badge}
         <span className="min-w-0 flex-1 truncate text-sm font-medium">
           {call.title ?? call.toolCallId}
         </span>

@@ -3,14 +3,15 @@ import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "./i18n";
 import { useGatewayStore, useSettingsStore } from "./stores";
 import { readConfigFromUrl } from "./config";
-import { GatewayManager, RealApp, SettingsPage } from "./pages";
+import { GatewayRegistration, RealApp, SettingsPage } from "./pages";
 import type { Gateway } from "./types";
 import { navigate, useRoute, realGatewayPath, type Route } from "./router";
 
 /**
  * Root component. Routing is path-based (see `src/router.ts`):
  *
- *   /                 → GatewayManager (landing)
+ *   /                 → smart landing (registration when no gateways,
+ *                       otherwise redirects to the active gateway's chat)
  *   /g/:gatewayId     → RealApp chat for a gateway
  *   /settings         → settings page
  *
@@ -20,6 +21,7 @@ import { navigate, useRoute, realGatewayPath, type Route } from "./router";
 export default function App(): React.JSX.Element {
   const { t } = useTranslation();
   const gateways = useGatewayStore((s) => s.gateways);
+  const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
   const { language } = useSettingsStore();
 
   useEffect(() => {
@@ -50,6 +52,16 @@ export default function App(): React.JSX.Element {
 
   const route = useRoute();
 
+  // Smart landing: when on `/` with configured gateways, redirect straight to
+  // the active (or first) gateway's session list so returning users skip the
+  // landing page entirely.
+  const landingTargetId = activeGatewayId ?? gateways[0]?.id;
+  useEffect(() => {
+    if (route.name === "gateways" && landingTargetId) {
+      navigate(realGatewayPath(landingTargetId), { replace: true });
+    }
+  }, [route.name, landingTargetId]);
+
   return (
     <div style={{ height: "100vh", position: "relative" }}>
       <FullScreenRoute route={route} gateways={gateways} />
@@ -63,26 +75,41 @@ function FullScreenRoute({
 }: {
   route: Route;
   gateways: Gateway[];
-}): React.JSX.Element {
+}): React.JSX.Element | null {
   switch (route.name) {
     case "gateways":
+      // Has gateways → the App-level effect redirects to /g/:id; render nothing.
+      if (gateways.length > 0) return null;
+      // No gateways → registration page.
       return (
-        <GatewayManager onConnect={(id) => navigate(realGatewayPath(id))} />
+        <GatewayRegistration
+          onAdded={(id) => navigate(realGatewayPath(id))}
+        />
       );
     case "real": {
       const exists = gateways.some((g) => g.id === route.gatewayId);
       if (!exists) {
-        return (
-          <GatewayManager onConnect={(id) => navigate(realGatewayPath(id))} />
-        );
+        if (gateways.length === 0) {
+          return (
+            <GatewayRegistration
+              onAdded={(id) => navigate(realGatewayPath(id))}
+            />
+          );
+        }
+        return null;
       }
       return <RealApp gatewayId={route.gatewayId} />;
     }
     case "settings":
       return <SettingsPage onBack={() => navigate("/")} />;
     default:
-      return (
-        <GatewayManager onConnect={(id) => navigate(realGatewayPath(id))} />
-      );
+      if (gateways.length === 0) {
+        return (
+          <GatewayRegistration
+            onAdded={(id) => navigate(realGatewayPath(id))}
+          />
+        );
+      }
+      return null;
   }
 }

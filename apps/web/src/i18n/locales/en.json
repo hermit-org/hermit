@@ -292,6 +292,7 @@
   "settings": {
     "title": "Settings",
     "back": "Back",
+    "gateways": "Gateways",
     "appearance": "Appearance",
     "shortcuts": "Shortcuts",
     "language": "Language",

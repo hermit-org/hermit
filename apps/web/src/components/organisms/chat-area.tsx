@@ -93,14 +93,21 @@ export function ChatArea({
     [],
   );
 
-  const onScroll = React.useCallback(() => {
+  // Track the viewport scroll position via a native scroll listener so that
+  // programmatic scrolling (e.g. `scrollToBottom`) also updates `atBottom`,
+  // not just user-initiated wheel/touch gestures.
+  React.useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
     const threshold = 48;
-    const isBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-    setAtBottom(isBottom);
-    if (isBottom) setUnread(0);
+    const handleScroll = () => {
+      const isBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+      setAtBottom(isBottom);
+      if (isBottom) setUnread(0);
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Track latest item count to detect growth.
@@ -140,11 +147,7 @@ export function ChatArea({
   return (
     <div className={cn("relative flex h-full flex-col", className)}>
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
-        <div
-          onWheel={onScroll}
-          onTouchMove={onScroll}
-          className="min-h-full py-4"
-        >
+        <div className="min-h-full py-4">
           {showEmpty ? (
             <EmptyState
               icon={MessagesSquare}
@@ -202,7 +205,13 @@ export function ChatArea({
           <div className="pointer-events-auto">
             <ScrollToBottomButton
               unreadCount={unread}
-              onClick={() => scrollToBottom("smooth")}
+              onClick={() => {
+                // Hide the button immediately; the scroll listener keeps
+                // `atBottom` accurate as the smooth scroll settles.
+                setAtBottom(true);
+                setUnread(0);
+                scrollToBottom("smooth");
+              }}
             />
           </div>
         </div>

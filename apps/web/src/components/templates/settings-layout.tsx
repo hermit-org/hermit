@@ -1,11 +1,25 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Palette, Keyboard, ArrowLeft, Languages, Archive } from "lucide-react";
+import {
+  Palette,
+  Keyboard,
+  ArrowLeft,
+  Languages,
+  Archive,
+  ServerCog,
+  Plus,
+  Pencil,
+  Trash2,
+  PlugZap,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/atoms";
 import {
   Select,
   SelectContent,
@@ -15,7 +29,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSettingsStore, type AppLanguage } from "@/stores/settingsStore";
+import { useGatewayStore } from "@/stores/gatewayStore";
+import { navigate, realGatewayPath } from "@/router";
 import { changeAppLanguage } from "@/i18n";
+import type { Gateway } from "@/types";
 
 export interface SettingsLayoutProps {
   /** Initial active section. */
@@ -25,10 +42,11 @@ export interface SettingsLayoutProps {
   className?: string;
 }
 
-export type SettingsSection = "appearance" | "shortcuts" | "archive";
+export type SettingsSection = "gateways" | "appearance" | "shortcuts" | "archive";
 
 const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] =
   [
+    { id: "gateways", labelKey: "settings.gateways", icon: ServerCog },
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
     { id: "archive", labelKey: "settings.archive", icon: Archive },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
@@ -42,7 +60,7 @@ const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentTy
  * <SettingsLayout onBack={goBack} />
  */
 export function SettingsLayout({
-  defaultSection = "appearance",
+  defaultSection = "gateways",
   onBack,
   className,
 }: SettingsLayoutProps): React.JSX.Element {
@@ -90,7 +108,9 @@ export function SettingsLayout({
         </nav>
 
         <div className="min-w-0 flex-1 overflow-auto">
-          {section === "appearance" ? (
+          {section === "gateways" ? (
+            <GatewaySection />
+          ) : section === "appearance" ? (
             <AppearanceSection />
           ) : section === "archive" ? (
             <ArchiveSection />
@@ -98,6 +118,191 @@ export function SettingsLayout({
             <ShortcutsSection />
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function GatewaySection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const gateways = useGatewayStore((s) => s.gateways);
+  const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
+  const addGateway = useGatewayStore((s) => s.addGateway);
+  const updateGateway = useGatewayStore((s) => s.updateGateway);
+  const removeGateway = useGatewayStore((s) => s.removeGateway);
+  const setActiveGateway = useGatewayStore((s) => s.setActiveGateway);
+
+  const [name, setName] = React.useState("");
+  const [url, setUrl] = React.useState("");
+  const [token, setToken] = React.useState("");
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
+
+  const resetForm = (): void => {
+    setName("");
+    setUrl("");
+    setToken("");
+    setEditingId(null);
+  };
+
+  const handleSave = (): void => {
+    if (!name.trim() || !url.trim() || !token.trim()) {
+      setNotice(t("gateways.requiredError"));
+      return;
+    }
+    if (editingId) {
+      updateGateway(editingId, {
+        name: name.trim(),
+        url: url.trim(),
+        token: token.trim(),
+      });
+    } else {
+      addGateway({
+        name: name.trim(),
+        url: url.trim(),
+        token: token.trim(),
+        sendUrl: "",
+      });
+    }
+    resetForm();
+    setNotice(null);
+  };
+
+  const handleEdit = (g: Gateway): void => {
+    setEditingId(g.id);
+    setName(g.name);
+    setUrl(g.url);
+    setToken(g.token);
+  };
+
+  const handleDelete = (id: string): void => {
+    if (!window.confirm(t("gateways.deleteConfirm"))) return;
+    removeGateway(id);
+    if (editingId === id) resetForm();
+  };
+
+  const handleConnect = (g: Gateway): void => {
+    setActiveGateway(g.id);
+    navigate(realGatewayPath(g.id));
+  };
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">{t("gateways.title")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("gateways.connectDescription")}
+        </p>
+      </div>
+
+      {/* Add / edit form */}
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <Label>
+            {editingId ? t("gateways.edit") : t("gateways.add")}
+          </Label>
+          {editingId ? (
+            <Button variant="ghost" size="sm" onClick={resetForm}>
+              {t("gateways.cancel")}
+            </Button>
+          ) : null}
+        </div>
+        <div className="grid gap-2">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("gateways.name")}
+          />
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder={t("gateways.url")}
+            autoCapitalize="none"
+          />
+          <Input
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder={t("gateways.token")}
+            type="password"
+            autoCapitalize="none"
+          />
+        </div>
+        <Button onClick={handleSave} className="w-full">
+          {editingId ? (
+            <Pencil className="h-4 w-4" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          {editingId ? t("gateways.update") : t("gateways.add")}
+        </Button>
+      </div>
+
+      {notice ? (
+        <p className="text-sm text-muted-foreground">{notice}</p>
+      ) : null}
+
+      {/* Gateway list */}
+      <div className="space-y-2">
+        {gateways.length === 0 ? (
+          <EmptyState
+            icon={ServerCog}
+            title={t("gateways.noGatewaysTitle")}
+            description={t("gateways.noGatewaysDescription")}
+          />
+        ) : (
+          gateways.map((g) => {
+            const active = g.id === activeGatewayId;
+            return (
+              <div
+                key={g.id}
+                className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium">
+                      {g.name}
+                    </span>
+                    {active ? (
+                      <Badge variant="secondary">
+                        {t("gateways.active")}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {g.url}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleEdit(g)}
+                    title={t("gateways.edit")}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => handleDelete(g.id)}
+                    title={t("gateways.delete")}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleConnect(g)}
+                    title={t("gateways.connect")}
+                  >
+                    <PlugZap className="h-4 w-4" />
+                    {t("gateways.connect")}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
