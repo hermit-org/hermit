@@ -81,18 +81,22 @@ export function StatusBar({
             compact
           />
         ) : null}
-        <Separator orientation="vertical" className="h-3.5" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          className="h-6 w-6"
-          aria-label={t("statusBar.settings")}
-          title={t("statusBar.settings")}
-          onClick={onOpenSettings}
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </Button>
+        {onOpenSettings ? (
+          <>
+            <Separator orientation="vertical" className="h-3.5" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="h-6 w-6"
+              aria-label={t("statusBar.settings")}
+              title={t("statusBar.settings")}
+              onClick={onOpenSettings}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        ) : null}
       </div>
     </footer>
   );

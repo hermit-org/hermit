@@ -5,7 +5,15 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import "./i18n";
 import "./styles.css";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const rootEl = document.getElementById("root");
+if (!rootEl) {
+  // Provide an actionable error instead of a non-null assertion crash.
+  throw new Error(
+    'Root element "#root" was not found in the document. Ensure index.html contains <div id="root"></div>.',
+  );
+}
+
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <TooltipProvider delayDuration={200}>
       <App />

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -13,9 +13,12 @@ interface MarkdownRendererProps {
  * `react-markdown` + `remark-gfm` which is the idiomatic browser equivalent.
  */
 export function MarkdownRenderer({ content }: MarkdownRendererProps): React.JSX.Element {
+  // Cache the plugins array so react-markdown doesn't re-initialise the
+  // pipeline on every render (important for long documents).
+  const remarkPlugins = useMemo(() => [remarkGfm], []);
   return (
     <div className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={remarkPlugins}>{content}</ReactMarkdown>
     </div>
   );
 }

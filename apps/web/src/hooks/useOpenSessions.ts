@@ -103,21 +103,21 @@ export function useOpenSessions(gatewayId: string | null): OpenSessionsApi {
   const syncWith = useCallback(
     (liveIds: Iterable<string>) => {
       const live = new Set(liveIds);
-      setOpen((prev) => {
-        let changed = false;
-        const next = new Set<string>();
-        for (const id of prev) {
-          if (live.has(id)) {
-            next.add(id);
-          } else {
-            changed = true;
-          }
+      // Compute the reconciled set synchronously so callers can rely on the
+      // returned value reflecting the post-sync state (not a stale snapshot).
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of open) {
+        if (live.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
         }
-        if (!changed) return prev;
-        if (gatewayId) save(gatewayId, next);
-        return next;
-      });
-      return open;
+      }
+      if (!changed) return open;
+      if (gatewayId) save(gatewayId, next);
+      setOpen(next);
+      return next;
     },
     [gatewayId, open],
   );

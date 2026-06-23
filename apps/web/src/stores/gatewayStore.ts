@@ -21,9 +21,14 @@ function deriveSendUrl(sseUrl: string): string {
     const url = new URL(sseUrl);
     const path = url.pathname.replace(/\/$/, "");
     url.pathname = path ? `${path}/send` : "/send";
+    // Discard any query/hash from the SSE URL — the stdin endpoint should be a
+    // clean path, and lingering query params can break gateway routing.
+    url.search = "";
+    url.hash = "";
     return url.toString();
   } catch {
-    return sseUrl.endsWith("/") ? `${sseUrl}send` : `${sseUrl}/send`;
+    const base = sseUrl.split("?")[0].split("#")[0];
+    return base.endsWith("/") ? `${base}send` : `${base}/send`;
   }
 }
 

@@ -95,10 +95,13 @@ export function ChatArea({
 
   // Track the viewport scroll position via a native scroll listener so that
   // programmatic scrolling (e.g. `scrollToBottom`) also updates `atBottom`,
-  // not just user-initiated wheel/touch gestures.
+  // not just user-initiated wheel/touch gestures. Re-runs if the viewport
+  // element identity changes (e.g. StrictMode remount).
+  const scrollElRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
-    const el = viewportRef.current;
+    const el = scrollElRef.current ?? viewportRef.current;
     if (!el) return;
+    scrollElRef.current = el;
     const threshold = 48;
     const handleScroll = () => {
       const isBottom =
@@ -108,7 +111,7 @@ export function ChatArea({
     };
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
-  }, []);
+  });
 
   // Track latest item count to detect growth.
   const lastCountRef = React.useRef(items.length);

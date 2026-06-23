@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "./i18n";
 import { useGatewayStore, useSettingsStore } from "./stores";
@@ -43,7 +43,7 @@ export default function App(): React.JSX.Element {
         sendUrl: config.sendUrl,
         token: config.token,
       });
-    if (window.location.pathname === "/") {
+    if (typeof window !== "undefined" && window.location.pathname === "/") {
       navigate(realGatewayPath(g.id), { replace: true });
     }
     // run once on mount
@@ -62,9 +62,19 @@ export default function App(): React.JSX.Element {
     }
   }, [route.name, landingTargetId]);
 
+  // Stable callback shared by all GatewayRegistration instances so children
+  // don't receive a new handler reference on every render.
+  const handleGatewayAdded = useCallback((id: string) => {
+    navigate(realGatewayPath(id));
+  }, []);
+
   return (
     <div style={{ height: "100vh", position: "relative" }}>
-      <FullScreenRoute route={route} gateways={gateways} />
+      <FullScreenRoute
+        route={route}
+        gateways={gateways}
+        onGatewayAdded={handleGatewayAdded}
+      />
     </div>
   );
 }
@@ -72,29 +82,23 @@ export default function App(): React.JSX.Element {
 function FullScreenRoute({
   route,
   gateways,
+  onGatewayAdded,
 }: {
   route: Route;
   gateways: Gateway[];
+  onGatewayAdded: (id: string) => void;
 }): React.JSX.Element | null {
   switch (route.name) {
     case "gateways":
       // Has gateways → the App-level effect redirects to /g/:id; render nothing.
       if (gateways.length > 0) return null;
       // No gateways → registration page.
-      return (
-        <GatewayRegistration
-          onAdded={(id) => navigate(realGatewayPath(id))}
-        />
-      );
+      return <GatewayRegistration onAdded={onGatewayAdded} />;
     case "real": {
       const exists = gateways.some((g) => g.id === route.gatewayId);
       if (!exists) {
         if (gateways.length === 0) {
-          return (
-            <GatewayRegistration
-              onAdded={(id) => navigate(realGatewayPath(id))}
-            />
-          );
+          return <GatewayRegistration onAdded={onGatewayAdded} />;
         }
         return null;
       }
@@ -104,11 +108,7 @@ function FullScreenRoute({
       return <SettingsPage onBack={() => navigate("/")} />;
     default:
       if (gateways.length === 0) {
-        return (
-          <GatewayRegistration
-            onAdded={(id) => navigate(realGatewayPath(id))}
-          />
-        );
+        return <GatewayRegistration onAdded={onGatewayAdded} />;
       }
       return null;
   }

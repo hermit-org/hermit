@@ -74,7 +74,7 @@ export interface ToolCallState {
 /** A pending permission request awaiting a user decision. */
 export interface PendingPermission {
   id: string;
-  sessionId: string;
+  sessionId: string | null;
   toolCall: Partial<ToolCallUpdate> & { toolCallId: string };
   options: PermissionOption[];
   createdAt: number;

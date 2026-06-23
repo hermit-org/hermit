@@ -71,7 +71,7 @@ export function useArchivedSessions(gatewayId: string | null): ArchivedSessionsA
     (id: string) => {
       setArchived((prev) => {
         if (prev.has(id)) {
-          if (gatewayId) save(gatewayId, prev);
+          // Already archived — no state change, no pointless persistence write.
           return prev;
         }
         const next = new Set(prev);
@@ -96,7 +96,10 @@ export function useArchivedSessions(gatewayId: string | null): ArchivedSessionsA
     [gatewayId],
   );
 
-  const all = useCallback(() => new Set(archived), [archived]);
+  // Return the stable `archived` reference directly (not a fresh copy) so it
+  // can be used as a stable effect dependency. Callers needing a snapshot can
+  // construct one from the returned set.
+  const all = useCallback(() => archived, [archived]);
 
   return { archived, has, add, remove, all };
 }

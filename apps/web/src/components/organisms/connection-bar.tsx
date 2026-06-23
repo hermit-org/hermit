@@ -131,7 +131,7 @@ export function ConnectionBar({
               </Button>
             ) : null}
           </div>
-        ) : (
+        ) : onAuthenticate ? (
           <Button
             type="button"
             variant="outline"
@@ -141,7 +141,7 @@ export function ConnectionBar({
             <LogIn className="h-4 w-4" />
             <span className="hidden sm:inline">{t("auth.signIn")}</span>
           </Button>
-        )}
+        ) : null}
       </div>
     </header>
   );

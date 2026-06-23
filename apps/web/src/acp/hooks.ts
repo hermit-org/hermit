@@ -38,6 +38,10 @@ export interface UseAcpClientResult {
 export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const { gateway, autoConnect = false } = options;
   const clientRef = useRef<AcpClient | null>(null);
+  // A generation id that uniquely identifies the current connection attempt.
+  // Incremented on every connect/disconnect so stale async flows can detect
+  // they are no longer the active connection and bail before setState.
+  const generationRef = useRef(0);
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState("disconnected");
   const [error, setError] = useState<Error | null>(null);
@@ -46,6 +50,8 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const [authenticated, setAuthenticated] = useState(false);
 
   const disconnect = useCallback(() => {
+    // Invalidate any in-flight async flow from a previous connection.
+    generationRef.current += 1;
     usePermissionStore.getState().clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
@@ -58,13 +64,18 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
 
   const connect = useCallback(async () => {
     if (!gateway) return;
+    // Start a new generation; capture it so the async flow below can verify
+    // it is still the active connection before touching state.
     disconnect();
+    const generation = (generationRef.current += 1);
 
     const transport = createWebTransport({
       url: gateway.url,
       sendUrl: gateway.sendUrl,
       headers: { Authorization: `Bearer ${gateway.token}` },
       onEvent: (event: WebSseEvent) => {
+        // Only apply transport state if this connection is still active.
+        if (generationRef.current !== generation) return;
         if (event.type === "state") {
           setState(event.state);
           setConnected(event.state === "connected");
@@ -98,6 +109,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
     try {
       setState("connecting");
       const result = await client.initialize();
+      if (generationRef.current !== generation) return;
       setAuthMethods(result.authMethods ?? []);
       setCanLogout(result.agentCapabilities?.auth?.logout != null);
       // If the agent advertises no auth methods, treat as authenticated.
@@ -111,14 +123,22 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
       if (autoAuth && methods.length > 0) {
         try {
           await client.authenticate(methods[0].id);
+          if (generationRef.current !== generation) return;
           setAuthenticated(true);
         } catch (e) {
+          if (generationRef.current !== generation) return;
+          // Roll back to an unauthenticated state so the UI doesn't show a
+          // misleading "connected but authenticated" hybrid.
           setError(e instanceof Error ? e : new Error(String(e)));
+          setAuthenticated(false);
         }
       }
     } catch (e) {
+      if (generationRef.current !== generation) return;
       setError(e instanceof Error ? e : new Error(String(e)));
       setState("error");
+      setConnected(false);
+      setAuthenticated(false);
     }
   }, [gateway, disconnect]);
 
@@ -138,10 +158,19 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const logout = useCallback(async () => {
     const client = clientRef.current;
     if (!client) return;
-    await client.logout();
-    setAuthenticated(false);
+    try {
+      await client.logout();
+      setAuthenticated(false);
+    } catch (e) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+      throw e;
+    }
   }, []);
 
+  // Auto-connect when the gateway id changes. The connection object itself
+  // is keyed by the full `gateway` via the `connect`/`disconnect` deps above;
+  // here we only react to identity changes (a different gateway) to avoid
+  // churn when the parent re-renders with an equivalent gateway object.
   useEffect(() => {
     if (autoConnect && gateway) {
       void connect();
@@ -149,7 +178,8 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
     return () => {
       disconnect();
     };
-  }, [gateway?.id, autoConnect, connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gateway?.id, autoConnect]);
 
   return {
     client: clientRef.current,

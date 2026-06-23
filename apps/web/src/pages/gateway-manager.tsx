@@ -45,15 +45,28 @@ export function GatewayManager({
   const [pasteValue, setPasteValue] = React.useState("");
   const [notice, setNotice] = React.useState<string | null>(null);
 
-  const resetForm = (): void => {
+  const resetForm = React.useCallback((): void => {
     setName("");
     setUrl("");
     setToken("");
     setEditingId(null);
-  };
+  }, []);
 
-  const handleSave = (): void => {
+  const handleSave = React.useCallback((): void => {
     if (!name.trim() || !url.trim() || !token.trim()) {
+      setNotice(t("gateways.requiredError"));
+      return;
+    }
+    // Validate the URL so a malformed entry doesn't silently break later
+    // connection attempts.
+    try {
+      // eslint-disable-next-line no-new
+      new URL(url.trim());
+    } catch {
+      setNotice(t("connect.invalid"));
+      return;
+    }
+    if (token.trim().length < 4) {
       setNotice(t("gateways.requiredError"));
       return;
     }
@@ -73,22 +86,30 @@ export function GatewayManager({
     }
     resetForm();
     setNotice(null);
-  };
+  }, [name, url, token, editingId, t, updateGateway, addGateway, resetForm]);
 
-  const handleEdit = (g: Gateway): void => {
-    setEditingId(g.id);
-    setName(g.name);
-    setUrl(g.url);
-    setToken(g.token);
-  };
+  const handleEdit = React.useCallback(
+    (g: Gateway): void => {
+      setEditingId(g.id);
+      setName(g.name);
+      setUrl(g.url);
+      setToken(g.token);
+    },
+    [],
+  );
 
-  const handleDelete = (id: string): void => {
-    if (!window.confirm(t("gateways.deleteConfirm"))) return;
-    removeGateway(id);
-    if (editingId === id) resetForm();
-  };
+  const handleDelete = React.useCallback(
+    (id: string): void => {
+      if (typeof window !== "undefined" && !window.confirm(t("gateways.deleteConfirm")))
+        return;
+      removeGateway(id);
+      setEditingId((cur) => (cur === id ? null : cur));
+      if (editingId === id) resetForm();
+    },
+    [t, removeGateway, editingId, resetForm],
+  );
 
-  const handleImport = (): void => {
+  const handleImport = React.useCallback((): void => {
     const config = parseConnectionString(pasteValue);
     if (!config) {
       setNotice(t("connect.invalid"));
@@ -102,12 +123,15 @@ export function GatewayManager({
     });
     setPasteValue("");
     setNotice(t("connect.imported"));
-  };
+  }, [pasteValue, t, addGateway]);
 
-  const handleConnect = (g: Gateway): void => {
-    setActiveGateway(g.id);
-    onConnect?.(g.id);
-  };
+  const handleConnect = React.useCallback(
+    (g: Gateway): void => {
+      setActiveGateway(g.id);
+      onConnect?.(g.id);
+    },
+    [setActiveGateway, onConnect],
+  );
 
   return (
     <div className="flex h-full w-full items-start justify-center overflow-auto bg-background p-6">

@@ -26,9 +26,11 @@ export function createWebTransport(options: WebTransportOptions): StdioTransport
 
   const connection = new WebSseConnection({ ...connectionOptions, headers });
 
-  if (onEvent) {
-    connection.addEventListener(onEvent);
-  }
+  // Keep the unsubscribe handle so disconnect() can release the listener and
+  // avoid leaks when listeners are swapped dynamically.
+  const unsubscribe = onEvent
+    ? connection.addEventListener(onEvent)
+    : undefined;
 
   return {
     stdout: connection,
@@ -36,10 +38,17 @@ export function createWebTransport(options: WebTransportOptions): StdioTransport
       await connection.connect();
     },
     disconnect(): void {
+      unsubscribe?.();
       connection.disconnect();
     },
     stdin: {
       async write(line: string): Promise<void> {
+        // Refuse writes once the connection is no longer in a usable state —
+        // otherwise a POST would be attempted and only fail afterwards.
+        const s = connection.currentState;
+        if (s === "disconnected" || s === "error") {
+          throw new Error(`Cannot write: connection is ${s}`);
+        }
         const body = line.endsWith("\n") ? line : `${line}\n`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000);

@@ -345,7 +345,17 @@ function AutoAuthenticateSwitch(): React.JSX.Element {
 function AppearanceSection(): React.JSX.Element {
   const { t } = useTranslation();
   const { language, setLanguage } = useSettingsStore();
-  const [dark, setDark] = React.useState(false);
+  // Initialise dark from the live DOM / persisted preference so the switch
+  // reflects the real theme (e.g. when restored by SettingsPage on mount).
+  const [dark, setDark] = React.useState(() => {
+    if (typeof document !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem("hermit-theme") === "dark";
+    }
+    return false;
+  });
 
   const handleLanguageChange = (value: AppLanguage): void => {
     setLanguage(value);
@@ -390,6 +400,13 @@ function AppearanceSection(): React.JSX.Element {
           onCheckedChange={(v) => {
             setDark(v);
             document.documentElement.classList.toggle("dark", v);
+            // Persist the preference so it survives reloads.
+            try {
+              if (v) localStorage.setItem("hermit-theme", "dark");
+              else localStorage.setItem("hermit-theme", "light");
+            } catch {
+              // Ignore storage errors (disabled / quota).
+            }
           }}
         />
       </div>

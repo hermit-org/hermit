@@ -26,25 +26,29 @@ export function StreamingText({
   className,
 }: StreamingTextProps): React.JSX.Element {
   const [shown, setShown] = React.useState(() => text.length);
+  // Mirror `shown` into a ref so the interval reads the latest value instead
+  // of the value captured at effect-creation time.
+  const shownRef = React.useRef(shown);
+  shownRef.current = shown;
 
   React.useEffect(() => {
     if (!streaming) {
       setShown(text.length);
       return;
     }
-    if (text.length <= shown) {
+    if (text.length <= shownRef.current) {
       setShown(text.length);
       return;
     }
     const id = setInterval(() => {
-      setShown((prev) => {
-        const next = prev + charsPerTick;
-        if (next >= text.length) {
-          clearInterval(id);
-          return text.length;
-        }
-        return next;
-      });
+      const current = shownRef.current;
+      const next = current + charsPerTick;
+      if (next >= text.length) {
+        clearInterval(id);
+        setShown(text.length);
+        return;
+      }
+      setShown(next);
     }, intervalMs);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps

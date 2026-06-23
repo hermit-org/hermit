@@ -260,6 +260,13 @@ export function useAcpPageAdapter(
   // rendered in the "archived" collapsible view. `agentSessions` is the
   // visible subset (archived ids filtered out).
   const [allAgentSessions, setAllAgentSessions] = useState<SessionInfo[]>([]);
+  // Mirror `allAgentSessions` into a ref so async callbacks that need the full
+  // list (e.g. archive/delete switch-to) read the latest value without a
+  // stale closure.
+  const allAgentSessionsRef = useRef<SessionInfo[]>([]);
+  useEffect(() => {
+    allAgentSessionsRef.current = allAgentSessions;
+  }, [allAgentSessions]);
   const [plan, setPlan] = useState<PlanEntry[]>([]);
   const [queueDepth, setQueueDepth] = useState(0);
   const queueRef = useRef<string[]>([]);
@@ -295,24 +302,27 @@ export function useAcpPageAdapter(
   // is known, so it is ready before any session operation needs it.
   useEffect(() => {
     if (!gateway?.url) return;
-    let cancelled = false;
+    const controller = new AbortController();
 
     (async () => {
       try {
         const origin = new URL(gateway.url).origin;
-        const res = await fetch(`${origin}/api/config`);
+        const res = await fetch(`${origin}/api/config`, {
+          signal: controller.signal,
+        });
         if (!res.ok) return;
         const data = (await res.json()) as { agent?: { cwd?: string } };
-        if (!cancelled && data?.agent?.cwd) {
+        if (data?.agent?.cwd) {
           agentCwdRef.current = data.agent.cwd;
         }
-      } catch {
-        // Ignore — fall back to the default "/".
+      } catch (e) {
+        // Ignore aborts; other errors fall back to the default "/".
+        if ((e as Error).name === "AbortError") return;
       }
     })();
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [gateway?.id, gateway?.url]);
 
@@ -451,10 +461,16 @@ export function useAcpPageAdapter(
   // Reset all session-derived state when the gateway changes so stale data
   // from the previous gateway doesn't leak into the new connection.
   const gatewayIdRef = useRef<string | null>(gateway?.id ?? null);
+  const gatewaySigRef = useRef<string>("");
   useEffect(() => {
     const currentId = gateway?.id ?? null;
-    if (gatewayIdRef.current === currentId) return;
+    // Capture url+token so editing the same gateway (id unchanged) still
+    // resets the connection and session-derived state.
+    const currentSig = `${currentId}|${gateway?.url ?? ""}|${gateway?.token ?? ""}`;
+    if (gatewayIdRef.current === currentId && gatewaySigRef.current === currentSig)
+      return;
     gatewayIdRef.current = currentId;
+    gatewaySigRef.current = currentSig;
     setActiveSessionId(null);
     setAgentSessions([]);
     setHistoryItems([]);
@@ -468,7 +484,7 @@ export function useAcpPageAdapter(
     queueRef.current = [];
     setQueueDepth(0);
     newlyCreatedRef.current.clear();
-  }, [gateway?.id]);
+  }, [gateway?.id, gateway?.url, gateway?.token]);
 
   // ---- session/update reducer ------------------------------------------
   const applyUpdate = useCallback(
@@ -661,9 +677,10 @@ export function useAcpPageAdapter(
           // Update the title in the agent session list directly — no local
           // session store to mutate.
           if (update.title) {
+            const sid = activeSessionIdRef.current;
             setAgentSessions((prev) =>
               prev.map((s) =>
-                s.sessionId === activeSessionId
+                s.sessionId === sid
                   ? { ...s, title: update.title ?? s.title }
                   : s,
               ),
@@ -680,9 +697,7 @@ export function useAcpPageAdapter(
           // UI props; ignore them rather than risk a malformed ChatItem.
           break;
       }
-    },
-    [activeSessionId],
-  );
+    }, []);
 
   // Subscribe to session/update while connected.
   useEffect(() => {
@@ -737,10 +752,18 @@ export function useAcpPageAdapter(
           let loadResult: unknown = null;
           try {
             loadResult = await client.sessionLoad({ sessionId: activeSessionId, cwd: agentCwdRef.current });
-          } finally {
+          } catch (e) {
             isLoadingHistoryRef.current = false;
+            throw e;
           }
-          if (cancelled) return;
+          // Only clear the history-loading flag once we know this load is still
+          // the active one; otherwise a late `session/update` from this load
+          // would be misclassified as a live turn update.
+          if (cancelled) {
+            isLoadingHistoryRef.current = false;
+            return;
+          }
+          isLoadingHistoryRef.current = false;
 
           // If the agent returned a non-null result (non-standard but observed
           // with some agents), extract configOptions/modes from it.
@@ -849,6 +872,8 @@ export function useAcpPageAdapter(
   const refreshActiveSession = useCallback(async () => {
     const client = clientRef.current;
     if (!client || !activeSessionId) return;
+    // Snapshot the session so a fast switch invalidates a stale reload.
+    const targetSessionId = activeSessionId;
     const caps = client.initializeResult?.agentCapabilities;
     const supportsLoad = caps?.loadSession === true;
     if (!supportsLoad) return;
@@ -859,16 +884,23 @@ export function useAcpPageAdapter(
       historyBufferRef.current = [];
       isLoadingHistoryRef.current = true;
       try {
-        await client.sessionLoad({ sessionId: activeSessionId, cwd: agentCwdRef.current });
-      } finally {
+        await client.sessionLoad({ sessionId: targetSessionId, cwd: agentCwdRef.current });
+      } catch (e) {
         isLoadingHistoryRef.current = false;
+        throw e;
       }
+      // Bail if the user switched sessions while the load was in flight.
+      if (activeSessionIdRef.current !== targetSessionId) {
+        isLoadingHistoryRef.current = false;
+        return;
+      }
+      isLoadingHistoryRef.current = false;
       const replayed = historyBufferRef.current;
       historyBufferRef.current = [];
       const now = Date.now();
       setHistoryItems(
         replayed.map((entry, i) =>
-          historyEntryToChatItem(entry, i, activeSessionId, now),
+          historyEntryToChatItem(entry, i, targetSessionId, now),
         ),
       );
     } catch (e) {
@@ -1052,14 +1084,15 @@ export function useAcpPageAdapter(
         // update is asynchronous, so `archivedSessions.all()` would lag.
         const archived = new Set(archivedRef.current);
         archived.delete(id);
+        const all = allAgentSessionsRef.current;
         const visible = archived.size
-          ? allAgentSessions.filter((s) => !archived.has(s.sessionId))
-          : allAgentSessions;
+          ? all.filter((s) => !archived.has(s.sessionId))
+          : all;
         setAgentSessions(visible);
       }
       setActiveSessionId(id);
     },
-    [allAgentSessions],
+    [],
   );
 
   const onCreateSession = useCallback(() => {
@@ -1114,12 +1147,16 @@ export function useAcpPageAdapter(
     async (optionId: string, value: string) => {
       const client = clientRef.current;
       if (!client || !activeSessionId) return;
-      const prev = configOptions;
-      // Optimistic update so the chip reflects the change immediately.
-      const optimistic = prev.map((o) =>
-        o.id === optionId ? { ...o, currentValue: value } : o,
-      );
-      setConfigOptions(optimistic);
+      // Snapshot the current value so a failed request can restore it. The
+      // snapshot is read from the live state via the functional update.
+      let previousValue: string | undefined;
+      setConfigOptions((prev) => {
+        previousValue = prev.find((o) => o.id === optionId)?.currentValue;
+        // Optimistic update so the chip reflects the change immediately.
+        return prev.map((o) =>
+          o.id === optionId ? { ...o, currentValue: value } : o,
+        );
+      });
       try {
         const result = await client.sessionSetConfigOption({
           sessionId: activeSessionId,
@@ -1127,18 +1164,26 @@ export function useAcpPageAdapter(
           value,
         });
         if (result.configOption) {
-          const next = prev.map((o) =>
-            o.id === result.configOption!.id ? result.configOption! : o,
+          const updated = result.configOption;
+          setConfigOptions((latest) =>
+            latest.map((o) => (o.id === updated.id ? updated : o)),
           );
-          setConfigOptions(next);
         }
       } catch (e) {
-        // Revert optimistic update on failure.
+        // Revert the optimistic update on failure. Restore the captured value
+        // but apply it functionally against the latest state.
         console.error("[ACP adapter] set_config_option failed:", e);
-        setConfigOptions(prev);
+        const restore = previousValue;
+        setConfigOptions((latest) =>
+          latest.map((o) =>
+            o.id === optionId && restore !== undefined
+              ? { ...o, currentValue: restore }
+              : o,
+          ),
+        );
       }
     },
-    [activeSessionId, configOptions],
+    [activeSessionId],
   );
 
   /**
@@ -1181,7 +1226,7 @@ export function useAcpPageAdapter(
   const onArchiveSession = useCallback(
     async (id: string) => {
       if (!id) return;
-      if (!window.confirm("Archive this session?")) return;
+      if (typeof window !== "undefined" && !window.confirm("Archive this session?")) return;
 
       const client = clientRef.current;
       const supportsClose =
@@ -1209,13 +1254,19 @@ export function useAcpPageAdapter(
       // Duplicate-archive is a silent no-op in the hook.
       archivedSessionsAddRef.current(id);
 
-      // If this was the active session, switch to another visible one.
-      if (activeSessionId === id) {
-        const remaining = agentSessions.filter((s) => s.sessionId !== id);
-        setActiveSessionId(remaining[0]?.sessionId ?? null);
-      }
+      // If this was the active session, switch to another visible one. Read
+      // the latest list functionally to avoid acting on a stale snapshot.
+      setActiveSessionId((current) => {
+        if (current !== id) return current;
+        // Derive the next active id from the current visible list minus the
+        // archived one.
+        const visible = allAgentSessionsRef.current.filter(
+          (s) => s.sessionId !== id,
+        );
+        return visible[0]?.sessionId ?? null;
+      });
     },
-    [activeSessionId, agentSessions],
+    [],
   );
 
   /**
@@ -1229,12 +1280,13 @@ export function useAcpPageAdapter(
       // update is asynchronous, so `archivedSessions.all()` would lag.
       const archived = new Set(archivedRef.current);
       archived.delete(id);
+      const all = allAgentSessionsRef.current;
       const visible = archived.size
-        ? allAgentSessions.filter((s) => !archived.has(s.sessionId))
-        : allAgentSessions;
+        ? all.filter((s) => !archived.has(s.sessionId))
+        : all;
       setAgentSessions(visible);
     },
-    [allAgentSessions],
+    [],
   );
 
   // Delete a session on the agent (when supported) and remove it from the
@@ -1248,18 +1300,30 @@ export function useAcpPageAdapter(
       const acpId = id; // IDs are ACP session IDs directly.
 
       // Only confirm when the agent will actually be asked to delete.
-      if (supportsDelete && !window.confirm("Delete this session?")) return;
+      if (
+        supportsDelete &&
+        typeof window !== "undefined" &&
+        !window.confirm("Delete this session?")
+      )
+        return;
 
       // Remove from local state.
       setAgentSessions((prev) => prev.filter((s) => s.sessionId !== acpId));
+      setAllAgentSessions((prev) =>
+        prev.filter((s) => s.sessionId !== acpId),
+      );
       archivedSessionsRemoveRef.current(acpId);
       openSessionsRemoveRef.current(acpId);
 
-      // If this was the active session, switch to another (or none).
-      if (activeSessionId === acpId) {
-        const remaining = agentSessions.filter((s) => s.sessionId !== acpId);
-        setActiveSessionId(remaining[0]?.sessionId ?? null);
-      }
+      // If this was the active session, switch to another (or none). Read the
+      // latest list functionally to avoid a stale snapshot.
+      setActiveSessionId((current) => {
+        if (current !== acpId) return current;
+        const visible = allAgentSessionsRef.current.filter(
+          (s) => s.sessionId !== acpId,
+        );
+        return visible[0]?.sessionId ?? null;
+      });
 
       // Only send `session/delete` when the agent advertises support —
       // otherwise the removal is local-only.
@@ -1273,18 +1337,29 @@ export function useAcpPageAdapter(
         }
       }
     },
-    [agentSessions, activeSessionId],
+    [],
   );
 
   // ---- map state -> UI props -------------------------------------------
   // Derive session summaries directly from the agent's session list — no
   // local session records to merge.
   const toSummary = useCallback(
-    (info: SessionInfo): SessionSummary => ({
-      id: info.sessionId,
-      title: info.title ?? info.sessionId.slice(0, 12),
-      updatedAt: info.updatedAt ? new Date(info.updatedAt).getTime() : Date.now(),
-    }),
+    (info: SessionInfo): SessionSummary => {
+      let updatedAt: number;
+      if (info.updatedAt) {
+        const parsed = new Date(info.updatedAt).getTime();
+        // Guard against invalid dates that produce NaN (which would corrupt
+        // the sort order). Fall back to now so it sorts as recent.
+        updatedAt = Number.isFinite(parsed) ? parsed : Date.now();
+      } else {
+        updatedAt = Date.now();
+      }
+      return {
+        id: info.sessionId,
+        title: info.title ?? info.sessionId.slice(0, 12),
+        updatedAt,
+      };
+    },
     [],
   );
 
@@ -1320,7 +1395,9 @@ export function useAcpPageAdapter(
     () =>
       pendingPermissions.map<PendingPermission>((p) => ({
         id: p.id,
-        sessionId: activeSessionId ?? "",
+        // Keep `sessionId` as null when there is no active session instead of
+        // a meaningless empty string.
+        sessionId: activeSessionId,
         toolCall: p.toolCall,
         options: p.options,
         createdAt: p.createdAt,

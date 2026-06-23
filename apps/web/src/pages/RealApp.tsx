@@ -9,7 +9,7 @@
  * When no gateway is configured it shows a minimal inline connect form rather
  * than reaching into the legacy `screens/`.
  */
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ACPClientPage } from "./acp-client-page";
@@ -34,19 +34,21 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
   const { t } = useTranslation();
   const gateways = useGatewayStore((s) => s.gateways);
   const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
-  const addGateway = useGatewayStore((s) => s.addGateway);
   const setActiveGateway = useGatewayStore((s) => s.setActiveGateway);
 
   // Mirror the legacy App's auto-import of a gateway from URL params so
-  // `hermit start` keeps working against the new UI.
+  // `hermit start` keeps working against the new UI. Read from the live store
+  // state (not a closure snapshot) so StrictMode's double-invoke and
+  // concurrent renders don't add the gateway twice.
   useEffect(() => {
     const config = readConfigFromUrl();
     if (!config) return;
-    const exists = gateways.some(
+    const store = useGatewayStore.getState();
+    const exists = store.gateways.some(
       (g) => g.url === config.url && g.token === config.token,
     );
     if (!exists) {
-      addGateway({
+      store.addGateway({
         name: config.name || t("gateways.defaultName"),
         url: config.url,
         sendUrl: config.sendUrl,
@@ -67,14 +69,15 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
 
   const adapter = useAcpPageAdapter(gateway);
 
+  const handleGatewayAdded = useCallback(
+    (id: string) => {
+      setActiveGateway(id);
+    },
+    [setActiveGateway],
+  );
+
   if (!gateway) {
-    return (
-      <GatewayRegistration
-        onAdded={(id) => {
-          setActiveGateway(id);
-        }}
-      />
-    );
+    return <GatewayRegistration onAdded={handleGatewayAdded} />;
   }
 
   // Normalize `activeSessionId: string | null` → `string | undefined` to
@@ -88,5 +91,3 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
     />
   );
 }
-
-

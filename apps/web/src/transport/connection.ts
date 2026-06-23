@@ -125,7 +125,11 @@ export class WebSseConnection {
   }
 
   async connect(): Promise<void> {
-    if (this.state === "connecting" || this.state === "connected") {
+    if (
+      this.state === "connecting" ||
+      this.state === "connected" ||
+      this.state === "reconnecting"
+    ) {
       throw new Error("Connection is already open");
     }
     this.done = false;
@@ -207,10 +211,16 @@ export class WebSseConnection {
       void this.readLoop(reader, decoder, buffer);
     } catch (error) {
       // If aborted by disconnect(), don't treat as a reconnectable error.
-      if (this.state === "disconnected") return;
+      const stateAfter: WebSseConnectionState = this.state;
+      if (stateAfter === "disconnected") return;
 
       const err = error instanceof Error ? error : new Error(String(error));
       this.emit({ type: "error", error: err });
+      // Re-check state: a listener (e.g. autoConnect) may have called
+      // disconnect() while the error was being emitted, in which case we must
+      // not schedule a reconnect.
+      const stateAfterEmit: WebSseConnectionState = this.state;
+      if (stateAfterEmit === "disconnected") return;
       this.scheduleReconnect();
     }
   }
@@ -244,11 +254,24 @@ export class WebSseConnection {
           }
         }
       }
-    } catch (error) {
+      // The server closed the stream gracefully. Transition to disconnected
+      // so the UI doesn't linger on "connected".
       if (this.state !== "disconnected") {
+        this.setState("disconnected");
+        this.done = true;
+        this.flushWaiters();
+        this.emit({ type: "close" });
+      }
+    } catch (error) {
+      const errState: WebSseConnectionState = this.state;
+      if (errState !== "disconnected") {
         const err = error instanceof Error ? error : new Error(String(error));
         this.emit({ type: "error", error: err });
-        this.scheduleReconnect();
+        // Re-check state: a listener may have called disconnect() during emit.
+        const afterEmit: WebSseConnectionState = this.state;
+        if (afterEmit !== "disconnected") {
+          this.scheduleReconnect();
+        }
       }
     } finally {
       try {
@@ -291,12 +314,18 @@ export class WebSseConnection {
 
     this.clearTimers();
     this.reconnectTimer = setTimeout(() => {
+      // Guard: disconnect() may have been called while the timer was pending.
+      const beforeState: WebSseConnectionState = this.state;
+      if (beforeState === "disconnected") return;
       this.doConnect().catch((error: unknown) => {
+        const failState: WebSseConnectionState = this.state;
+        if (failState === "disconnected") return;
         this.emit({
           type: "error",
           error: error instanceof Error ? error : new Error(String(error)),
         });
-        this.scheduleReconnect();
+        const afterEmit: WebSseConnectionState = this.state;
+        if (afterEmit !== "disconnected") this.scheduleReconnect();
       });
     }, Math.max(0, delay));
   }
@@ -372,5 +401,8 @@ export class WebSseConnection {
       waiter.reject(error);
     }
     this.waiters = [];
+    // Clear any buffered messages so a subsequent reader can't observe stale
+    // data from a previous connection.
+    this.messageQueue.length = 0;
   }
 }

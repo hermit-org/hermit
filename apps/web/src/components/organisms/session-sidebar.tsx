@@ -140,16 +140,18 @@ export function SessionSidebar({
             )}
           </Button>
         ) : null}
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="default"
-          aria-label={t("sessionSidebar.newSession")}
-          title={t("sessionSidebar.newSession")}
-          onClick={onCreate}
-        >
-          <MessageCirclePlus className="h-4 w-4" />
-        </Button>
+        {onCreate ? (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="default"
+            aria-label={t("sessionSidebar.newSession")}
+            title={t("sessionSidebar.newSession")}
+            onClick={onCreate}
+          >
+            <MessageCirclePlus className="h-4 w-4" />
+          </Button>
+        ) : null}
       </div>
 
       {availableTags.length > 0 ? (

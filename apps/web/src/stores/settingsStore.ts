@@ -39,6 +39,9 @@ const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
 /** Default auto-archive threshold: 3 days. */
 const DEFAULT_AUTO_ARCHIVE_THRESHOLD = "3d";
 
+// Initial language is derived from the browser. The persisted value (if any)
+// replaces this after rehydration via the zustand `persist` middleware, so the
+// navigator-based default only applies on first run / when nothing is stored.
 function resolveDefaultLanguage(): AppLanguage {
   if (typeof navigator === "undefined") return "en";
   const code = navigator.language.split("-")[0];

@@ -13,12 +13,13 @@ export interface SettingsPageProps {
  * <SettingsPage onBack={back} />
  */
 export function SettingsPage({ onBack }: SettingsPageProps): React.JSX.Element {
-  // Restore the persisted dark-mode preference on mount.
+  // Restore the persisted theme preference on mount, toggling the class so a
+  // previously-added `dark` class is removed when the user switched to light.
   React.useEffect(() => {
+    if (typeof window === "undefined" || typeof localStorage === "undefined")
+      return;
     const stored = localStorage.getItem("hermit-theme");
-    if (stored === "dark") {
-      document.documentElement.classList.add("dark");
-    }
+    document.documentElement.classList.toggle("dark", stored === "dark");
   }, []);
 
   return <SettingsLayout onBack={onBack} />;

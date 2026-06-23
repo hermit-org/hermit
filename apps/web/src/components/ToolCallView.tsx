@@ -90,6 +90,27 @@ export function mergeToolCall(
   };
 }
 
+/**
+ * Derive a stable key for a tool-call content item. Avoids array indices so
+ * inserts/reorders don't reuse the wrong DOM.
+ */
+function toolCallContentKey(
+  c: ToolCallContent,
+  index: number,
+): string {
+  if (c.type === "content") {
+    const inner = c.content;
+    if (inner.type === "text") return `content:text:${index}:${inner.text.slice(0, 32)}`;
+    if (inner.type === "image") return `content:image:${index}:${inner.mimeType}`;
+    if (inner.type === "resource") return `content:resource:${index}:${inner.resource.uri}`;
+    if (inner.type === "resource_link") return `content:resource_link:${index}:${inner.uri}`;
+    return `content:${index}`;
+  }
+  if (c.type === "diff") return `diff:${index}:${c.newText.slice(0, 24)}`;
+  if (c.type === "terminal") return `terminal:${index}:${c.terminalId}`;
+  return `${index}`;
+}
+
 const STATUS_COLOR: Record<string, string> = {
   pending: "#999",
   in_progress: "#007AFF",
@@ -138,7 +159,7 @@ export function ToolCallView({ call }: { call: ToolCallState }): React.JSX.Eleme
           {call.content.length > 0 && (
             <div style={styles.content}>
               {call.content.map((c, i) => (
-                <ToolCallContentItem key={i} content={c} />
+                <ToolCallContentItem key={toolCallContentKey(c, i)} content={c} />
               ))}
             </div>
           )}
@@ -153,7 +174,7 @@ export function ToolCallView({ call }: { call: ToolCallState }): React.JSX.Eleme
           {call.locations.length > 0 && (
             <div style={styles.locations}>
               {call.locations.map((loc, i) => (
-                <div key={i} style={styles.location}>
+                <div key={`${loc.path}:${loc.line ?? i}`} style={styles.location}>
                   {t("fileManager.location", {
                     path: `${loc.path}${loc.line ? `:${loc.line}` : ""}`,
                   })}

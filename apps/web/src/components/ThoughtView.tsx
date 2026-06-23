@@ -48,12 +48,22 @@ export function ThoughtView({
   const [overflows, setOverflows] = useState(false);
   const previewHeight = lineHeight * maxLines;
 
-  // Measure rendered line-height for an accurate clamp.
+  // Measure rendered line-height for an accurate clamp, and re-measure on
+  // resize / theme / font changes so the preview height stays accurate.
   useEffect(() => {
     const el = bodyRef.current;
     if (!el) return;
-    const lh = parseFloat(window.getComputedStyle(el).lineHeight);
-    if (Number.isFinite(lh) && lh > 0) setLineHeight(lh);
+    const measure = () => {
+      const lh = parseFloat(window.getComputedStyle(el).lineHeight);
+      if (Number.isFinite(lh) && lh > 0) setLineHeight(lh);
+    };
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+    return undefined;
   }, []);
 
   // Detect whether content exceeds the preview height.

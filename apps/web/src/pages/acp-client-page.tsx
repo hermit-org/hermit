@@ -205,7 +205,13 @@ export function ACPClientPage({
 }: ACPClientPageProps): React.JSX.Element {
   const { t } = useTranslation();
   const assistantDisplayName = agentName ?? t("chat.agent");
+  // `internalDraft` is the fallback when no external `onDraftChange` is given.
+  // Sync it from the `draft` prop whenever the prop changes (so switching
+  // between controlled/uncontrolled or session changes keep the field in sync).
   const [internalDraft, setInternalDraft] = React.useState(draft);
+  React.useEffect(() => {
+    if (!onDraftChange) setInternalDraft(draft);
+  }, [draft, onDraftChange]);
   const {
     sidebarOpen,
     setSidebarOpen,
@@ -229,6 +235,14 @@ export function ACPClientPage({
     },
     [onPrompt, onDraftChange],
   );
+
+  const toggleSidebar = React.useCallback(() => {
+    setSidebarOpen(!sidebarOpen);
+  }, [sidebarOpen, setSidebarOpen]);
+
+  const toggleRightPanel = React.useCallback(() => {
+    setRightPanelOpen(!rightPanelOpen);
+  }, [rightPanelOpen, setRightPanelOpen]);
 
   return (
     <ErrorBoundary>
@@ -295,7 +309,7 @@ export function ACPClientPage({
                       size="icon-sm"
                       className="h-7 w-7"
                       aria-label={t("layout.toggleSidebar")}
-                      onClick={() => setSidebarOpen(!sidebarOpen)}
+                      onClick={toggleSidebar}
                     >
                       {sidebarOpen ? (
                         <PanelLeftClose className="h-4 w-4" />
@@ -353,7 +367,7 @@ export function ACPClientPage({
                       size="icon-sm"
                       className="ml-auto h-7 w-7"
                       aria-label={t("layout.toggleRightPanel")}
-                      onClick={() => setRightPanelOpen(!rightPanelOpen)}
+                      onClick={toggleRightPanel}
                     >
                       {rightPanelOpen ? (
                         <PanelRightClose className="h-4 w-4" />
@@ -597,7 +611,7 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
         const dot =
           status === "completed" ? "●" : status === "in_progress" ? "◐" : "○";
         return (
-          <div key={i} className="flex items-baseline gap-2 py-0.5">
+          <div key={`${i}-${e.content}`} className="flex items-baseline gap-2 py-0.5">
             <span className="text-muted-foreground">{dot}</span>
             <span
               className={cn(

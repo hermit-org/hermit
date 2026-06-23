@@ -71,6 +71,16 @@ export function ToolCallCard({
     }
   }, [hasBody, isControlled, collapsed, onCollapsedChange]);
 
+  const handleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (hasBody && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        toggle();
+      }
+    },
+    [hasBody, toggle],
+  );
+
   return (
     <div
       className={cn(
@@ -82,12 +92,7 @@ export function ToolCallCard({
         role={hasBody ? "button" : undefined}
         tabIndex={hasBody ? 0 : undefined}
         onClick={toggle}
-        onKeyDown={(e) => {
-          if (hasBody && (e.key === "Enter" || e.key === " ")) {
-            e.preventDefault();
-            toggle();
-          }
-        }}
+        onKeyDown={handleKeyDown}
         aria-expanded={hasBody ? !isCollapsed : undefined}
         className={cn(
           "flex items-center gap-2 px-3 py-2",
@@ -133,7 +138,7 @@ export function ToolCallCard({
           {call.content.length > 0 ? (
             <div className="space-y-2">
               {call.content.map((c, i) => (
-                <ToolCallContentItem key={i} content={c} />
+                <ToolCallContentItem key={toolCallContentKey(c, i)} content={c} />
               ))}
             </div>
           ) : null}
@@ -141,7 +146,7 @@ export function ToolCallCard({
             <div className="space-y-1">
               {call.locations.map((loc, i) => (
                 <div
-                  key={i}
+                  key={`${loc.path}:${loc.line ?? i}`}
                   className="font-mono text-xs text-muted-foreground"
                 >
                   📄 {loc.path}
@@ -264,6 +269,23 @@ function ContentBlockView({
     );
   }
   return null;
+}
+
+/**
+ * Derive a stable key for a tool-call content item.
+ */
+function toolCallContentKey(c: ToolCallContent, index: number): string {
+  if (c.type === "content") {
+    const inner = c.content;
+    if (inner.type === "text") return `content:text:${index}:${inner.text.slice(0, 32)}`;
+    if (inner.type === "image") return `content:image:${index}:${inner.mimeType}`;
+    if (inner.type === "resource") return `content:resource:${index}:${inner.resource.uri}`;
+    if (inner.type === "resource_link") return `content:resource_link:${index}:${inner.uri}`;
+    return `content:${index}`;
+  }
+  if (c.type === "diff") return `diff:${index}:${c.newText.slice(0, 24)}`;
+  if (c.type === "terminal") return `terminal:${index}:${c.terminalId}`;
+  return `${index}`;
 }
 
 function renderRaw(value: unknown): string | null {

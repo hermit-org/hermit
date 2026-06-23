@@ -38,6 +38,10 @@ export function ToolCallPanel({
   const [filter, setFilter] = React.useState<ToolCallStatus | "all">(
     statusFilter ?? "all",
   );
+  // Keep the internal filter in sync if the parent prop changes.
+  React.useEffect(() => {
+    if (statusFilter !== undefined) setFilter(statusFilter);
+  }, [statusFilter]);
 
   const counts = React.useMemo(() => {
     const c: Record<ToolCallStatus, number> = {

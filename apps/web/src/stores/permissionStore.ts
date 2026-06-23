@@ -57,9 +57,10 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
 
   request(params) {
     return new Promise<RequestPermissionResult>((resolve, reject) => {
-      const id =
-        params.toolCall?.toolCallId ??
-        `perm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      // Always generate a unique id (even when multiple permissions share a
+      // toolCallId) so `respond`/`cancel` only affect the intended entry.
+      const toolCallId = params.toolCall?.toolCallId ?? "unknown";
+      const id = `perm-${toolCallId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const entry: PendingPermission = {
         id,
         toolCall: params.toolCall,
@@ -109,6 +110,11 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
     entry.reject(new Error("Permission request dismissed"));
   },
 
+  /**
+   * Reject and drop all pending requests locally. This does NOT notify the
+   * agent — it only clears the client-side queue. True cancellation would
+   * require sending a cancellation notification to the agent.
+   */
   clear() {
     const entries = get().pending;
     set({ pending: [] });

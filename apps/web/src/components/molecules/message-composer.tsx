@@ -79,6 +79,18 @@ export function MessageComposer({
   const showMenu = slash !== null && commands.length > 0;
   const slashQuery = slash?.query ?? "";
 
+  // Mirror the SlashCommandMenu's filter so keyboard navigation can clamp to
+  // the actual number of visible commands.
+  const filteredCommandCount = React.useMemo(() => {
+    const q = slashQuery.trim().toLowerCase();
+    if (!q) return commands.length;
+    return commands.filter((c) => {
+      const name = c.name.toLowerCase();
+      const desc = (c.description ?? "").toLowerCase();
+      return name.includes(q) || desc.includes(q);
+    }).length;
+  }, [commands, slashQuery]);
+
   const autoGrow = React.useCallback(() => {
     const el = taRef.current;
     if (!el) return;
@@ -95,48 +107,71 @@ export function MessageComposer({
   const submit = React.useCallback(() => {
     const text = value.trim();
     if (!text || busy || disabled) return;
-    onSubmit(text);
-    onChange("");
+    // If onSubmit returns a promise, await it and only clear the draft on
+    // success so a failed submission can be retried.
+    const maybe = onSubmit(text) as unknown;
+    if (maybe && typeof (maybe as Promise<void>).then === "function") {
+      void (maybe as Promise<void>).then(
+        () => onChange(""),
+        () => {
+          /* leave draft intact for retry */
+        },
+      );
+    } else {
+      onChange("");
+    }
   }, [value, busy, disabled, onSubmit, onChange]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (showMenu) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setHighlight((h) => h + 1);
-        return;
+  const handleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (showMenu) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setHighlight((h) => {
+            const len = Math.max(1, filteredCommandCount);
+            return (h + 1) % len;
+          });
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setHighlight((h) => {
+            const len = Math.max(1, filteredCommandCount);
+            return (h - 1 + len) % len;
+          });
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          // dismiss menu by trimming trailing slash query
+          if (slash) onChange(value.slice(0, slash.start));
+          return;
+        }
       }
-      if (e.key === "ArrowUp") {
+      if (
+        e.key === "Enter" &&
+        !e.shiftKey &&
+        !e.nativeEvent.isComposing &&
+        e.keyCode !== 229
+      ) {
         e.preventDefault();
-        setHighlight((h) => Math.max(0, h - 1));
-        return;
+        submit();
       }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        // dismiss menu by trimming trailing slash query
-        if (slash) onChange(value.slice(0, slash.start));
-        return;
-      }
-    }
-    if (
-      e.key === "Enter" &&
-      !e.shiftKey &&
-      !e.nativeEvent.isComposing &&
-      e.keyCode !== 229
-    ) {
-      e.preventDefault();
-      submit();
-    }
-  };
+    },
+    [showMenu, filteredCommandCount, slash, value, onChange, submit],
+  );
 
-  const handleCommand = (cmd: AvailableCommand) => {
-    if (slash) {
-      const before = value.slice(0, slash.start);
-      onChange(`${before}/${cmd.name} `);
-    }
-    onCommand?.(cmd);
-    taRef.current?.focus();
-  };
+  const handleCommand = React.useCallback(
+    (cmd: AvailableCommand) => {
+      if (slash) {
+        const before = value.slice(0, slash.start);
+        onChange(`${before}/${cmd.name} `);
+      }
+      onCommand?.(cmd);
+      taRef.current?.focus();
+    },
+    [slash, value, onChange, onCommand],
+  );
 
   return (
     <div className={cn("relative", className)}>

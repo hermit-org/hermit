@@ -111,8 +111,29 @@ export function ContentBlockList({
   return (
     <div className={cn("space-y-2", className)}>
       {blocks.map((block, i) => (
-        <ContentRenderer key={i} content={block} compact={compact} />
+        <ContentRenderer key={contentBlockKey(block, i)} content={block} compact={compact} />
       ))}
     </div>
   );
+}
+
+/**
+ * Derive a stable key for a content block. Falls back to a combination of
+ * type and a content fragment so inserts/reorders don't reuse stale DOM.
+ */
+function contentBlockKey(block: ContentBlock, index: number): string {
+  switch (block.type) {
+    case "text":
+      return `text:${index}:${block.text.slice(0, 32)}`;
+    case "image":
+      return `image:${index}:${block.mimeType}`;
+    case "audio":
+      return `audio:${index}:${block.mimeType}`;
+    case "resource":
+      return `resource:${index}:${block.resource.uri}`;
+    case "resource_link":
+      return `resource_link:${index}:${block.uri}`;
+    default:
+      return `${index}`;
+  }
 }

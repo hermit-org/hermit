@@ -110,7 +110,20 @@ export function SessionListItem({
   React.useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
-    setIsTitleTruncated(el.scrollWidth > el.clientWidth);
+    // Re-check truncation whenever the title changes OR the container is
+    // resized (window resize / sidebar width change).
+    const update = () => {
+      setIsTitleTruncated(el.scrollWidth > el.clientWidth);
+    };
+    update();
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(update)
+        : null;
+    if (ro) ro.observe(el);
+    return () => {
+      ro?.disconnect();
+    };
   }, [title]);
 
   return (
@@ -194,10 +207,12 @@ export function SessionListItem({
               {t("sessionItem.fork")}
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem onClick={() => onDuplicate?.(id)}>
-            <CopyIcon />
-            {t("sessionItem.duplicate")}
-          </DropdownMenuItem>
+          {onDuplicate ? (
+            <DropdownMenuItem onClick={() => onDuplicate?.(id)}>
+              <CopyIcon />
+              {t("sessionItem.duplicate")}
+            </DropdownMenuItem>
+          ) : null}
           {canArchive ? (
             <DropdownMenuItem onClick={() => onArchive?.(id)}>
               <Archive />

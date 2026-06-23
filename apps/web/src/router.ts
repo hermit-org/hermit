@@ -21,9 +21,24 @@ function notify(): void {
   for (const cb of subscribers) cb();
 }
 
-if (typeof window !== "undefined") {
+// Listeners are registered lazily on the first subscriber and removed when the
+// last one unsubscribes, so importing this module in tests/SSR has no side
+// effects and repeated imports don't leak duplicate listeners.
+let windowListenersBound = false;
+
+function bindWindowListeners(): void {
+  if (typeof window === "undefined" || windowListenersBound) return;
+  windowListenersBound = true;
   window.addEventListener("popstate", notify);
   window.addEventListener("hashchange", notify);
+}
+
+function maybeUnbindWindowListeners(): void {
+  if (typeof window === "undefined" || subscribers.size > 0) return;
+  if (!windowListenersBound) return;
+  windowListenersBound = false;
+  window.removeEventListener("popstate", notify);
+  window.removeEventListener("hashchange", notify);
 }
 
 function decode(segment: string): string {
@@ -73,9 +88,11 @@ function getServerSnapshot(): Route {
 }
 
 function subscribe(cb: () => void): () => void {
+  if (subscribers.size === 0) bindWindowListeners();
   subscribers.add(cb);
   return () => {
     subscribers.delete(cb);
+    maybeUnbindWindowListeners();
   };
 }
 
