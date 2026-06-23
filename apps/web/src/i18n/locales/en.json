@@ -315,7 +315,11 @@
     "archiveThreshold": "Threshold",
     "archiveThresholdHint": "Duration since last update before a session is archived.",
     "archiveThresholdExample": "e.g. 3d, 2h, 30m",
-    "archiveDescription": "Archived sessions are hidden but not deleted. Open the \"archived\" section in the sidebar to restore them."
+    "archiveDescription": "Archived sessions are hidden but not deleted. Open the \"archived\" section in the sidebar to restore them.",
+    "connectionTitle": "Connection",
+    "connectionHint": "Control automatic behaviour when connecting to a gateway.",
+    "autoAuthenticate": "Auto-authenticate",
+    "autoAuthenticateHint": "Automatically authenticate after connecting, without a manual click."
   },
   "session": {
     "rename": "Rename session",

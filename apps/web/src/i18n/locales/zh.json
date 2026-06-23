@@ -315,7 +315,11 @@
     "archiveThreshold": "阈值",
     "archiveThresholdHint": "会话最近更新距今超过该时长后归档。",
     "archiveThresholdExample": "如 3d、2h、30m",
-    "archiveDescription": "归档的会话仅被隐藏，不会被删除。在侧边栏的“已归档”区域可恢复。"
+    "archiveDescription": "归档的会话仅被隐藏，不会被删除。在侧边栏的“已归档”区域可恢复。",
+    "connectionTitle": "连接行为",
+    "connectionHint": "控制连接网关时的自动行为。",
+    "autoAuthenticate": "自动认证",
+    "autoAuthenticateHint": "连接网关后自动尝试认证，无需手动点击。"
   },
   "session": {
     "rename": "重命名会话",

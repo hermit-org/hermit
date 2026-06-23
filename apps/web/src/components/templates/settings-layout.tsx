@@ -304,7 +304,41 @@ function GatewaySection(): React.JSX.Element {
           })
         )}
       </div>
+
+      <Separator />
+
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.connectionTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.connectionHint")}
+        </p>
+      </div>
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+        <div>
+          <Label htmlFor="auto-authenticate">
+            {t("settings.autoAuthenticate")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.autoAuthenticateHint")}
+          </p>
+        </div>
+        <AutoAuthenticateSwitch />
+      </div>
     </div>
+  );
+}
+
+function AutoAuthenticateSwitch(): React.JSX.Element {
+  const autoAuthenticate = useSettingsStore((s) => s.autoAuthenticate);
+  const setAutoAuthenticate = useSettingsStore(
+    (s) => s.setAutoAuthenticate,
+  );
+  return (
+    <Switch
+      id="auto-authenticate"
+      checked={autoAuthenticate}
+      onCheckedChange={setAutoAuthenticate}
+    />
   );
 }
 

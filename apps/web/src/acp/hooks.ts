@@ -4,6 +4,7 @@ import type { AuthMethod } from "@hermit-org/acp";
 import { createWebTransport } from "../transport/stdio";
 import type { WebSseEvent } from "../transport/connection";
 import { usePermissionStore } from "../stores";
+import { useSettingsStore } from "../stores/settingsStore";
 import type { Gateway } from "../types";
 
 export interface UseAcpClientOptions {
@@ -102,6 +103,19 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
       // If the agent advertises no auth methods, treat as authenticated.
       setAuthenticated((result.authMethods ?? []).length === 0);
       setConnected(true);
+
+      // Auto-authenticate when the setting is enabled and the agent
+      // advertises at least one auth method. Uses the first method.
+      const methods = result.authMethods ?? [];
+      const autoAuth = useSettingsStore.getState().autoAuthenticate;
+      if (autoAuth && methods.length > 0) {
+        try {
+          await client.authenticate(methods[0].id);
+          setAuthenticated(true);
+        } catch (e) {
+          setError(e instanceof Error ? e : new Error(String(e)));
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)));
       setState("error");

@@ -30,6 +30,9 @@ interface SettingsState {
   /** Automatic-archive threshold (e.g. `"3d"`, `"2h"`, `""` to disable). */
   autoArchiveThreshold: AutoArchiveThreshold;
   setAutoArchiveThreshold: (threshold: AutoArchiveThreshold) => void;
+  /** Whether to automatically authenticate when an agent advertises auth methods. */
+  autoAuthenticate: boolean;
+  setAutoAuthenticate: (enabled: boolean) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
@@ -59,6 +62,8 @@ export const useSettingsStore = create<SettingsState>()(
       autoArchiveThreshold: DEFAULT_AUTO_ARCHIVE_THRESHOLD,
       setAutoArchiveThreshold: (autoArchiveThreshold) =>
         set({ autoArchiveThreshold }),
+      autoAuthenticate: false,
+      setAutoAuthenticate: (autoAuthenticate) => set({ autoAuthenticate }),
     }),
     {
       name: "hermit-settings",
