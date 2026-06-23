@@ -13,18 +13,18 @@ bun install
 # 1.2 Type-check the whole monorepo
 bunx tsc --noEmit
 
-# 1.3 Update version numbers in affected package.json files
-#     For @hermit-org/stdio-to-sse, ensure no workspace:* dependencies remain.
+# 1.3 Update version numbers in affected package.json files.
+#     For publishable packages, ensure workspace:* deps are resolved before npm publish.
 
 # 1.4 Dry-run npm publish
 bun publish --dry-run
 
-# 1.5 Test the bridge end-to-end
-bun packages/cli/src/bin/hermit.ts bridge "cat" --port 3000
+# 1.5 Test the gateway end-to-end
+bun packages/cli/src/index.ts start
 
 # In another terminal:
-curl -N http://localhost:3000/sse              # should connect
-curl -X POST http://localhost:3000/message -d "ping"  # should receive "ping" via SSE
+curl -N -H "Authorization: Bearer <token>" http://localhost:8787/   # should connect to SSE
+curl -X POST -H "Authorization: Bearer <token>" http://localhost:8787/send -d '{"jsonrpc":"2.0","method":"$/agent/info","id":1}'  # should receive response via SSE
 ```
 
 All checks must pass before proceeding.
@@ -35,18 +35,20 @@ All checks must pass before proceeding.
 
 Hermit uses independent versioning per package.
 
-### 2.1 Order of Version Updates
+### 2.1 Publishable Packages
 
-If `@hermit-org/cli` depends on a new version of `@hermit-org/stdio-to-sse`, update and publish in this order:
+The following packages are published to npm (in the specified order):
 
 ```
-stdio-to-sse → cli → server → mobile
+types → utils → stdio-to-sse → cli
 ```
+
+`@hermit-org/stdio-to-sse_rn`, `@hermit-org/acp`, `@hermit-org/mobile`, and `@hermit-org/web` are private and not published.
 
 ### 2.2 Bumping Versions
 
 ```bash
-cd packages/stdio-to-sse
+cd packages/types
 # Option A: npm version
 npm version patch   # or minor / major
 
@@ -61,13 +63,13 @@ bun install
 
 ---
 
-## 3. npm Publish (`@hermit-org/stdio-to-sse`)
+## 3. npm Publish
 
-### 3.1 Prepare for Publish
+### 3.1 Manual Publish
 
 ```bash
-# Remove workspace:* if it exists (currently none, but verify)
-grep -R "workspace:\*" packages/stdio-to-sse/package.json
+# Remove workspace:* if it exists
+grep -R "workspace:\*" packages/types/package.json
 
 # Login to npm
 npm login
@@ -79,7 +81,7 @@ npm org ls @hermit-org
 ### 3.2 Publish Steps
 
 ```bash
-cd packages/stdio-to-sse
+cd packages/types
 
 # Preview the tarball
 bun publish --dry-run
@@ -91,14 +93,16 @@ bun publish --access public
 npm publish --access public
 
 # Verify the version is live
-npm view @hermit-org/stdio-to-sse versions
+npm view @hermit-org/types versions
 ```
 
-### 3.3 Tag the Release
+### 3.3 CI Publish (GitHub Actions)
+
+Push a tag starting with `v` (e.g. `v0.1.0`) or trigger the `publish-packages.yml` workflow manually with a version number. This publishes `types`, `utils`, `stdio-to-sse`, and `cli` in order.
 
 ```bash
-git tag stdio-to-sse@0.1.2
-git push origin stdio-to-sse@0.1.2
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 ---
@@ -108,14 +112,25 @@ git push origin stdio-to-sse@0.1.2
 ### 4.1 CLI Binary
 
 ```bash
-bun build ./packages/cli/src/bin/hermit.ts \
+bun build ./packages/cli/src/index.ts \
   --compile \
   --outfile hermit-cli
 ```
 
 Output: single executable file `hermit-cli`.
 
-### 4.2 React Native Client
+### 4.2 Web App
+
+```bash
+cd apps/web
+bun run build
+```
+
+Output: static files in `apps/web/dist/`.
+
+Deployed to GitHub Pages via `deploy-web.yml` workflow (triggered by `v*` tag or manual dispatch).
+
+### 4.3 React Native Client
 
 iOS Release:
 
@@ -143,22 +158,40 @@ Output:
 android/app/build/outputs/apk/release/app-release.apk
 ```
 
+Android APK is also built via `build-android.yml` CI workflow.
+
 ---
 
 ## 5. Deployment
 
-### 5.1 Bridge Server
+### 5.1 Gateway Server
 
 #### Direct Run
 
 ```bash
-bun apps/server/src/index.ts "cat" 3000
+bun packages/cli/src/index.ts start
+```
+
+With CLI options:
+
+```bash
+# Override agent command
+bun packages/cli/src/index.ts start --command "kimi" --args "acp,--model,kimi-k2"
+
+# Specify config file path
+bun packages/cli/src/index.ts start --config ./hermit.config.json
+```
+
+#### Run as npm package
+
+```bash
+npx @hermit-org/cli start
 ```
 
 #### PM2 Daemon
 
 ```bash
-pm2 start "bun apps/server/src/index.ts cat 3000" --name hermit-bridge
+pm2 start "bun packages/cli/src/index.ts start" --name hermit-gateway
 pm2 save
 pm2 startup
 ```
@@ -170,16 +203,25 @@ FROM oven/bun:1
 WORKDIR /app
 COPY . .
 RUN bun install
-EXPOSE 3000
-CMD ["bun", "apps/server/src/index.ts", "cat", "3000"]
+EXPOSE 8787
+CMD ["bun", "packages/cli/src/index.ts", "start"]
 ```
 
 ```bash
-docker build -t hermit-bridge .
-docker run -p 3000:3000 hermit-bridge
+docker build -t hermit-gateway .
+docker run -p 8787:8787 hermit-gateway
 ```
 
-### 5.2 React Native Distribution
+### 5.2 Web App
+
+```bash
+cd apps/web
+bun run build      # type-check + Vite build → dist/
+bun run preview    # preview the built app locally
+bun run e2e        # Playwright end-to-end tests
+```
+
+### 5.3 React Native Distribution
 
 | Stage | iOS | Android |
 |-------|-----|---------|
@@ -191,113 +233,81 @@ Upload paths:
 - iOS: Xcode → Product → Archive → Distribute App
 - Android: `android/app/build/outputs/apk/release/app-release.apk` or AAB via Play Console.
 
-### 5.3 Environment Variables
+### 5.4 Configuration
+
+The gateway reads `hermit.config.json`. Default lookup path: `~/.hermit/hermit.config.json`.
+
+Example `hermit.config.json`:
+
+```json
+{
+  "agent": {
+    "command": "kimi",
+    "args": ["acp"]
+  },
+  "gateway": {
+    "port": 8787,
+    "hostname": "0.0.0.0",
+    "endpoint": "/",
+    "heartbeatInterval": 30000,
+    "cors": true,
+    "timeout": 0
+  },
+  "authorizedTokens": []
+}
+```
+
+### 5.5 Environment Variables
 
 | Variable | Purpose | Example |
 |----------|---------|---------|
-| `HERMIT_BRIDGE_URL` | Mobile client bridge endpoint | `http://localhost:3000` |
-| `HERMIT_AGENT_COMMAND` | Bridge server agent command | `cat` |
-| `HERMIT_BRIDGE_PORT` | Bridge server port | `3000` |
-| `HERMIT_LOG_LEVEL` | fastify log level | `info` |
+| `BASE_URL` | Web app base path for GitHub Pages deploy | `/hermit/` |
+
+The gateway server does not use `HERMIT_BRIDGE_URL`, `HERMIT_AGENT_COMMAND`, `HERMIT_BRIDGE_PORT`, or `HERMIT_LOG_LEVEL`. Configuration is managed entirely through `hermit.config.json`.
 
 ---
 
-## 6. CI/CD (Optional GitHub Actions)
+## 6. CI/CD (GitHub Actions)
 
-### 6.1 Publish on Tag
+Three workflows are configured:
 
-Create `.github/workflows/publish-stdio-to-sse.yml`:
+### 6.1 Build Android APK (`build-android.yml`)
 
-```yaml
-name: Publish stdio-to-sse
+- **Triggers:** push to `main` or `feat/acp-rn-sync`, pull request to `main`, manual dispatch.
+- **Actions:** Sets up Bun + Node + JDK 17 + Android SDK, generates Android project, builds release APK, uploads artifact.
+- **Output:** `hermit-android-release` artifact (APK).
 
-on:
-  push:
-    tags:
-      - "stdio-to-sse@*"
+### 6.2 Deploy Web to GitHub Pages (`deploy-web.yml`)
 
-jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-      - run: bun install
-      - run: bunx tsc --noEmit
-      - run: cd packages/stdio-to-sse && bun test
-      - run: cd packages/stdio-to-sse && bun publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-```
+- **Triggers:** `v*` tag push, manual dispatch.
+- **Actions:** Builds `apps/web` with Vite, uploads to Pages artifact, deploys to GitHub Pages.
+- **Requires:** Pages source set to "GitHub Actions" in repo settings.
 
-### 6.2 PR Validation
+### 6.3 Publish Packages to npm (`publish-packages.yml`)
 
-```yaml
-name: CI
-
-on:
-  pull_request:
-    branches: [main]
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-      - run: bun install
-      - run: bunx tsc --noEmit
-      - run: cd packages/stdio-to-sse && bun test
-```
+- **Triggers:** `v*` tag push, manual dispatch with version input.
+- **Actions:** Resolves `workspace:*` to concrete semver, publishes `types` → `utils` → `stdio-to-sse` → `cli` to npm.
+- **Requires:** `NPM_TOKEN` secret configured in repo settings.
 
 ---
 
-## 7. Rollback Plan
+## 7. Mock Agent (Local Development)
 
-### 7.1 npm Package Rollback
-
-If a wrong version was published within 24 hours:
+For local development without a real ACP agent, use the bundled mock agent:
 
 ```bash
-npm unpublish @hermit-org/stdio-to-sse@0.1.2 --force
+bun packages/cli/src/index.ts start --command "node" --args "scripts/kimi-mock-agent.js"
 ```
 
-After 24 hours, publish a new patch version instead:
+The mock agent handles `$/agent/info` and `$/prompt` JSON-RPC methods with canned responses.
+
+An end-to-end test script is also available:
 
 ```bash
-npm version patch
-npm publish --access public
+bun run scripts/test-acp-kimi.ts
 ```
 
-### 7.2 Code Rollback
-
-Revert a specific commit:
-
-```bash
-git revert <commit-hash>
-git push origin main
-```
-
-Or reset to a known good tag (use only in emergencies):
-
-```bash
-git reset --hard stdio-to-sse@0.1.1
-```
-
-### 7.3 Hotfix Flow
-
-```bash
-# From main
-git checkout -b hotfix/sse-timeout
-# Fix and commit
-git push origin hotfix/sse-timeout
-# Open PR, squash merge to main
-git tag stdio-to-sse@0.1.3
-git push origin stdio-to-sse@0.1.3
-# Publish immediately
-```
+This connects to a running gateway at `http://localhost:8787` and performs a full ACP session lifecycle (initialize → session/new → session/prompt).
 
 ---
 
@@ -329,7 +339,54 @@ git push origin stdio-to-sse@0.1.3
 
 ---
 
-## 9. Common Pitfalls
+## 9. Rollback Plan
+
+### 9.1 npm Package Rollback
+
+If a wrong version was published within 24 hours:
+
+```bash
+npm unpublish @hermit-org/types@0.1.2 --force
+```
+
+After 24 hours, publish a new patch version instead:
+
+```bash
+npm version patch
+npm publish --access public
+```
+
+### 9.2 Code Rollback
+
+Revert a specific commit:
+
+```bash
+git revert <commit-hash>
+git push origin main
+```
+
+Or reset to a known good tag (use only in emergencies):
+
+```bash
+git reset --hard v0.1.0
+```
+
+### 9.3 Hotfix Flow
+
+```bash
+# From main
+git checkout -b hotfix/sse-timeout
+# Fix and commit
+git push origin hotfix/sse-timeout
+# Open PR, squash merge to main
+git tag v0.1.1
+git push origin v0.1.1
+# Publish immediately via CI
+```
+
+---
+
+## 10. Common Pitfalls
 
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
@@ -338,5 +395,6 @@ git push origin stdio-to-sse@0.1.3
 | Bun install RN deps fails | peer dependency / postinstall error | Fallback to `npm install` or `bun install --legacy-peer-deps` |
 | Metro cache stale | `Unable to resolve @hermit-org/types` | `bun react-native start --reset-cache` |
 | Missing `bun.lock` regeneration | Inconsistent installs after version bump | Run `bun install` after every version change |
-| Published wrong version | Wrong code in production | `npm unpublish @hermit-org/stdio-to-sse@<ver> --force` within 24h |
-| Hotfix not tagged | Release branch confusion | Always tag after hotfix merge: `git tag <pkg>@<ver>` |
+| Published wrong version | Wrong code in production | `npm unpublish @hermit-org/<pkg>@<ver> --force` within 24h |
+| Hotfix not tagged | Release branch confusion | Always tag after hotfix merge: `git tag v<ver>` |
+| Unauthorized SSE connection | `401 Unauthorized` response | Include `Authorization: Bearer <token>` header; generate token with `hermit pair` |

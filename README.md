@@ -56,7 +56,7 @@ bun test packages/cli/src/lib/gateway.test.ts
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                          CLI Host (Node.js)                         │
+│                          CLI Host (Bun/Node.js)                     │
 │  ┌─────────────┐      ┌─────────────────────┐      ┌────────────┐  │
 │  │ Local Agent │◄────►│ @hermit-org/stdio-to-sse│◄────►│  HTTP/SSE  │  │
 │  │ (stdio)     │stdio │  (transport bridge) │      │  Gateway   │  │
@@ -64,20 +64,19 @@ bun test packages/cli/src/lib/gateway.test.ts
 └────────────────────────────────────────────────────┼────────────────┘
                                                      │
                                                      │ Wi-Fi / LAN
-                                                     ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                     Mobile Device (React Native)                    │
-│  ┌─────────────┐      ┌──────────────────────┐     ┌─────────────┐ │
-│  │  UI Screens │◄────►│   @hermit-org/mobile     │◄───►│ @hermit-org/    │ │
-│  │ ServerList  │      │   ACP client + UI    │     │ stdio-to-   │ │
-│  │ SessionList │      │                      │     │ sse_rn      │ │
-│  │    Chat     │      │                      │     │             │ │
-│  └─────────────┘      └──────────────────────┘     └──────┬──────┘ │
-│                                                           │        │
-│                              ┌────────────────────────────┘        │
-│                              ▼                                      │
-│                       react-native-sse (EventSource)                │
-└─────────────────────────────────────────────────────────────────────┘
+                  ┌──────────────────────────────────┤
+                  ▼                                  ▼
+┌─────────────────────────────────┐  ┌─────────────────────────────────┐
+│    Mobile (React Native)        │  │     Web (Vite + React)          │
+│  ┌───────────┐  ┌────────────┐  │  │  ┌───────────┐  ┌────────────┐  │
+│  │ UI Screens│◄►│ @hermit-org/│  │  │  │   Pages   │◄►│ SSE fetch   │  │
+│  │ServerList │  │ stdio-to-  │  │  │  │ Gateways  │  │ transport   │  │
+│  │SessionList│  │ sse_rn     │  │  │  │ Sessions  │  │             │  │
+│  │   Chat    │  │            │  │  │  │   Chat    │  │             │  │
+│  └───────────┘  └─────┬──────┘  │  │  └───────────┘  └──────┬──────┘  │
+│                       │         │  │                         │         │
+│              react-native-sse   │  │              fetch (streaming)  │
+└─────────────────────────────────┘  └─────────────────────────────────┘
 ```
 
 ## CLI Usage
@@ -87,14 +86,16 @@ config:
 
 ```json
 {
-  "agent": { "command": "npx", "args": ["codex", "--acp"] },
+  "agent": { "command": "kimi", "args": ["acp"] },
   "gateway": {
     "port": 8787,
     "hostname": "0.0.0.0",
     "endpoint": "/",
     "heartbeatInterval": 30000,
-    "cors": true
-  }
+    "cors": true,
+    "timeout": 0
+  },
+  "authorizedTokens": []
 }
 ```
 
@@ -123,7 +124,7 @@ bun packages/cli/src/index.ts start
 
 The gateway exposes:
 
-- `GET/POST /` — SSE stream of the agent stdout (requires bearer token)
+- `GET /` — SSE stream of the agent stdout (requires bearer token)
 - `POST /send` — write request body to the agent stdin (requires bearer token)
 - `POST /pair` — exchange a pairing code for a bearer token
 - `GET /api/config` — read-only connection info derived from `hermit.config.json`
@@ -239,15 +240,16 @@ bun run android
 bun run ios
 ```
 
-The app has three screens:
+The app has four screens:
 
 1. **Server List** — add/edit/delete gateway addresses and bearer tokens.
 2. **Session List** — browse and create chat sessions for a gateway.
 3. **Chat** — connect via SSE, send messages, render streaming Markdown and code
    blocks.
+4. **QR Scanner** — scan a pairing QR code to auto-configure a gateway.
 
 Add a gateway using the CLI host's IP (e.g. `http://192.168.1.5:8787`) and the
-token from `hermit pair`.
+token from `hermit pair`, or scan the pairing QR code displayed in the terminal.
 
 ## Web App
 
@@ -285,17 +287,22 @@ hermit/
 ├── package.json              # Root workspace manifest
 ├── tsconfig.json             # Shared TypeScript configuration
 ├── bun.lock                  # Bun lockfile
+├── hermit.config.json        # Default gateway & agent config
 ├── README.md                 # This file
+├── scripts/
+│   ├── kimi-mock-agent.js    # Mock ACP agent for local testing
+│   └── test-acp-kimi.ts      # E2E test script for ACP + Kimi
+├── .github/workflows/        # CI/CD pipelines
 ├── packages/
-│   ├── cli/
-│   ├── stdio-to-sse/
-│   ├── stdio-to-sse_rn/
-│   ├── acp/
-│   ├── types/
-│   └── utils/
+│   ├── acp/                  # @hermit-org/acp — ACP v1 client library
+│   ├── cli/                  # @hermit-org/cli — Bun CLI
+│   ├── stdio-to-sse/         # Node.js stdio ↔ SSE bridge
+│   ├── stdio-to-sse_rn/      # React Native SSE transport
+│   ├── types/                # @hermit-org/types
+│   └── utils/                # @hermit-org/utils
 └── apps/
-    ├── mobile/
-    └── web/
+    ├── mobile/               # React Native mobile app
+    └── web/                  # Vite + React web app
 ```
 
 ## License

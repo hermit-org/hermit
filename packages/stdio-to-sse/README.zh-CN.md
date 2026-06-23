@@ -139,8 +139,8 @@ const { data, remainder } = parseSse(frame);
 import { AcpGatewayServer } from "@hermit-org/cli/src/lib/gateway";
 
 const server = new AcpGatewayServer({
-  command: "npx",
-  args: ["codex", "--acp"],
+  command: "kimi",
+  args: ["acp"],
   port: 8787,
 });
 const { url, stop } = await server.start();
