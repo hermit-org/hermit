@@ -289,7 +289,16 @@
     "sendMessage": "Send message",
     "newLine": "New line",
     "toggleSidebar": "Toggle sidebar",
-    "cancelGeneration": "Cancel generation"
+    "cancelGeneration": "Cancel generation",
+    "archive": "Archive",
+    "archiveTitle": "Auto-archive",
+    "archiveHint": "Automatically hide old sessions from the sidebar.",
+    "autoArchive": "Auto-archive old sessions",
+    "autoArchiveHint": "Sessions older than the threshold are archived.",
+    "archiveThreshold": "Threshold",
+    "archiveThresholdHint": "Duration since last update before a session is archived.",
+    "archiveThresholdExample": "e.g. 3d, 2h, 30m",
+    "archiveDescription": "Archived sessions are hidden but not deleted. Open the \"archived\" section in the sidebar to restore them."
   },
   "session": {
     "rename": "Rename session",
@@ -305,13 +314,16 @@
     "noMatchingSessions": "No matching sessions",
     "tryDifferentFilter": "Try a different search or filter.",
     "createSession": "Create a session to start chatting.",
-    "refresh": "Refresh sessions"
+    "refresh": "Refresh sessions",
+    "archived": "Archived"
   },
   "sessionItem": {
     "resumeLoad": "Resume / load",
     "fork": "Fork",
     "duplicate": "Duplicate",
     "archive": "Archive",
+    "unarchive": "Restore",
+    "close": "Close",
     "delete": "Delete",
     "sessionActions": "Session actions"
   },

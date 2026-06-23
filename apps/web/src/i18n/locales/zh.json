@@ -289,7 +289,16 @@
     "sendMessage": "发送消息",
     "newLine": "换行",
     "toggleSidebar": "切换侧边栏",
-    "cancelGeneration": "取消生成"
+    "cancelGeneration": "取消生成",
+    "archive": "归档",
+    "archiveTitle": "自动归档",
+    "archiveHint": "自动将旧会话从侧边栏隐藏。",
+    "autoArchive": "自动归档旧会话",
+    "autoArchiveHint": "超过阈值的会话将被自动归档。",
+    "archiveThreshold": "阈值",
+    "archiveThresholdHint": "会话最近更新距今超过该时长后归档。",
+    "archiveThresholdExample": "如 3d、2h、30m",
+    "archiveDescription": "归档的会话仅被隐藏，不会被删除。在侧边栏的“已归档”区域可恢复。"
   },
   "session": {
     "rename": "重命名会话",
@@ -305,13 +314,16 @@
     "noMatchingSessions": "无匹配会话",
     "tryDifferentFilter": "尝试其他搜索或筛选条件。",
     "createSession": "创建一个会话开始对话。",
-    "refresh": "刷新会话列表"
+    "refresh": "刷新会话列表",
+    "archived": "已归档"
   },
   "sessionItem": {
     "resumeLoad": "恢复 / 加载",
     "fork": "分叉",
     "duplicate": "复制",
     "archive": "归档",
+    "unarchive": "恢复",
+    "close": "关闭",
     "delete": "删除",
     "sessionActions": "会话操作"
   },

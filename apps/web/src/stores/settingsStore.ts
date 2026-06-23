@@ -3,6 +3,14 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export type AppLanguage = "en" | "zh";
 
+/**
+ * Automatic-archive threshold expressed as a human-readable duration string
+ * such as `"3d"`, `"2h"`, `"30m"`. An empty string disables auto-archiving.
+ * Sessions older than this threshold (per `updatedAt`) and not in the local
+ * open list are archived each time the session list is refreshed.
+ */
+export type AutoArchiveThreshold = string;
+
 interface SettingsState {
   /**
    * How many lines of an agent "thought" block to show in its collapsed
@@ -19,9 +27,14 @@ interface SettingsState {
   /** Whether the right tool panel is expanded. */
   rightPanelOpen: boolean;
   setRightPanelOpen: (open: boolean) => void;
+  /** Automatic-archive threshold (e.g. `"3d"`, `"2h"`, `""` to disable). */
+  autoArchiveThreshold: AutoArchiveThreshold;
+  setAutoArchiveThreshold: (threshold: AutoArchiveThreshold) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
+/** Default auto-archive threshold: 3 days. */
+const DEFAULT_AUTO_ARCHIVE_THRESHOLD = "3d";
 
 function resolveDefaultLanguage(): AppLanguage {
   if (typeof navigator === "undefined") return "en";
@@ -43,6 +56,9 @@ export const useSettingsStore = create<SettingsState>()(
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       rightPanelOpen: true,
       setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
+      autoArchiveThreshold: DEFAULT_AUTO_ARCHIVE_THRESHOLD,
+      setAutoArchiveThreshold: (autoArchiveThreshold) =>
+        set({ autoArchiveThreshold }),
     }),
     {
       name: "hermit-settings",

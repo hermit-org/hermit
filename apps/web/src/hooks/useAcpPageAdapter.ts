@@ -37,6 +37,9 @@ import { useAcpClient } from "../acp/hooks";
 import { useGatewayStore } from "../stores/gatewayStore";
 import { usePermissionStore } from "../stores/permissionStore";
 import { useArchivedSessions } from "./useArchivedSessions";
+import { useOpenSessions } from "./useOpenSessions";
+import { useSettingsStore } from "../stores/settingsStore";
+import { parseDuration, selectAutoArchiveIds } from "../lib/archive";
 import type { Gateway } from "../types";
 
 import type {
@@ -144,8 +147,16 @@ export interface UseAcpPageAdapterResult {
   onDraftChange: (value: string) => void;
   onPrompt: (value: string) => void;
   onCancel: () => void;
-  /** Archive a session by id (client-side only). */
-  onArchiveSession: (id: string) => void;
+  /** Archive a session by id (client-side only). Open sessions are closed on the agent first. */
+  onArchiveSession: (id: string) => Promise<void>;
+  /** Close an open session on the agent and drop it from the open list (no archiving). */
+  onCloseSession: (id: string) => Promise<void>;
+  /** Remove a session from the archive so it becomes visible again. */
+  onUnarchiveSession: (id: string) => void;
+  /** Sessions currently archived on the client (for the "archived" collapsible view). */
+  archivedSessions: SessionSummary[];
+  /** Session ids this client has open (drives per-item close/load actions). */
+  openSessionIds: Set<string>;
   onConfigChange: (optionId: string, value: string) => void;
   onResolvePermission: (
     request: PendingPermission,
@@ -188,6 +199,10 @@ export function useAcpPageAdapter(
   const [setupError, setSetupError] = useState<string | null>(null);
   const [configOptions, setConfigOptions] = useState<ConfigOption[]>([]);
   const [agentSessions, setAgentSessions] = useState<SessionInfo[]>([]);
+  // Full session/list payload retained so archived sessions can still be
+  // rendered in the "archived" collapsible view. `agentSessions` is the
+  // visible subset (archived ids filtered out).
+  const [allAgentSessions, setAllAgentSessions] = useState<SessionInfo[]>([]);
   const [plan, setPlan] = useState<PlanEntry[]>([]);
   const [queueDepth, setQueueDepth] = useState(0);
   const queueRef = useRef<string[]>([]);
@@ -223,6 +238,67 @@ export function useAcpPageAdapter(
   useEffect(() => {
     archivedRef.current = archivedSessions.archived;
   }, [archivedSessions.archived]);
+
+  // Sessions opened on this client via `session/new` or `session/load`. The
+  // open list is persisted (keyed by gateway id) so a page reload keeps
+  // track of which sessions this client holds open. It exempts sessions
+  // from automatic archiving and drives the close-before-archive flow.
+  const openSessions = useOpenSessions(gatewayId);
+  const openRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    openRef.current = openSessions.open;
+  }, [openSessions.open]);
+
+  // Auto-archive threshold from persisted settings. `""` disables it.
+  const autoArchiveThreshold = useSettingsStore((s) => s.autoArchiveThreshold);
+  const autoArchiveThresholdRef = useRef(autoArchiveThreshold);
+  useEffect(() => {
+    autoArchiveThresholdRef.current = autoArchiveThreshold;
+  }, [autoArchiveThreshold]);
+
+  /**
+   * Reconcile archive/open lists and apply automatic archiving against a fresh
+   * `session/list` payload, then return the visible (un-archived) subset.
+   *
+   * Centralised so both the connect-time fetch and manual refresh share the
+   * same state-consistency rules.
+   */
+  const reconcileSessions = useCallback(
+    (sessions: SessionInfo[]): SessionInfo[] => {
+      const liveIds = sessions.map((s) => s.sessionId);
+
+      // State consistency: prune open ids that no longer exist on the agent.
+      openSessions.syncWith(liveIds);
+
+      const archived = archivedRef.current;
+      const open = openRef.current;
+      const thresholdMs = parseDuration(autoArchiveThresholdRef.current);
+
+      // Auto-archive: stale, non-open, not-yet-archived sessions.
+      const toArchive = selectAutoArchiveIds(
+        sessions,
+        thresholdMs,
+        Date.now(),
+        open,
+        archived,
+      );
+      if (toArchive.size > 0) {
+        for (const id of toArchive) archivedSessions.add(id);
+      }
+
+      // Combine the pre-existing archive set with the newly auto-archived ids
+      // so the visible list reflects auto-archiving immediately (the hook's
+      // state update is asynchronous, so `archivedSessions.all()` would lag).
+      const effectiveArchived =
+        toArchive.size > 0 ? new Set([...archived, ...toArchive]) : archived;
+      const visible = effectiveArchived.size
+        ? sessions.filter((s) => !effectiveArchived.has(s.sessionId))
+        : sessions;
+      setAllAgentSessions(sessions);
+      return visible;
+    },
+    [openSessions, archivedSessions],
+  );
 
   // While replaying history via `session/load`, message chunks are diverted
   // into this buffer instead of the live turn — the agent's record is
@@ -504,6 +580,8 @@ export function useAcpPageAdapter(
             setMeta((m) => ({ ...m, modes: result.modes ?? null }));
           if (result.configOptions) setConfigOptions(result.configOptions);
         }
+        // Whether loaded or resumed, this session is now open on the client.
+        openSessions.add(activeSessionId);
         const info = client.initializeResult?.agentInfo ?? null;
         if (info) setMeta((m) => ({ ...m, agentName: info.title ?? info.name }));
         setSetupError(null);
@@ -516,7 +594,7 @@ export function useAcpPageAdapter(
     return () => {
       cancelled = true;
     };
-  }, [gateway, acp.client, acp.connected, activeSessionId]);
+  }, [gateway, acp.client, acp.connected, activeSessionId, openSessions]);
 
   const supportsList =
     acp.client?.initializeResult?.agentCapabilities?.sessionCapabilities?.list !=
@@ -532,6 +610,8 @@ export function useAcpPageAdapter(
       const result = await client.sessionNew({ cwd: "/" });
       const newInfo: SessionInfo = { sessionId: result.sessionId, cwd: "/" };
       setAgentSessions((prev) => [newInfo, ...prev]);
+      // Track this session as open on this client.
+      openSessions.add(result.sessionId);
       // Mark as newly created so the setup effect skips session/load.
       newlyCreatedRef.current.add(result.sessionId);
       setActiveSessionId(result.sessionId);
@@ -547,29 +627,26 @@ export function useAcpPageAdapter(
       setSetupError(e instanceof Error ? e.message : String(e));
       return null;
     }
-  }, []);
+  }, [openSessions]);
 
-  /** Re-fetch `session/list` from the agent, then drop any sessions that
-   * have been archived on the client side. */
+  /**
+   * Re-fetch `session/list` from the agent, reconcile archive/open lists,
+   * apply automatic archiving, and store the visible subset.
+   */
   const refreshSessions = useCallback(async () => {
     const client = clientRef.current;
     if (!client || !supportsList) return;
     setRefreshing(true);
     try {
       const res = await client.sessionList();
-      // Filter out archived sessions — the archive list is the client-side
-      // source of truth for what should be visible.
-      const archived = archivedRef.current;
-      const visible = archived.size
-        ? res.sessions.filter((s) => !archived.has(s.sessionId))
-        : res.sessions;
+      const visible = reconcileSessions(res.sessions);
       setAgentSessions(visible);
     } catch (e) {
       console.error("[ACP adapter] session/list refresh failed:", e);
     } finally {
       setRefreshing(false);
     }
-  }, [supportsList]);
+  }, [supportsList, reconcileSessions]);
 
   /** Reload the active session's authoritative history via `session/load`. */
   const refreshActiveSession = useCallback(async () => {
@@ -618,12 +695,9 @@ export function useAcpPageAdapter(
         .sessionList()
         .then((res) => {
           if (cancelled) return;
-          // Filter out archived sessions — the archive list is the
-          // client-side source of truth for what should be visible.
-          const archived = archivedRef.current;
-          const visible = archived.size
-            ? res.sessions.filter((s) => !archived.has(s.sessionId))
-            : res.sessions;
+          // Reconcile archive/open lists, apply automatic archiving, and
+          // derive the visible subset.
+          const visible = reconcileSessions(res.sessions);
           setAgentSessions(visible);
           if (visible.length > 0) {
             // Auto-select the first session only if none is active yet.
@@ -650,7 +724,7 @@ export function useAcpPageAdapter(
     return () => {
       cancelled = true;
     };
-  }, [gateway, acp.client, acp.connected, supportsList, createNewSession]);
+  }, [gateway, acp.client, acp.connected, supportsList, createNewSession, reconcileSessions]);
 
   // ---- actions ---------------------------------------------------------
   // Drain the prompt queue one turn at a time. Each question is sent as a
@@ -760,10 +834,26 @@ export function useAcpPageAdapter(
     setDraft(value);
   }, []);
 
-  const onSelectSession = useCallback((id: string) => {
-    // Session IDs are ACP session IDs directly — no local indirection.
-    setActiveSessionId(id);
-  }, []);
+  const onSelectSession = useCallback(
+    (id: string) => {
+      // Session IDs are ACP session IDs directly — no local indirection.
+      // If the session is currently archived, un-archive it first so it is
+      // visible again before loading.
+      if (archivedSessions.has(id)) {
+        archivedSessions.remove(id);
+        // Compute the post-removal archive set locally — the hook's state
+        // update is asynchronous, so `archivedSessions.all()` would lag.
+        const archived = new Set(archivedRef.current);
+        archived.delete(id);
+        const visible = archived.size
+          ? allAgentSessions.filter((s) => !archived.has(s.sessionId))
+          : allAgentSessions;
+        setAgentSessions(visible);
+      }
+      setActiveSessionId(id);
+    },
+    [archivedSessions, allAgentSessions],
+  );
 
   const onCreateSession = useCallback(() => {
     void createNewSession();
@@ -826,22 +916,87 @@ export function useAcpPageAdapter(
     [activeSessionId, configOptions],
   );
 
-  // Archive a session on the client side. The session stays on the agent; it
-  // is only hidden from the sidebar via the persisted archive list.
+  /**
+   * Close a session on the agent and drop it from the local open list.
+   *
+   * Closing releases agent-side resources but does NOT archive the session —
+   * it remains visible in the sidebar. Use `onArchiveSession` to also hide it.
+   */
+  const onCloseSession = useCallback(
+    async (id: string) => {
+      if (!id) return;
+      const client = clientRef.current;
+      if (!client) return;
+      try {
+        await client.sessionClose({ sessionId: id });
+      } catch (e) {
+        setSetupError(
+          `session/close failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        return;
+      }
+      // Released on the agent — drop from the open list, but keep visible.
+      openSessions.remove(id);
+    },
+    [openSessions],
+  );
+
+  /**
+   * Archive a session on the client side. If the session is currently open
+   * on this client, it is first closed on the agent (`session/close`) to
+   * release resources, then removed from the open list and added to the
+   * archive. Non-open sessions are archived directly.
+   */
   const onArchiveSession = useCallback(
     async (id: string) => {
       if (!id) return;
       if (!window.confirm("Archive this session?")) return;
-      // Remove from the current view immediately.
+
+      const client = clientRef.current;
+      // If this session is open on the client, close it on the agent first.
+      if (openSessions.has(id) && client) {
+        try {
+          await client.sessionClose({ sessionId: id });
+        } catch (e) {
+          setSetupError(
+            `session/close failed: ${e instanceof Error ? e.message : String(e)}`,
+          );
+          return;
+        }
+        openSessions.remove(id);
+      }
+
+      // Hide from the visible list.
       setAgentSessions((prev) => prev.filter((s) => s.sessionId !== id));
+      // Duplicate-archive is a silent no-op in the hook.
       archivedSessions.add(id);
-      // If this was the active session, switch to another (or none).
+
+      // If this was the active session, switch to another visible one.
       if (activeSessionId === id) {
         const remaining = agentSessions.filter((s) => s.sessionId !== id);
         setActiveSessionId(remaining[0]?.sessionId ?? null);
       }
     },
-    [activeSessionId, archivedSessions, agentSessions],
+    [activeSessionId, archivedSessions, openSessions, agentSessions],
+  );
+
+  /**
+   * Remove a session from the archive so it reappears in the visible list.
+   * The session is not loaded automatically — the user can click it to load.
+   */
+  const onUnarchiveSession = useCallback(
+    (id: string) => {
+      archivedSessions.remove(id);
+      // Compute the post-removal archive set locally — the hook's state
+      // update is asynchronous, so `archivedSessions.all()` would lag.
+      const archived = new Set(archivedRef.current);
+      archived.delete(id);
+      const visible = archived.size
+        ? allAgentSessions.filter((s) => !archived.has(s.sessionId))
+        : allAgentSessions;
+      setAgentSessions(visible);
+    },
+    [archivedSessions, allAgentSessions],
   );
 
   // Delete a session on the agent (when supported) and remove it from the
@@ -860,6 +1015,7 @@ export function useAcpPageAdapter(
       // Remove from local state.
       setAgentSessions((prev) => prev.filter((s) => s.sessionId !== acpId));
       archivedSessions.remove(acpId);
+      openSessions.remove(acpId);
 
       // If this was the active session, switch to another (or none).
       if (activeSessionId === acpId) {
@@ -879,25 +1035,38 @@ export function useAcpPageAdapter(
         }
       }
     },
-    [agentSessions, activeSessionId, archivedSessions],
+    [agentSessions, activeSessionId, archivedSessions, openSessions],
   );
 
   // ---- map state -> UI props -------------------------------------------
   // Derive session summaries directly from the agent's session list — no
   // local session records to merge.
+  const toSummary = useCallback(
+    (info: SessionInfo): SessionSummary => ({
+      id: info.sessionId,
+      title: info.title ?? info.sessionId.slice(0, 12),
+      updatedAt: info.updatedAt ? new Date(info.updatedAt).getTime() : Date.now(),
+    }),
+    [],
+  );
+
   const sessionSummaries: SessionSummary[] = useMemo(
     () =>
       agentSessions
-        .map((info) => ({
-          id: info.sessionId,
-          title: info.title ?? info.sessionId.slice(0, 12),
-          updatedAt: info.updatedAt
-            ? new Date(info.updatedAt).getTime()
-            : Date.now(),
-        }))
+        .map(toSummary)
         .sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt)),
-    [agentSessions],
+    [agentSessions, toSummary],
   );
+
+  // Archived sessions, derived from the full list for the collapsible view.
+  const archivedSessionSummaries: SessionSummary[] = useMemo(() => {
+    const archived = archivedSessions.archived;
+    if (archived.size === 0) return [];
+    return allAgentSessions
+      .filter((info) => archived.has(info.sessionId))
+      .map(toSummary)
+      .sort((a, b) => Number(b.updatedAt) - Number(a.updatedAt));
+  }, [allAgentSessions, archivedSessions.archived, toSummary]);
 
   const chatItems: ChatItem[] = useMemo(
     () => [...historyItems, ...liveTurn.items],
@@ -1003,6 +1172,8 @@ export function useAcpPageAdapter(
     currentModeId: meta.modes?.currentModeId,
     configOptions,
     sessions: sessionSummaries,
+    archivedSessions: archivedSessionSummaries,
+    openSessionIds: openSessions.open,
     activeSessionId,
     chatItems,
     toolCalls,
@@ -1022,7 +1193,9 @@ export function useAcpPageAdapter(
     onDraftChange,
     onPrompt,
     onCancel,
+    onCloseSession,
     onArchiveSession,
+    onUnarchiveSession,
     onConfigChange,
     onDeleteSession,
     onResolvePermission,

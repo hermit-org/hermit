@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { MessageCirclePlus, Search, MessageSquarePlus, Filter, RotateCcw, Loader2 } from "lucide-react";
+import { MessageCirclePlus, Search, MessageSquarePlus, Filter, RotateCcw, Loader2, ChevronRight, Archive, ArchiveRestore } from "lucide-react";
 import { SessionListItem } from "@/components/molecules";
 import { EmptyState } from "@/components/atoms";
 import { Button } from "@/components/ui/button";
@@ -21,14 +21,19 @@ export interface SessionSummary {
 export interface SessionSidebarProps {
   /** Sessions to render. */
   sessions: SessionSummary[];
+  /** Archived sessions to render in the collapsible section. */
+  archivedSessions?: SessionSummary[];
   /** Active session id. */
   activeId?: string;
+  /** Session ids this client has open (per-item close/load actions). */
+  openSessionIds?: Set<string>;
   /** All known tags (for the filter chips). */
   availableTags?: SessionTag[];
   /** Capabilities forwarded to each SessionListItem. */
   canFork?: boolean;
   canResume?: boolean;
   canArchive?: boolean;
+  canClose?: boolean;
   canDelete?: boolean;
   /** Select a session. */
   onSelect?: (id: string) => void;
@@ -39,7 +44,11 @@ export interface SessionSidebarProps {
   onDuplicate?: (id: string) => void;
   onDelete?: (id: string) => void;
   onArchive?: (id: string) => void;
+  /** Close an open session (releases agent resources, no archiving). */
+  onClose?: (id: string) => void;
   onResume?: (id: string) => void;
+  /** Restore an archived session back into the visible list. */
+  onUnarchive?: (id: string) => void;
   /** Refresh the session list from the agent. */
   onRefresh?: () => void;
   /** Whether a refresh is in progress. */
@@ -56,11 +65,14 @@ export interface SessionSidebarProps {
  */
 export function SessionSidebar({
   sessions,
+  archivedSessions = [],
   activeId,
+  openSessionIds,
   availableTags = [],
   canFork,
   canResume,
   canArchive,
+  canClose,
   canDelete,
   onSelect,
   onCreate,
@@ -68,7 +80,9 @@ export function SessionSidebar({
   onDuplicate,
   onDelete,
   onArchive,
+  onClose,
   onResume,
+  onUnarchive,
   onRefresh,
   refreshing = false,
   className,
@@ -76,6 +90,7 @@ export function SessionSidebar({
   const { t } = useTranslation();
   const [query, setQuery] = React.useState("");
   const [activeTag, setActiveTag] = React.useState<string | null>(null);
+  const [archivedOpen, setArchivedOpen] = React.useState(false);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -195,30 +210,92 @@ export function SessionSidebar({
             />
           ) : (
             <ul role="list" className="space-y-0.5">
-              {filtered.map((s) => (
-                <SessionListItem
-                  key={s.id}
-                  id={s.id}
-                  title={s.title}
-                  updatedAt={s.updatedAt}
-                  modeId={s.modeId}
-                  tags={s.tags}
-                  loading={s.loading}
-                  active={s.id === activeId}
-                  canFork={canFork}
-                  canResume={canResume}
-                  canArchive={canArchive}
-                  canDelete={canDelete}
-                  onSelect={onSelect}
-                  onFork={onFork}
-                  onDuplicate={onDuplicate}
-                  onDelete={onDelete}
-                  onArchive={onArchive}
-                  onResume={onResume}
-                />
-              ))}
+              {filtered.map((s) => {
+                const isOpen = openSessionIds?.has(s.id) ?? false;
+                return (
+                  <SessionListItem
+                    key={s.id}
+                    id={s.id}
+                    title={s.title}
+                    updatedAt={s.updatedAt}
+                    modeId={s.modeId}
+                    tags={s.tags}
+                    loading={s.loading}
+                    active={s.id === activeId}
+                    canFork={canFork}
+                    // Open sessions show "close"; closed sessions show "load".
+                    canResume={canResume && !isOpen}
+                    canArchive={canArchive}
+                    canClose={isOpen}
+                    canDelete={canDelete}
+                    onSelect={onSelect}
+                    onFork={onFork}
+                    onDuplicate={onDuplicate}
+                    onDelete={onDelete}
+                    onArchive={onArchive}
+                    onClose={onClose}
+                    onResume={onResume}
+                  />
+                );
+              })}
             </ul>
           )}
+
+          {archivedSessions.length > 0 && onUnarchive ? (
+            <div className="mt-2 border-t border-border pt-1.5">
+              <button
+                type="button"
+                onClick={() => setArchivedOpen((v) => !v)}
+                className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+              >
+                <ChevronRight
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform",
+                    archivedOpen && "rotate-90",
+                  )}
+                />
+                <Archive className="h-3.5 w-3.5" />
+                <span>{t("sessionSidebar.archived")}</span>
+                <span className="ml-auto rounded bg-accent px-1.5 py-0.5 text-[10px]">
+                  {archivedSessions.length}
+                </span>
+              </button>
+              {archivedOpen ? (
+                <ul role="list" className="mt-0.5 space-y-0.5">
+                  {archivedSessions.map((s) => (
+                    <li
+                      key={s.id}
+                      className="group flex items-center gap-2 rounded-md text-sm opacity-70 transition-opacity hover:opacity-100"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => onSelect?.(s.id)}
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2.5 py-2 pr-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate font-medium">
+                            {s.title}
+                          </span>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t("sessionItem.unarchive")}
+                        title={t("sessionItem.unarchive")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUnarchive(s.id);
+                        }}
+                        className="mr-2.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <ArchiveRestore className="h-4 w-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </ScrollArea>
     </aside>

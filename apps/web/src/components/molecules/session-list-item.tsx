@@ -7,6 +7,7 @@ import {
   GitFork,
   Archive,
   RotateCcw,
+  X,
 } from "lucide-react";
 import { SessionIcon, ModeBadge, Timestamp } from "@/components/atoms";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,8 @@ export interface SessionListItemProps {
   canResume?: boolean;
   canArchive?: boolean;
   canDelete?: boolean;
+  /** Whether the session is open on this client (enables "close"). */
+  canClose?: boolean;
   /** Select this session. */
   onSelect?: (id: string) => void;
   /** Request a fork of this session. */
@@ -49,6 +52,8 @@ export interface SessionListItemProps {
   onDelete?: (id: string) => void;
   /** Archive the session (client-side only). */
   onArchive?: (id: string) => void;
+  /** Close an open session on the agent (releases resources, no archiving). */
+  onClose?: (id: string) => void;
   /** Resume / load the session history. */
   onResume?: (id: string) => void;
   className?: string;
@@ -86,11 +91,13 @@ export function SessionListItem({
   canResume,
   canArchive,
   canDelete,
+  canClose,
   onSelect,
   onFork,
   onDuplicate,
   onDelete,
   onArchive,
+  onClose,
   onResume,
   className,
 }: SessionListItemProps): React.JSX.Element {
@@ -195,6 +202,12 @@ export function SessionListItem({
             <DropdownMenuItem onClick={() => onArchive?.(id)}>
               <Archive />
               {t("sessionItem.archive")}
+            </DropdownMenuItem>
+          ) : null}
+          {canClose ? (
+            <DropdownMenuItem onClick={() => onClose?.(id)}>
+              <X />
+              {t("sessionItem.close")}
             </DropdownMenuItem>
           ) : null}
           {canDelete ? (

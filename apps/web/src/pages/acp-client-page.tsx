@@ -51,6 +51,10 @@ export interface ACPClientPageProps {
   configOptions?: ConfigOption[];
   /** Sessions. */
   sessions?: SessionSummary[];
+  /** Archived sessions (for the collapsible "archived" section). */
+  archivedSessions?: SessionSummary[];
+  /** Session ids this client has open (per-item close/load actions). */
+  openSessionIds?: Set<string>;
   /** Active session id. */
   activeSessionId?: string;
   /** Chat transcript items. */
@@ -99,6 +103,10 @@ export interface ACPClientPageProps {
   onCancel?: () => void;
   /** Archive a session by id (client-side only). */
   onArchiveSession?: (id: string) => void;
+  /** Close an open session on the agent (releases resources, no archiving). */
+  onCloseSession?: (id: string) => void;
+  /** Restore an archived session back into the visible list. */
+  onUnarchiveSession?: (id: string) => void;
   /** Whether the agent supports `session/delete`. */
   canDeleteSession?: boolean;
   /** Change an agent config option. */
@@ -146,6 +154,8 @@ export function ACPClientPage({
   currentModeId,
   configOptions = [],
   sessions = [],
+  archivedSessions = [],
+  openSessionIds,
   activeSessionId,
   chatItems = [],
   toolCalls = [],
@@ -170,6 +180,8 @@ export function ACPClientPage({
   onPrompt,
   onCancel,
   onArchiveSession,
+  onCloseSession,
+  onUnarchiveSession,
   canDeleteSession,
   onConfigChange,
   onResolvePermission,
@@ -241,14 +253,20 @@ export function ACPClientPage({
               {sidebarOpen ? (
                 <SessionSidebar
                   sessions={sessions}
+                  archivedSessions={archivedSessions}
                   activeId={activeSessionId}
+                  openSessionIds={openSessionIds}
                   availableTags={tags}
                   canArchive
+                  canResume
                   canDelete={canDeleteSession}
                   onSelect={onSelectSession}
                   onCreate={onCreateSession}
                   onDelete={onDeleteSession}
                   onArchive={onArchiveSession}
+                  onClose={onCloseSession}
+                  onUnarchive={onUnarchiveSession}
+                  onResume={onSelectSession}
                   onRefresh={onRefreshSessions}
                   refreshing={refreshing}
                 />

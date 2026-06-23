@@ -1,10 +1,11 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Palette, Keyboard, ArrowLeft, Languages } from "lucide-react";
+import { Palette, Keyboard, ArrowLeft, Languages, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -24,11 +25,12 @@ export interface SettingsLayoutProps {
   className?: string;
 }
 
-export type SettingsSection = "appearance" | "shortcuts";
+export type SettingsSection = "appearance" | "shortcuts" | "archive";
 
 const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] =
   [
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
+    { id: "archive", labelKey: "settings.archive", icon: Archive },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
   ];
 
@@ -88,7 +90,13 @@ export function SettingsLayout({
         </nav>
 
         <div className="min-w-0 flex-1 overflow-auto">
-          {section === "appearance" ? <AppearanceSection /> : <ShortcutsSection />}
+          {section === "appearance" ? (
+            <AppearanceSection />
+          ) : section === "archive" ? (
+            <ArchiveSection />
+          ) : (
+            <ShortcutsSection />
+          )}
         </div>
       </div>
     </div>
@@ -146,6 +154,110 @@ function AppearanceSection(): React.JSX.Element {
           }}
         />
       </div>
+    </div>
+  );
+}
+
+function ArchiveSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const autoArchiveThreshold = useSettingsStore((s) => s.autoArchiveThreshold);
+  const setAutoArchiveThreshold = useSettingsStore(
+    (s) => s.setAutoArchiveThreshold,
+  );
+  const enabled = autoArchiveThreshold.trim().length > 0;
+  const [draft, setDraft] = React.useState(autoArchiveThreshold);
+  React.useEffect(() => {
+    setDraft(autoArchiveThreshold);
+  }, [autoArchiveThreshold]);
+
+  const presets = ["1h", "2h", "6h", "1d", "3d", "7d"];
+
+  const handleToggle = (on: boolean): void => {
+    if (on) {
+      const value = draft.trim() || "3d";
+      setAutoArchiveThreshold(value);
+    } else {
+      setAutoArchiveThreshold("");
+    }
+  };
+
+  const commitDraft = (): void => {
+    const value = draft.trim();
+    setAutoArchiveThreshold(value);
+  };
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.archiveTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.archiveHint")}
+        </p>
+      </div>
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label htmlFor="auto-archive">
+            {t("settings.autoArchive")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.autoArchiveHint")}
+          </p>
+        </div>
+        <Switch
+          id="auto-archive"
+          checked={enabled}
+          onCheckedChange={handleToggle}
+        />
+      </div>
+      {enabled ? (
+        <>
+          <div>
+            <Label htmlFor="archive-threshold">
+              {t("settings.archiveThreshold")}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {t("settings.archiveThresholdHint")}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              id="archive-threshold"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitDraft}
+              placeholder="3d"
+              className="w-32"
+            />
+            <span className="text-xs text-muted-foreground">
+              {t("settings.archiveThresholdExample")}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  setDraft(p);
+                  setAutoArchiveThreshold(p);
+                }}
+                className={cn(
+                  "rounded border px-2 py-1 text-xs font-medium transition-colors",
+                  autoArchiveThreshold === p
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-accent text-accent-foreground hover:bg-accent/70",
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+      <Separator />
+      <p className="text-xs text-muted-foreground">
+        {t("settings.archiveDescription")}
+      </p>
     </div>
   );
 }
