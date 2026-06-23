@@ -69,8 +69,20 @@ const EMPTY_TURN: LiveTurn = {
 
 /** Entries buffered while replaying history via `session/load`. */
 type HistoryBufferEntry =
-  | { kind: "message"; role: "user" | "assistant"; content: string }
-  | { kind: "thought"; content: string };
+  | { kind: "message"; role: "user" | "assistant"; content: string; messageId?: string }
+  | { kind: "thought"; content: string; messageId?: string }
+  | { kind: "tool_call"; call: ToolCallState };
+
+/**
+ * Whether two chunks belong to the same logical message and should be merged.
+ * Chunks with the same messageId merge; chunks with no messageId at all also
+ * merge (treated as a single streaming message).
+ */
+function sameMessage(a: string | undefined, b: string | undefined): boolean {
+  if (a !== undefined && b !== undefined) return a === b;
+  if (a === undefined && b === undefined) return true;
+  return false;
+}
 
 /** Convert a buffered history entry into a collapsed ChatItem for display. */
 function historyEntryToChatItem(
@@ -84,6 +96,15 @@ function historyEntryToChatItem(
       kind: "thought",
       key: `hist_${sessionId}_${index}`,
       content: entry.content,
+      messageId: entry.messageId,
+    };
+  }
+  if (entry.kind === "tool_call") {
+    return {
+      kind: "tool_call",
+      key: entry.call.toolCallId,
+      call: entry.call,
+      createdAt: baseTs + index,
     };
   }
   return {
@@ -92,6 +113,7 @@ function historyEntryToChatItem(
     role: entry.role,
     content: entry.content,
     createdAt: baseTs + index,
+    messageId: entry.messageId,
   };
 }
 
@@ -438,17 +460,32 @@ export function useAcpPageAdapter(
           if (isLoadingHistoryRef.current) {
             const buf = historyBufferRef.current;
             const last = buf[buf.length - 1];
-            if (last && last.kind === "message" && last.role === role) {
+            if (
+              last &&
+              last.kind === "message" &&
+              last.role === role &&
+              sameMessage(last.messageId, update.messageId)
+            ) {
               last.content += text;
             } else {
-              buf.push({ kind: "message", role, content: text });
+              buf.push({
+                kind: "message",
+                role,
+                content: text,
+                messageId: update.messageId,
+              });
             }
             break;
           }
           setLiveTurn((prev) => {
             const items = [...prev.items];
             const last = items[items.length - 1];
-            if (last && last.kind === "message" && last.role === role) {
+            if (
+              last &&
+              last.kind === "message" &&
+              last.role === role &&
+              sameMessage(last.messageId, update.messageId)
+            ) {
               items[items.length - 1] = {
                 ...last,
                 content: last.content + text,
@@ -462,6 +499,7 @@ export function useAcpPageAdapter(
                 content: text,
                 streaming: true,
                 createdAt: Date.now(),
+                messageId: update.messageId,
               });
             }
             return { ...prev, items };
@@ -470,6 +508,23 @@ export function useAcpPageAdapter(
         }
         case "tool_call":
         case "tool_call_update": {
+          // While replaying history, buffer tool calls in arrival order so they
+          // stay interleaved with messages instead of sinking to the tail.
+          if (isLoadingHistoryRef.current) {
+            const buf = historyBufferRef.current;
+            const existing = buf.find(
+              (e): e is { kind: "tool_call"; call: ToolCallState } =>
+                e.kind === "tool_call" &&
+                e.call.toolCallId === update.toolCallId,
+            );
+            const merged = mergeToolCall(existing?.call, update);
+            if (existing) {
+              existing.call = merged;
+            } else {
+              buf.push({ kind: "tool_call", call: merged });
+            }
+            break;
+          }
           setLiveTurn((prev) => {
             const existing = prev.toolCalls.get(update.toolCallId);
             const merged = mergeToolCall(existing, update);
@@ -481,7 +536,16 @@ export function useAcpPageAdapter(
                 it.kind === "tool_call" &&
                 it.call.toolCallId === update.toolCallId,
             );
-            const card = { kind: "tool_call" as const, key: update.toolCallId, call: merged };
+            const createdAt =
+              idx >= 0 && items[idx].kind === "tool_call"
+                ? items[idx].createdAt
+                : Date.now();
+            const card = {
+              kind: "tool_call" as const,
+              key: update.toolCallId,
+              call: merged,
+              createdAt,
+            };
             if (idx >= 0) items[idx] = card;
             else items.push(card);
             return { ...prev, items, toolCalls };
@@ -497,17 +561,25 @@ export function useAcpPageAdapter(
           if (isLoadingHistoryRef.current) {
             const buf = historyBufferRef.current;
             const last = buf[buf.length - 1];
-            if (last && last.kind === "thought") {
+            if (
+              last &&
+              last.kind === "thought" &&
+              sameMessage(last.messageId, update.messageId)
+            ) {
               last.content += text;
             } else {
-              buf.push({ kind: "thought", content: text });
+              buf.push({ kind: "thought", content: text, messageId: update.messageId });
             }
             break;
           }
           setLiveTurn((prev) => {
             const items = [...prev.items];
             const last = items[items.length - 1];
-            if (last && last.kind === "thought") {
+            if (
+              last &&
+              last.kind === "thought" &&
+              sameMessage(last.messageId, update.messageId)
+            ) {
               items[items.length - 1] = {
                 ...last,
                 content: last.content + text,
@@ -519,6 +591,7 @@ export function useAcpPageAdapter(
                 key: `th_${Date.now()}_${items.length}`,
                 content: text,
                 streaming: true,
+                messageId: update.messageId,
               });
             }
             return { ...prev, items };

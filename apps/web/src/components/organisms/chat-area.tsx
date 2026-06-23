@@ -25,17 +25,21 @@ export type ChatItem =
       pending?: boolean;
       authorName?: string;
       createdAt: number;
+      /** ACP messageId — used to merge consecutive chunks of the same message. */
+      messageId?: string;
     }
   | {
       kind: "tool_call";
       key: string;
       call: ToolCallState;
+      createdAt: number;
     }
   | {
       kind: "thought";
       key: string;
       content: string;
       streaming?: boolean;
+      messageId?: string;
     };
 
 export interface ChatAreaProps {
@@ -54,18 +58,8 @@ export interface ChatAreaProps {
   className?: string;
 }
 
-function dayBucket(ts: number, t: (key: string) => string): string {
-  const d = new Date(ts);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return t("common.today");
-  if (d.toDateString() === yesterday.toDateString()) return t("common.yesterday");
-  return d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: d.getFullYear() === today.getFullYear() ? undefined : "numeric",
-  });
+function isToday(ts: number): boolean {
+  return new Date(ts).toDateString() === new Date().toDateString();
 }
 
 /**
@@ -123,6 +117,22 @@ export function ChatArea({
     setUnread((u) => u + 1);
   }, [items.length, atBottom, scrollToBottom]);
 
+  // Show a single "Today" divider between older history and today's messages.
+  // Only displayed when today's first message is preceded by older messages —
+  // if the transcript opens on today, no divider is needed.
+  const todayDividerIndex = React.useMemo(() => {
+    let seenOlder = false;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind !== "message") continue;
+      if (isToday(item.createdAt)) {
+        return seenOlder ? i : -1;
+      }
+      seenOlder = true;
+    }
+    return -1;
+  }, [items]);
+
   const showEmpty = empty || items.length === 0;
   const resolvedEmptyTitle = emptyTitle ?? t("chat.noMessages");
   const resolvedEmptyDescription = emptyDescription ?? t("chat.startConversation");
@@ -145,25 +155,14 @@ export function ChatArea({
           ) : (
             <div className="mx-auto max-w-3xl space-y-1">
               {items.map((item, i) => {
-                const prev = items[i - 1];
-                let divider: React.ReactNode = null;
-                if (item.kind === "message") {
-                  const prevTs =
-                    prev && prev.kind === "message" ? prev.createdAt : undefined;
-                  if (
-                    prevTs === undefined ||
-                    dayBucket(prevTs, t) !== dayBucket(item.createdAt, t)
-                  ) {
-                    divider = (
-                      <div className="px-4 py-2">
-                        <Divider label={dayBucket(item.createdAt, t)} />
-                      </div>
-                    );
-                  }
-                }
+                const showTodayDivider = i === todayDividerIndex;
                 return (
                   <React.Fragment key={item.key}>
-                    {divider}
+                    {showTodayDivider ? (
+                      <div className="px-4 py-2">
+                        <Divider label={t("common.today")} />
+                      </div>
+                    ) : null}
                     {item.kind === "message" ? (
                       <MessageBubble
                         id={item.key}
