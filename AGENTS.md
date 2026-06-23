@@ -309,8 +309,9 @@ No Docker files, Kubernetes manifests, or other platform-specific deployment scr
 
 `hermit.config.json` schema (at project root):
 
-- `agent.command` — The ACP agent command (default: `"kimi"`).
-- `agent.args` — Arguments passed to the agent command (default: `["acp"]`).
+- `agent.command` — The ACP agent command (default: `"npx"`).
+- `agent.args` — Arguments passed to the agent command (default: `["codex", "--acp"]`).
+- `agent.cwd` — Working directory for the spawned agent process (default: the directory where `hermit start` is launched).
 - `gateway.port` — Gateway listen port (default: `8787`).
 - `gateway.hostname` — Gateway bind address (default: `"0.0.0.0"`).
 - `gateway.endpoint` — SSE endpoint path (default: `"/"`).

@@ -118,6 +118,7 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
   const server = new AcpGatewayServer({
     command: agent!.command,
     args: agent!.args,
+    cwd: agent!.cwd,
     port,
     hostname: gateway!.hostname,
     endpoint: sseEndpoint,
@@ -145,7 +146,11 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
 
       if (req.method === "GET" && req.url === "/api/config") {
         sendJson(res, 200, {
-          agent: { command: agent!.command, args: agent!.args ?? [] },
+          agent: {
+            command: agent!.command,
+            args: agent!.args ?? [],
+            cwd: agent!.cwd,
+          },
           gateway: {
             url: getLanAddress(port) + sseEndpoint,
             sendUrl: getLanAddress(port) + sendEndpoint,
@@ -237,6 +242,7 @@ async function startAction(options: {
   config?: string;
   command?: string;
   args?: string;
+  cwd?: string;
 }): Promise<void> {
   const config = await loadConfig(options.config);
 
@@ -260,6 +266,16 @@ async function startAction(options: {
       .filter(Boolean);
   }
 
+  // --cwd overrides the agent working directory.
+  // Defaults to process.cwd() so the agent runs where hermit was launched.
+  if (options.cwd) {
+    config.agent = config.agent ?? { command: "" };
+    config.agent.cwd = options.cwd;
+  } else if (!config.agent?.cwd) {
+    config.agent = config.agent ?? { command: "" };
+    config.agent.cwd = process.cwd();
+  }
+
   await startServer(config, options.web);
 }
 
@@ -278,5 +294,9 @@ export const command = new Command("start")
   .option(
     "--args <items>",
     "override agent.args, comma-separated (e.g. --args '--acp,--model,kimi-k2')",
+  )
+  .option(
+    "--cwd <path>",
+    "working directory for the agent process (default: current directory)",
   )
   .action(startAction);

@@ -23,6 +23,8 @@ export interface ConnectionPayload {
 export interface AcpGatewayServerOptions {
   command: string;
   args?: string[];
+  /** Working directory for the spawned agent process. */
+  cwd?: string;
   port?: number;
   hostname?: string;
   endpoint?: string;
@@ -75,6 +77,7 @@ export class AcpGatewayServer {
     const {
       command,
       args = [],
+      cwd,
       port = 8080,
       hostname = "0.0.0.0",
       endpoint = "/",
@@ -145,7 +148,7 @@ export class AcpGatewayServer {
 
       this.server.listen(port, hostname, () => {
         this.server!.removeListener("error", reject);
-        this.spawnAgent(command, args);
+        this.spawnAgent(command, args, cwd);
 
         const displayEndpoint = normalizedEndpoint === "/" ? "" : normalizedEndpoint;
         const host = hostname === "0.0.0.0" ? "localhost" : hostname;
@@ -159,9 +162,10 @@ export class AcpGatewayServer {
     });
   }
 
-  private spawnAgent(command: string, args: string[]): void {
+  private spawnAgent(command: string, args: string[], cwd?: string): void {
     this.proc = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
+      ...(cwd ? { cwd } : {}),
     });
 
     this.proc.once("error", (error) => {

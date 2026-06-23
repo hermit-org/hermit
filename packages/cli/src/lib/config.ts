@@ -10,6 +10,8 @@ export interface HermitConfig {
   agent?: {
     command: string;
     args?: string[];
+    /** Working directory for the spawned agent process. */
+    cwd?: string;
   };
   /** HTTP gateway settings. */
   gateway?: {
@@ -28,6 +30,7 @@ export const DEFAULT_CONFIG: Required<HermitConfig> = {
   agent: {
     command: "npx",
     args: ["codex", "--acp"],
+    cwd: undefined,
   },
   gateway: {
     port: 8787,
@@ -49,6 +52,7 @@ function mergeConfig(base: HermitConfig, override: HermitConfig): HermitConfig {
         ? {
             command: override.agent.command ?? base.agent!.command,
             args: override.agent.args ?? base.agent!.args,
+            cwd: override.agent.cwd ?? base.agent!.cwd,
           }
         : base.agent,
     gateway:

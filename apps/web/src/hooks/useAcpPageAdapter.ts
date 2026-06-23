@@ -266,6 +266,10 @@ export function useAcpPageAdapter(
   const processingRef = useRef(false);
   const [usage, setUsage] = useState<UsageStats | undefined>(undefined);
 
+  // The agent's working directory, fetched from the gateway's /api/config.
+  // Used as the `cwd` for session/new, session/load and session/resume.
+  const agentCwdRef = useRef("/");
+
   // The active session is identified directly by its ACP session ID. There is
   // no local session store — the agent is the sole source of truth.
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -286,6 +290,31 @@ export function useAcpPageAdapter(
   // first prompt is sent (lazy creation). The composer stays enabled in this
   // mode even though `activeSessionId` is null.
   const [composingNew, setComposingNew] = useState(false);
+
+  // Fetch the gateway config (including the agent cwd) as soon as the gateway
+  // is known, so it is ready before any session operation needs it.
+  useEffect(() => {
+    if (!gateway?.url) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const origin = new URL(gateway.url).origin;
+        const res = await fetch(`${origin}/api/config`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { agent?: { cwd?: string } };
+        if (!cancelled && data?.agent?.cwd) {
+          agentCwdRef.current = data.agent.cwd;
+        }
+      } catch {
+        // Ignore — fall back to the default "/".
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [gateway?.id, gateway?.url]);
 
   // Message history loaded from the agent (session/load). Only the active
   // session's history is held in state for rendering; it is discarded when the
@@ -707,7 +736,7 @@ export function useAcpPageAdapter(
           isLoadingHistoryRef.current = true;
           let loadResult: unknown = null;
           try {
-            loadResult = await client.sessionLoad({ sessionId: activeSessionId, cwd: "/" });
+            loadResult = await client.sessionLoad({ sessionId: activeSessionId, cwd: agentCwdRef.current });
           } finally {
             isLoadingHistoryRef.current = false;
           }
@@ -737,7 +766,7 @@ export function useAcpPageAdapter(
         } else if (supportsResume) {
           const result = await client.sessionResume({
             sessionId: activeSessionId,
-            cwd: "/",
+            cwd: agentCwdRef.current,
           });
           if (cancelled) return;
           if (result.modes)
@@ -771,8 +800,8 @@ export function useAcpPageAdapter(
     const client = clientRef.current;
     if (!client) return null;
     try {
-      const result = await client.sessionNew({ cwd: "/" });
-      const newInfo: SessionInfo = { sessionId: result.sessionId, cwd: "/" };
+      const result = await client.sessionNew({ cwd: agentCwdRef.current });
+      const newInfo: SessionInfo = { sessionId: result.sessionId, cwd: agentCwdRef.current };
       setAgentSessions((prev) => [newInfo, ...prev]);
       // Track this session as open on this client.
       openSessionsAddRef.current(result.sessionId);
@@ -830,7 +859,7 @@ export function useAcpPageAdapter(
       historyBufferRef.current = [];
       isLoadingHistoryRef.current = true;
       try {
-        await client.sessionLoad({ sessionId: activeSessionId, cwd: "/" });
+        await client.sessionLoad({ sessionId: activeSessionId, cwd: agentCwdRef.current });
       } finally {
         isLoadingHistoryRef.current = false;
       }
