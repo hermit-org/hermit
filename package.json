@@ -5,6 +5,10 @@
     "apps/*",
     "packages/*"
   ],
+  "scripts": {
+    "test": "bun test packages apps/web/src",
+    "test:e2e": "cd apps/web && bun run e2e"
+  },
   "devDependencies": {
     "@babel/runtime": "^7.25.0",
     "@types/bun": "latest",

@@ -89,7 +89,7 @@ hermit/
 │       ├── postcss.config.js
 │       ├── playwright.config.ts
 │       ├── index.html
-│       ├── e2e/              # Playwright E2E specs (routing)
+│       ├── e2e/              # Playwright E2E specs (*.e2e.ts)
 │       └── src/
 │           ├── main.tsx
 │           ├── App.tsx
@@ -155,7 +155,12 @@ hermit/
     │       ├── stdio.ts              # createStdioLikeSse() helper
     │       └── framing.test.ts
     ├── types/                # @hermit-org/types (v0.0.1)
+    ├── types/                # @hermit-org/types (v0.0.1)
     └── utils/                # @hermit-org/utils (v0.0.1)
+        ├── src/
+        │   ├── index.ts
+        │   └── index.test.ts
+        └── package.json
 ```
 
 ---
@@ -177,10 +182,16 @@ bunx tsc --noEmit
 ### Run package tests
 
 ```bash
+# Run all Bun tests (packages + apps/web/src, excludes Playwright E2E)
+bun run test
+
+# Run individual package test suites
 bun test packages/stdio-to-sse/src
 bun test packages/stdio-to-sse_rn/src/framing.test.ts
 bun test packages/acp/src/client.test.ts
 bun test packages/cli/src/lib/gateway.test.ts
+bun test packages/cli/src/lib/qr.test.ts
+bun test packages/utils/src/index.test.ts
 ```
 
 ### Run the CLI
@@ -232,7 +243,7 @@ bun run dev
 # Build for production
 bun run build
 
-# Run Playwright E2E tests
+# Run Playwright E2E tests (*.e2e.ts)
 bun run e2e
 
 # Install Playwright browsers

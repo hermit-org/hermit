@@ -7,9 +7,10 @@ Driven by [Playwright](https://playwright.dev) with Chromium.
 
 The new web UI routes (see `src/router.ts` + `App.tsx`):
 
-| Spec | Route | What it checks |
+| Spec | Route / Flow | What it checks |
 | --- | --- | --- |
-| `routing.spec.ts` | `/`, unknown paths, `/settings` | Gateway manager landing and settings page render without crashing. |
+| `routing.e2e.ts` | `/`, unknown paths, `/settings` | Gateway manager landing and settings page render without crashing. |
+| `registration.e2e.ts` | Gateway registration → chat view | Filling the connect form redirects to `/g/:gatewayId` and loads the chat shell. |
 
 ## Run
 
