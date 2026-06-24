@@ -2,6 +2,13 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
 import { encodeSse, encodeSseKeepAlive } from "@hermit-org/stdio-to-sse";
+import {
+  type CorsConfig,
+  type NormalizedCors,
+  normalizeCors,
+  corsPreflightHeaders,
+  corsOriginHeaders,
+} from "./cors";
 
 /**
  * Configuration for `AcpGatewayServer`.
@@ -30,7 +37,14 @@ export interface AcpGatewayServerOptions {
   endpoint?: string;
   sendEndpoint?: string;
   qrEndpoint?: string;
-  cors?: boolean;
+  /**
+   * CORS configuration.
+   *
+   * - `true`  : allow all origins (default).
+   * - `false` : disable CORS.
+   * - object  : fine-grained control (`{ origins, methods, headers }`).
+   */
+  cors?: CorsConfig;
   heartbeatInterval?: number;
   onRequest?: (
     req: IncomingMessage,
@@ -66,6 +80,7 @@ export class AcpGatewayServer {
   }> = [];
   private stdinWriting = false;
   private started = false;
+  private cors: NormalizedCors = normalizeCors(true);
 
   constructor(private readonly options: AcpGatewayServerOptions) {}
 
@@ -83,9 +98,10 @@ export class AcpGatewayServer {
       endpoint = "/",
       sendEndpoint = "/send",
       qrEndpoint = "/qr",
-      cors = true,
       heartbeatInterval = 30000,
     } = this.options;
+
+    this.cors = normalizeCors(this.options.cors ?? true);
 
     const normalizedEndpoint = endpoint === "/" ? "/" : endpoint.replace(/\/$/, "");
     const normalizedSendEndpoint = sendEndpoint.replace(/\/$/, "");
@@ -109,28 +125,25 @@ export class AcpGatewayServer {
         }
 
         try {
-          if (cors && req.method === "OPTIONS") {
-            res.writeHead(204, {
-              "Access-Control-Allow-Origin": "*",
-              "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-              "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            });
+          if (req.method === "OPTIONS" && this.cors.enabled) {
+            const headers = corsPreflightHeaders(this.cors, req.headers.origin);
+            res.writeHead(204, headers);
             res.end();
             return;
           }
 
           if ((req.method === "GET" || req.method === "POST") && req.url === normalizedEndpoint) {
-            this.handleSseRequest(req, res, cors, heartbeatInterval);
+            this.handleSseRequest(req, res, heartbeatInterval);
             return;
           }
 
           if (req.method === "POST" && req.url === normalizedSendEndpoint) {
-            await this.handleSendRequest(req, res, cors);
+            await this.handleSendRequest(req, res);
             return;
           }
 
           if (req.method === "GET" && req.url === normalizedQrEndpoint) {
-            await this.handleQrRequest(req, res, cors);
+            await this.handleQrRequest(req, res);
             return;
           }
 
@@ -210,20 +223,16 @@ export class AcpGatewayServer {
   }
 
   private handleSseRequest(
-    _req: IncomingMessage,
+    req: IncomingMessage,
     res: ServerResponse,
-    cors: boolean,
     heartbeatInterval: number,
   ): void {
     const headers: Record<string, string | string[]> = {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
+      ...corsOriginHeaders(this.cors, req.headers.origin),
     };
-
-    if (cors) {
-      headers["Access-Control-Allow-Origin"] = "*";
-    }
 
     res.writeHead(200, headers);
 
@@ -244,32 +253,30 @@ export class AcpGatewayServer {
   private async handleSendRequest(
     req: IncomingMessage,
     res: ServerResponse,
-    cors: boolean,
   ): Promise<void> {
     if (!this.proc || this.proc.killed || !this.proc.stdin || this.proc.stdin.destroyed) {
-      this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, cors);
+      this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, req.headers.origin);
       return;
     }
 
     const body = await readRequestBody(req);
     await this.writeToStdin(body);
 
-    this.sendJson(res, 200, { ok: true }, cors);
+    this.sendJson(res, 200, { ok: true }, req.headers.origin);
   }
 
   private async handleQrRequest(
-    _req: IncomingMessage,
+    req: IncomingMessage,
     res: ServerResponse,
-    cors: boolean,
   ): Promise<void> {
     if (!this.options.getQrPayload) {
-      this.sendJson(res, 404, { ok: false, error: "QR payload not configured" }, cors);
+      this.sendJson(res, 404, { ok: false, error: "QR payload not configured" }, req.headers.origin);
       return;
     }
 
     const payload = await Promise.resolve(this.options.getQrPayload());
     if (!payload) {
-      this.sendJson(res, 404, { ok: false, error: "QR payload not available" }, cors);
+      this.sendJson(res, 404, { ok: false, error: "QR payload not available" }, req.headers.origin);
       return;
     }
 
@@ -280,10 +287,8 @@ export class AcpGatewayServer {
       "Content-Type": "image/png",
       "Content-Length": String(buffer.length),
       "Cache-Control": "no-store",
+      ...corsOriginHeaders(this.cors, req.headers.origin),
     };
-    if (cors) {
-      headers["Access-Control-Allow-Origin"] = "*";
-    }
 
     res.writeHead(200, headers);
     res.end(buffer);
@@ -365,14 +370,12 @@ export class AcpGatewayServer {
     res: ServerResponse,
     status: number,
     payload: unknown,
-    cors: boolean,
+    reqOrigin?: string,
   ): void {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      ...corsOriginHeaders(this.cors, reqOrigin),
     };
-    if (cors) {
-      headers["Access-Control-Allow-Origin"] = "*";
-    }
     res.writeHead(status, headers);
     res.end(JSON.stringify(payload));
   }

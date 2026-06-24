@@ -2,6 +2,13 @@ import { Command } from "commander";
 import { AcpGatewayServer, type ConnectionPayload } from "../../lib/gateway";
 import { loadConfig, type HermitConfig } from "../../lib/config";
 import {
+  type CorsConfig,
+  type NormalizedCors,
+  normalizeCors,
+  corsPreflightHeaders,
+  corsOriginHeaders,
+} from "../../lib/cors";
+import {
   validatePairingCode,
   isTokenAuthorized,
   generateToken,
@@ -28,20 +35,35 @@ async function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+/**
+ * Parse the `--cors` CLI value into a `CorsConfig`.
+ *
+ * - `"true"` / `"*"`  -> allow all origins
+ * - `"false"`        -> disable CORS
+ * - comma-separated  -> restrict to specific origins
+ */
+function parseCorsOption(value: string): CorsConfig {
+  const trimmed = value.trim();
+  if (trimmed === "true" || trimmed === "*") return true;
+  if (trimmed === "false") return false;
+  const origins = trimmed
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return { origins };
+}
+
 function sendJson(
   res: ServerResponse,
   status: number,
   payload: unknown,
-  cors = true,
+  cors: NormalizedCors,
+  reqOrigin?: string,
 ): void {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...corsOriginHeaders(cors, reqOrigin),
   };
-  if (cors) {
-    headers["Access-Control-Allow-Origin"] = "*";
-    headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
-    headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
-  }
   res.writeHead(status, headers);
   res.end(JSON.stringify(payload));
 }
@@ -110,6 +132,7 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
   const sseEndpoint = gateway!.endpoint || "/";
   const sendEndpoint = sseEndpoint === "/" ? "/send" : `${sseEndpoint}/send`;
   const port = gateway!.port ?? 8787;
+  const corsConfig = normalizeCors(gateway!.cors);
 
   // Create a persistent bearer token for QR/auto-connect.
   const token = generateToken();
@@ -134,12 +157,14 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
       // Read-only connection info endpoint. The web client uses this to
       // pre-fill its connection form from `hermit.config.json` when the page
       // is opened without URL params. No token is exposed here.
-      if (gateway!.cors && req.method === "OPTIONS" && req.url === "/api/config") {
-        res.writeHead(204, {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type",
-        });
+      if (corsConfig.enabled && req.method === "OPTIONS" && req.url === "/api/config") {
+        res.writeHead(
+          204,
+          corsPreflightHeaders(corsConfig, req.headers.origin, {
+            methods: ["GET", "OPTIONS"],
+            headers: ["Content-Type"],
+          }),
+        );
         res.end();
         return true;
       }
@@ -157,17 +182,19 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
             endpoint: sseEndpoint,
             port,
           },
-        });
+        }, corsConfig, req.headers.origin);
         return true;
       }
 
       // CORS preflight for the pairing endpoint.
-      if (gateway!.cors && req.method === "OPTIONS" && req.url === "/pair") {
-        res.writeHead(204, {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        });
+      if (corsConfig.enabled && req.method === "OPTIONS" && req.url === "/pair") {
+        res.writeHead(
+          204,
+          corsPreflightHeaders(corsConfig, req.headers.origin, {
+            methods: ["POST", "OPTIONS"],
+            headers: ["Content-Type", "Authorization"],
+          }),
+        );
         res.end();
         return true;
       }
@@ -178,11 +205,11 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
         const token = code ? await validatePairingCode(code) : null;
 
         if (!token) {
-          sendJson(res, 401, { ok: false, error: "Invalid or expired pairing code" });
+          sendJson(res, 401, { ok: false, error: "Invalid or expired pairing code" }, corsConfig, req.headers.origin);
           return true;
         }
 
-        sendJson(res, 200, { ok: true, token });
+        sendJson(res, 200, { ok: true, token }, corsConfig, req.headers.origin);
         return true;
       }
 
@@ -191,7 +218,7 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
       if (protectedPaths.includes(req.url ?? "") && (req.method === "GET" || req.method === "POST")) {
         const token = extractBearer(req);
         if (!token || !(await isTokenAuthorized(token))) {
-          sendJson(res, 401, { ok: false, error: "Unauthorized" });
+          sendJson(res, 401, { ok: false, error: "Unauthorized" }, corsConfig, req.headers.origin);
           return true;
         }
         return false;
@@ -243,8 +270,15 @@ async function startAction(options: {
   command?: string;
   args?: string;
   cwd?: string;
+  cors?: string;
 }): Promise<void> {
   const config = await loadConfig(options.config);
+
+  // --cors overrides gateway.cors from the config file.
+  if (options.cors !== undefined) {
+    config.gateway = config.gateway ?? {};
+    config.gateway.cors = parseCorsOption(options.cors);
+  }
 
   // CLI overrides take precedence over config file values.
   // --command resets the agent: args default to [] unless --args is given.
@@ -298,5 +332,9 @@ export const command = new Command("start")
   .option(
     "--cwd <path>",
     "working directory for the agent process (default: current directory)",
+  )
+  .option(
+    "--cors <value>",
+    "CORS: '*'/'true' to allow all, 'false' to disable, or comma-separated origins",
   )
   .action(startAction);
