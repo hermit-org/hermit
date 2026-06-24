@@ -132,6 +132,9 @@ jobs:
 
       - name: Locate and rename APK
         run: |
+          # Ensure version name is available even if GITHUB_ENV propagation is delayed.
+          VERSION_NAME="${VERSION_NAME:-$(node -p "require('./apps/mobile/package.json').version")}"
+
           APK_DIR="apps/mobile/android/app/build/outputs/apk/release"
           mkdir -p /tmp/apk-release
 
