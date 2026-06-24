@@ -10,13 +10,14 @@
 # Override the agent by editing hermit.config.json (mountable).
 
 # ============================================================================
-# Base: Node.js (for npx/node-based agents) + Bun (runtime) + nginx + supervisor
+# Base: Node.js 22 + Bun (runtime) + nginx + supervisor + kimi CLI
+# Node 22+ is required by @moonshot-ai/kimi-code.
 # ============================================================================
-FROM node:20-slim AS base
+FROM node:22-slim AS base
 RUN apt-get update \
     && apt-get install -y --no-install-recommends nginx supervisor \
     && rm -rf /var/lib/apt/lists/*
-RUN npm install -g bun
+RUN npm install -g bun @moonshot-ai/kimi-code
 WORKDIR /app
 
 # ----------------------------------------------------------------------------
