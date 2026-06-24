@@ -32,7 +32,10 @@ COPY packages/stdio-to-sse_rn/package.json packages/stdio-to-sse_rn/
 COPY packages/types/package.json          packages/types/
 COPY packages/utils/package.json          packages/utils/
 COPY apps/web/package.json                apps/web/
-RUN bun install --frozen-lockfile
+# NOTE: 不能用 --frozen-lockfile：bun.lock 包含 apps/mobile 等未复制的
+# workspace，frozen 模式会因 workspace 缺失而校验失败。普通 install 会基于
+# 实际存在的 workspace 正确解析（仍优先使用锁定的版本）。
+RUN bun install
 
 COPY packages/ packages/
 COPY apps/web/ apps/web/
@@ -53,7 +56,7 @@ COPY packages/stdio-to-sse_rn/package.json packages/stdio-to-sse_rn/
 COPY packages/types/package.json          packages/types/
 COPY packages/utils/package.json          packages/utils/
 COPY apps/web/package.json                apps/web/
-RUN bun install --frozen-lockfile
+RUN bun install
 
 COPY packages/ packages/
 COPY hermit.config.json ./
