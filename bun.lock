@@ -15,6 +15,8 @@
       "version": "0.0.1",
       "dependencies": {
         "@babel/runtime": "^7.25.0",
+        "@hermit-org/acp": "workspace:*",
+        "@hermit-org/acp-hooks": "workspace:*",
         "@hermit-org/stdio-to-sse_rn": "workspace:*",
         "@hermit-org/types": "workspace:*",
         "@hermit-org/utils": "workspace:*",
@@ -44,9 +46,10 @@
     },
     "apps/web": {
       "name": "@hermit-org/web",
-      "version": "0.0.1",
+      "version": "0.0.1-alpha.7",
       "dependencies": {
         "@hermit-org/acp": "workspace:*",
+        "@hermit-org/acp-hooks": "workspace:*",
         "@hermit-org/types": "workspace:*",
         "@radix-ui/react-avatar": "^1.2.0",
         "@radix-ui/react-checkbox": "^1.3.5",
@@ -90,6 +93,22 @@
       "version": "0.0.1",
       "dependencies": {
         "@hermit-org/types": "workspace:*",
+      },
+    },
+    "packages/acp-hooks": {
+      "name": "@hermit-org/acp-hooks",
+      "version": "0.0.1",
+      "dependencies": {
+        "@hermit-org/acp": "workspace:*",
+        "@hermit-org/types": "workspace:*",
+        "@hermit-org/utils": "workspace:*",
+        "zustand": "^4.5.5",
+      },
+      "devDependencies": {
+        "@types/react": "^18.3.12",
+      },
+      "peerDependencies": {
+        "react": "^18.3.1",
       },
     },
     "packages/cli": {
@@ -447,6 +466,8 @@
     "@hapi/topo": ["@hapi/topo@5.1.0", "", { "dependencies": { "@hapi/hoek": "^9.0.0" } }, "sha512-foQZKJig7Ob0BMAYBfcJk8d77QtOe7Wo4ox7ff1lQYoNNAb6jwcY1ncdoy2e9wQZzvNy7ODZCYJkK8kzmcAnAg=="],
 
     "@hermit-org/acp": ["@hermit-org/acp@workspace:packages/acp"],
+
+    "@hermit-org/acp-hooks": ["@hermit-org/acp-hooks@workspace:packages/acp-hooks"],
 
     "@hermit-org/cli": ["@hermit-org/cli@workspace:packages/cli"],
 

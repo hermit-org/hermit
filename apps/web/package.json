@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@hermit-org/acp": "workspace:*",
+    "@hermit-org/acp-hooks": "workspace:*",
     "@hermit-org/types": "workspace:*",
     "@radix-ui/react-avatar": "^1.2.0",
     "@radix-ui/react-checkbox": "^1.3.5",

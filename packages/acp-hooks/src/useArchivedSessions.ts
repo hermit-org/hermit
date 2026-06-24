@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import type { StorageAdapter } from "./types";
 
 /**
- * Archive list for sessions, persisted to localStorage and keyed by gateway id.
+ * Archive list for sessions, persisted via the provided storage adapter and
+ * keyed by gateway id.
  *
  * Archiving is a client-side-only operation: the session continues to exist on
  * the agent, but is hidden from the sidebar. On every `session/list` refresh
@@ -16,10 +18,12 @@ function storageKey(gatewayId: string): string {
   return `${STORAGE_PREFIX}${gatewayId}`;
 }
 
-function load(gatewayId: string): Set<string> {
-  if (typeof localStorage === "undefined") return new Set();
+async function load(
+  gatewayId: string,
+  storage: StorageAdapter,
+): Promise<Set<string>> {
   try {
-    const raw = localStorage.getItem(storageKey(gatewayId));
+    const raw = await storage.getItem(storageKey(gatewayId));
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return new Set(parsed.filter((v) => typeof v === "string"));
@@ -29,13 +33,23 @@ function load(gatewayId: string): Set<string> {
   }
 }
 
-function save(gatewayId: string, ids: Set<string>): void {
-  if (typeof localStorage === "undefined") return;
+async function save(
+  gatewayId: string,
+  storage: StorageAdapter,
+  ids: Set<string>,
+): Promise<void> {
   try {
-    localStorage.setItem(storageKey(gatewayId), JSON.stringify([...ids]));
+    await storage.setItem(storageKey(gatewayId), JSON.stringify([...ids]));
   } catch {
     // Ignore write errors (e.g. quota / disabled storage).
   }
+}
+
+export interface UseArchivedSessionsOptions {
+  /** Gateway id used as the storage key. Null disables persistence. */
+  gatewayId: string | null;
+  /** Platform-specific storage adapter. */
+  storage: StorageAdapter;
 }
 
 export interface ArchivedSessionsApi {
@@ -55,15 +69,26 @@ export interface ArchivedSessionsApi {
  * Manage the archived-session list for a gateway. Returns a stable API whose
  * `archived` set updates whenever sessions are added or removed.
  */
-export function useArchivedSessions(gatewayId: string | null): ArchivedSessionsApi {
-  const [archived, setArchived] = useState<Set<string>>(() =>
-    gatewayId ? load(gatewayId) : new Set(),
-  );
+export function useArchivedSessions(
+  options: UseArchivedSessionsOptions,
+): ArchivedSessionsApi {
+  const { gatewayId, storage } = options;
+  const [archived, setArchived] = useState<Set<string>>(new Set());
 
   // Reload from storage whenever the gateway changes.
   useEffect(() => {
-    setArchived(gatewayId ? load(gatewayId) : new Set());
-  }, [gatewayId]);
+    let cancelled = false;
+    if (gatewayId) {
+      load(gatewayId, storage).then((ids) => {
+        if (!cancelled) setArchived(ids);
+      });
+    } else {
+      setArchived(new Set());
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [gatewayId, storage]);
 
   const has = useCallback((id: string) => archived.has(id), [archived]);
 
@@ -76,11 +101,11 @@ export function useArchivedSessions(gatewayId: string | null): ArchivedSessionsA
         }
         const next = new Set(prev);
         next.add(id);
-        if (gatewayId) save(gatewayId, next);
+        if (gatewayId) save(gatewayId, storage, next);
         return next;
       });
     },
-    [gatewayId],
+    [gatewayId, storage],
   );
 
   const remove = useCallback(
@@ -89,11 +114,11 @@ export function useArchivedSessions(gatewayId: string | null): ArchivedSessionsA
         if (!prev.has(id)) return prev;
         const next = new Set(prev);
         next.delete(id);
-        if (gatewayId) save(gatewayId, next);
+        if (gatewayId) save(gatewayId, storage, next);
         return next;
       });
     },
-    [gatewayId],
+    [gatewayId, storage],
   );
 
   // Return the stable `archived` reference directly (not a fresh copy) so it

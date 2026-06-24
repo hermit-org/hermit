@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
+import type { StorageAdapter } from "./types";
 
 /**
- * Open-session list, persisted to localStorage and keyed by gateway id.
+ * Open-session list, persisted via the provided storage adapter and keyed by
+ * gateway id.
  *
  * The open list tracks sessions this client has opened on the agent via
  * `session/new` or `session/load`. It is used to:
@@ -20,10 +22,12 @@ function storageKey(gatewayId: string): string {
   return `${STORAGE_PREFIX}${gatewayId}`;
 }
 
-function load(gatewayId: string): Set<string> {
-  if (typeof localStorage === "undefined") return new Set();
+async function load(
+  gatewayId: string,
+  storage: StorageAdapter,
+): Promise<Set<string>> {
   try {
-    const raw = localStorage.getItem(storageKey(gatewayId));
+    const raw = await storage.getItem(storageKey(gatewayId));
     if (!raw) return new Set();
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return new Set(parsed.filter((v) => typeof v === "string"));
@@ -33,13 +37,23 @@ function load(gatewayId: string): Set<string> {
   }
 }
 
-function save(gatewayId: string, ids: Set<string>): void {
-  if (typeof localStorage === "undefined") return;
+async function save(
+  gatewayId: string,
+  storage: StorageAdapter,
+  ids: Set<string>,
+): Promise<void> {
   try {
-    localStorage.setItem(storageKey(gatewayId), JSON.stringify([...ids]));
+    await storage.setItem(storageKey(gatewayId), JSON.stringify([...ids]));
   } catch {
     // Ignore write errors (e.g. quota / disabled storage).
   }
+}
+
+export interface UseOpenSessionsOptions {
+  /** Gateway id used as the storage key. Null disables persistence. */
+  gatewayId: string | null;
+  /** Platform-specific storage adapter. */
+  storage: StorageAdapter;
 }
 
 export interface OpenSessionsApi {
@@ -62,15 +76,26 @@ export interface OpenSessionsApi {
  * Manage the open-session list for a gateway. Returns a stable API whose
  * `open` set updates whenever sessions are added, removed, or reconciled.
  */
-export function useOpenSessions(gatewayId: string | null): OpenSessionsApi {
-  const [open, setOpen] = useState<Set<string>>(() =>
-    gatewayId ? load(gatewayId) : new Set(),
-  );
+export function useOpenSessions(
+  options: UseOpenSessionsOptions,
+): OpenSessionsApi {
+  const { gatewayId, storage } = options;
+  const [open, setOpen] = useState<Set<string>>(new Set());
 
   // Reload from storage whenever the gateway changes.
   useEffect(() => {
-    setOpen(gatewayId ? load(gatewayId) : new Set());
-  }, [gatewayId]);
+    let cancelled = false;
+    if (gatewayId) {
+      load(gatewayId, storage).then((ids) => {
+        if (!cancelled) setOpen(ids);
+      });
+    } else {
+      setOpen(new Set());
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [gatewayId, storage]);
 
   const has = useCallback((id: string) => open.has(id), [open]);
 
@@ -80,11 +105,11 @@ export function useOpenSessions(gatewayId: string | null): OpenSessionsApi {
         if (prev.has(id)) return prev;
         const next = new Set(prev);
         next.add(id);
-        if (gatewayId) save(gatewayId, next);
+        if (gatewayId) save(gatewayId, storage, next);
         return next;
       });
     },
-    [gatewayId],
+    [gatewayId, storage],
   );
 
   const remove = useCallback(
@@ -93,11 +118,11 @@ export function useOpenSessions(gatewayId: string | null): OpenSessionsApi {
         if (!prev.has(id)) return prev;
         const next = new Set(prev);
         next.delete(id);
-        if (gatewayId) save(gatewayId, next);
+        if (gatewayId) save(gatewayId, storage, next);
         return next;
       });
     },
-    [gatewayId],
+    [gatewayId, storage],
   );
 
   const syncWith = useCallback(
@@ -115,11 +140,11 @@ export function useOpenSessions(gatewayId: string | null): OpenSessionsApi {
         }
       }
       if (!changed) return open;
-      if (gatewayId) save(gatewayId, next);
+      if (gatewayId) save(gatewayId, storage, next);
       setOpen(next);
       return next;
     },
-    [gatewayId, open],
+    [gatewayId, storage, open],
   );
 
   return { open, has, add, remove, syncWith };
