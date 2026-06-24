@@ -35,6 +35,7 @@ export interface UseAcpClientResult {
 export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const { gateway, autoConnect = false, autoAuthenticate } = options;
   const clientRef = useRef<AcpClient | null>(null);
+  const gatewayRef = useRef<Gateway | null>(gateway);
   const generationRef = useRef(0);
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState("disconnected");
@@ -42,6 +43,9 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const [authMethods, setAuthMethods] = useState<AuthMethod[]>([]);
   const [canLogout, setCanLogout] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+
+  // Keep the latest gateway reference available without re-creating callbacks.
+  gatewayRef.current = gateway;
 
   const disconnect = useCallback(() => {
     generationRef.current += 1;
@@ -56,11 +60,12 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   }, []);
 
   const connect = useCallback(async () => {
-    if (!gateway) return;
+    const currentGateway = gatewayRef.current;
+    if (!currentGateway) return;
     disconnect();
     const generation = (generationRef.current += 1);
 
-    const transport = createMobileTransport(gateway);
+    const transport = createMobileTransport(currentGateway);
     const permissionStore = usePermissionStore;
 
     const client = createAcpClient({
@@ -102,7 +107,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
       setConnected(false);
       setAuthenticated(false);
     }
-  }, [gateway, disconnect, autoAuthenticate]);
+  }, [disconnect, autoAuthenticate]);
 
   const authenticate = useCallback(async (methodId: string) => {
     const client = clientRef.current;

@@ -14,6 +14,7 @@ export type Language = keyof typeof resources;
 
 const fallback: Language = "en";
 const supportedLanguages = Object.keys(resources) as Language[];
+const LANGUAGE_STORAGE_KEY = "hermit-language";
 
 function resolveDeviceLanguage(): Language {
   const locales = RNLocalize.getLocales();
@@ -21,22 +22,35 @@ function resolveDeviceLanguage(): Language {
   return deviceLanguage && resources[deviceLanguage] ? deviceLanguage : fallback;
 }
 
-function resolveStoredLanguage(): Language | "system" | null {
+/**
+ * Read the persisted language preference from its own MMKV key.
+ * Keeping this separate from the Zustand persist blob avoids coupling i18n
+ * init to the settings store's internal serialized shape.
+ */
+export function getStoredLanguage(): Language | "system" | null {
   try {
-    const raw = hermitStorage.getString("hermit-settings");
+    const raw = hermitStorage.getString(LANGUAGE_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { state?: { language?: Language | "system" } };
-    return parsed.state?.language ?? null;
+    const parsed = JSON.parse(raw) as Language | "system";
+    return parsed === "system" || resources[parsed] ? parsed : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Persist the language preference to a dedicated MMKV key.
+ * The settings store should call this whenever the user changes language.
+ */
+export function setStoredLanguage(language: Language | "system"): void {
+  hermitStorage.set(LANGUAGE_STORAGE_KEY, JSON.stringify(language));
 }
 
 export function resolveEffectiveLanguage(language: Language | "system"): Language {
   return language === "system" ? resolveDeviceLanguage() : language;
 }
 
-const storedLanguage = resolveStoredLanguage();
+const storedLanguage = getStoredLanguage();
 const initialLanguage = resolveEffectiveLanguage(storedLanguage ?? "system");
 
 i18n

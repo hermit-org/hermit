@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { useThrottle } from "../hooks/useThrottle";
 
 interface StreamingTextProps {
   content: string;
@@ -9,15 +10,14 @@ interface StreamingTextProps {
 /**
  * Renders partial assistant output while it is streaming in.
  *
- * For a true streaming Markdown experience the renderer must tolerate
- * incomplete syntax. `react-native-markdown-display` re-renders on each
- * update; for long streams this can be optimised with memoization or by
- * buffering updates with a short throttle.
+ * Updates are throttled so the Markdown renderer does not re-render on every
+ * single character. The final content is always flushed once the stream pauses.
  */
 export function StreamingText({ content }: StreamingTextProps): React.JSX.Element {
+  const throttledContent = useThrottle(content, 80);
   return (
     <View style={localStyles.container}>
-      <MarkdownRenderer content={content || "▋"} />
+      <MarkdownRenderer content={throttledContent || "▋"} />
     </View>
   );
 }

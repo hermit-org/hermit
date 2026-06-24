@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { hermitStorage } from "./mmkv";
+import { setStoredLanguage } from "../i18n";
 
 export type AppLanguage = "en" | "zh" | "system";
 
@@ -48,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setLanguage(language) {
         set({ language });
+        setStoredLanguage(language);
       },
       setThoughtPreviewLines(thoughtPreviewLines) {
         set({ thoughtPreviewLines });

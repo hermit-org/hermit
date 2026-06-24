@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  PermissionsAndroid,
+  Platform,
 } from "react-native";
 import { Camera, CameraType } from "react-native-camera-kit";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
@@ -24,12 +26,24 @@ function parseConnectionString(input: string): { url: string; sendUrl: string; t
     if (!parsed.url || !parsed.token) return null;
     return {
       url: parsed.url,
-      sendUrl: parsed.sendUrl || parsed.url.replace(/\/$/, "/send"),
+      sendUrl: parsed.sendUrl || parsed.url.replace(/\/?$/, "/send"),
       token: parsed.token,
     };
   } catch {
     return null;
   }
+}
+
+async function requestCameraPermission(): Promise<boolean> {
+  if (Platform.OS !== "android") return true;
+
+  const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA, {
+    title: "Camera Permission",
+    message: "Hermit needs camera access to scan QR codes.",
+    buttonPositive: "OK",
+  });
+
+  return result === PermissionsAndroid.RESULTS.GRANTED;
 }
 
 export function QrScannerScreen(): React.JSX.Element {
@@ -38,6 +52,22 @@ export function QrScannerScreen(): React.JSX.Element {
   const { addGateway, setActiveGateway } = useGatewayStore();
   const [scanning, setScanning] = useState(true);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [ready, setReady] = useState(Platform.OS !== "android");
+
+  useEffect(() => {
+    let mounted = true;
+    requestCameraPermission().then((granted) => {
+      if (!mounted) return;
+      if (granted) {
+        setReady(true);
+      } else {
+        setPermissionDenied(true);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleBarcodeRead = (event: { nativeEvent?: { codeStringValue?: string } }) => {
     if (!scanning) return;
@@ -78,7 +108,19 @@ export function QrScannerScreen(): React.JSX.Element {
     return (
       <View style={localStyles.center}>
         <Text style={localStyles.message}>{t("qrScanner.permissionDenied")}</Text>
-        <TouchableOpacity style={localStyles.button} onPress={() => setPermissionDenied(false)}>
+        <TouchableOpacity
+          style={localStyles.button}
+          onPress={() => {
+            setPermissionDenied(false);
+            requestCameraPermission().then((granted) => {
+              if (granted) {
+                setReady(true);
+              } else {
+                setPermissionDenied(true);
+              }
+            });
+          }}
+        >
           <Text style={localStyles.buttonText}>{t("common.retry")}</Text>
         </TouchableOpacity>
       </View>
@@ -87,15 +129,17 @@ export function QrScannerScreen(): React.JSX.Element {
 
   return (
     <View style={localStyles.container}>
-      <Camera
-        style={localStyles.camera}
-        cameraType={CameraType.Back}
-        scanBarcode
-        onReadCode={handleBarcodeRead}
-        showFrame
-        frameColor="#007AFF"
-        laserColor="#007AFF"
-      />
+      {ready && (
+        <Camera
+          style={localStyles.camera}
+          cameraType={CameraType.Back}
+          scanBarcode
+          onReadCode={handleBarcodeRead}
+          showFrame
+          frameColor="#007AFF"
+          laserColor="#007AFF"
+        />
+      )}
       <View style={localStyles.overlay}>
         <Text style={localStyles.hint}>{t("qrScanner.hint")}</Text>
         {!scanning && <ActivityIndicator style={localStyles.spinner} />}

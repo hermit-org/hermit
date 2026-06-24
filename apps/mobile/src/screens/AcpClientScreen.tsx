@@ -20,7 +20,7 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "AcpClient">;
 
-function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
+const ChatItemView = React.memo(function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
   if (item.kind === "message") {
     const isUser = item.role === "user";
     return (
@@ -64,7 +64,7 @@ function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
       <Text style={styles.toolCallStatus}>{item.call.status ?? "running"}</Text>
     </View>
   );
-}
+});
 
 export function AcpClientScreen({ route, navigation }: Props): React.JSX.Element {
   const { gatewayId } = route.params;
@@ -140,6 +140,11 @@ export function AcpClientScreen({ route, navigation }: Props): React.JSX.Element
         data={adapter.chatItems}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={15}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         ListEmptyComponent={
           <Text style={styles.emptyText}>{t("chat.empty")}</Text>
         }

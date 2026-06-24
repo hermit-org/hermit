@@ -150,9 +150,12 @@ export class AcpGatewayServer {
         this.server!.removeListener("error", reject);
         this.spawnAgent(command, args, cwd);
 
+        const address = this.server!.address();
+        const actualPort = address && typeof address === "object" ? address.port : port;
+
         const displayEndpoint = normalizedEndpoint === "/" ? "" : normalizedEndpoint;
         const host = hostname === "0.0.0.0" ? "localhost" : hostname;
-        const url = `http://${host}:${port}${displayEndpoint}`;
+        const url = `http://${host}:${actualPort}${displayEndpoint}`;
 
         resolve({
           url,

@@ -3,7 +3,7 @@ import { request } from "node:http";
 import { AcpGatewayServer } from "./gateway";
 
 async function getFreePort(): Promise<number> {
-  return 10000 + Math.floor(Math.random() * 30000);
+  return 0;
 }
 
 async function post(url: string, body: string): Promise<Response> {
@@ -61,7 +61,7 @@ describe("AcpGatewayServer", () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
       command: "node",
-      args: ["-e", "console.log('startup'); setInterval(() => {}, 1000);"],
+      args: ["-e", "setInterval(() => console.log('startup'), 50);"],
       port,
     });
 

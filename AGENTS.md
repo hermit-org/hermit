@@ -230,6 +230,47 @@ bun run ios
 
 Metro watches `../../packages`, so all workspace packages resolve directly.
 
+### Build a release APK (CI / GitHub Actions)
+
+The `.github/workflows/build-android.yml` workflow builds a signed release APK and,
+on version tags, creates a GitHub Release with the APK attached.
+
+Trigger a release manually:
+
+```bash
+# Optional: bump apps/mobile/package.json version first
+git tag -a v0.0.2 -m "Hermit Mobile v0.0.2"
+git push origin v0.0.2
+```
+
+Required repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `ANDROID_KEYSTORE_BASE64` | Base64-encoded release keystore (`.jks` or `.keystore`). |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password. |
+| `ANDROID_KEY_ALIAS` | Key alias inside the keystore. |
+| `ANDROID_KEY_PASSWORD` | Key password (often the same as the keystore password). |
+
+Create a keystore locally:
+
+```bash
+keytool -genkey -v \
+  -keystore hermit-release.keystore \
+  -alias hermit-key \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Then encode it for the secret:
+
+```bash
+base64 -i hermit-release.keystore | pbcopy   # macOS
+# or
+base64 -i hermit-release.keystore -w 0       # Linux
+```
+
+**Important:** keep the keystore file and passwords outside version control.
+
 ### Run the web app
 
 From `apps/web`:

@@ -1,20 +1,31 @@
-name: Build Android App
+name: Build and Release Android App
 
 on:
   push:
-    branches: [main, feat/acp-rn-sync, feat/mobile-refactor]
+    branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a GitHub Release after a successful build"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-android:
     name: Build Android Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create GitHub Releases
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed to compute versionCode from commit count
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -42,23 +53,23 @@ jobs:
         run: |
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
 
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Install dependencies
         run: bun install
-
-      - name: Debug workspace package entries
-        run: |
-          echo "--- acp-hooks package.json ---"
-          cat apps/mobile/node_modules/@hermit-org/acp-hooks/package.json || true
-          echo "--- acp package.json ---"
-          cat apps/mobile/node_modules/@hermit-org/acp/package.json || true
-          echo "--- acp-hooks symlink target ---"
-          ls -la apps/mobile/node_modules/@hermit-org/acp-hooks || true
-          echo "--- acp-hooks src/index.ts exists? ---"
-          ls -la apps/mobile/node_modules/@hermit-org/acp-hooks/src/index.ts || true
 
       - name: Generate Android project
         run: |
           cd /tmp
+          rm -rf HermitMobile
           npx @react-native-community/cli@15.1.3 init HermitMobile \
             --version 0.76.0 \
             --skip-install \
@@ -66,20 +77,88 @@ jobs:
             --package-name click.hermit.app
           cp -r /tmp/HermitMobile/android "$GITHUB_WORKSPACE/apps/mobile/android"
 
-      - name: Patch AndroidManifest for camera permission
+      - name: Patch AndroidManifest
         run: |
-          MANIFEST="$GITHUB_WORKSPACE/apps/mobile/android/app/src/main/AndroidManifest.xml"
-          sed -i '/<manifest /a \\n    <uses-permission android:name="android.permission.CAMERA" />' "$MANIFEST"
+          python3 "$GITHUB_WORKSPACE/scripts/patch-android-manifest.py" \
+            "$GITHUB_WORKSPACE/apps/mobile/android/app/src/main/AndroidManifest.xml"
+
+      - name: Set version code and name
+        run: |
+          VERSION_NAME="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+ ]]; then
+            VERSION_NAME=$(node -p "require('./apps/mobile/package.json').version")
+          fi
+
+          # Derive versionCode from semver so it stays well below Android's
+          # 2,100,000,000 limit and remains stable across rebuilds.
+          # Formula: major * 1,000,000 + minor * 1,000 + patch
+          VERSION_CODE=$(node -p "
+            const [major, minor, patch] = '$VERSION_NAME'.split('.').map(Number);
+            ((major || 0) * 1000000 + (minor || 0) * 1000 + (patch || 0)).toString()
+          ")
+
+          BUILD_FILE="apps/mobile/android/app/build.gradle"
+          sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/" "$BUILD_FILE"
+          sed -i "s/versionName \".*\"/versionName \"$VERSION_NAME\"/" "$BUILD_FILE"
+
+          echo "versionCode=$VERSION_CODE" >> "$GITHUB_ENV"
+          echo "versionName=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "Building version $VERSION_NAME ($VERSION_CODE)"
+
+      - name: Configure release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set; the release APK will be unsigned."
+            exit 0
+          fi
+
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > apps/mobile/android/app/hermit-release.keystore
+          python3 "$GITHUB_WORKSPACE/scripts/patch-android-signing.py" \
+            apps/mobile/android/app/build.gradle
+          echo "Release signing configured"
 
       - name: Build Android release APK
         working-directory: apps/mobile/android
         env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
+
+      - name: Locate and rename APK
+        run: |
+          APK_DIR="apps/mobile/android/app/build/outputs/apk/release"
+          mkdir -p /tmp/apk-release
+
+          if [ -f "$APK_DIR/app-release.apk" ]; then
+            cp "$APK_DIR/app-release.apk" "/tmp/apk-release/hermit-mobile-${VERSION_NAME}.apk"
+          elif [ -f "$APK_DIR/app-release-unsigned.apk" ]; then
+            cp "$APK_DIR/app-release-unsigned.apk" "/tmp/apk-release/hermit-mobile-${VERSION_NAME}-unsigned.apk"
+          else
+            echo "::error::No release APK found in $APK_DIR"
+            ls -la "$APK_DIR"
+            exit 1
+          fi
+
+          ls -la /tmp/apk-release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: hermit-android-release
-          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: /tmp/apk-release/*.apk
           if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || github.event.inputs.create_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: /tmp/apk-release/*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
