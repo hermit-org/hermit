@@ -8,6 +8,17 @@
 
 ### 新增
 
+- **Docker 容器化部署**：提供单一自包含镜像，一个容器同时运行网关与 Web 客户端
+  - 新增 `Dockerfile`（all-in-one）：基于 `node:20-slim`，内置 Node/Bun/nginx/supervisor
+    - 网关由 `supervisord` 管理，Web 客户端经 nginx 提供 SPA 服务（配置内联，无额外文件）
+    - 内置 `node`、`npm`、`npx`、`bun`、`bunx`，默认 `npx codex --acp` 即可直接运行
+    - 配对令牌通过 `/root/.hermit` 卷持久化，`hermit.config.json` 可挂载覆盖
+  - 新增 CI 流程 `.github/workflows/docker-publish.yml`：自动构建并推送镜像到 GHCR（`ghcr.io/hermit-org/hermit`）
+    - `push tag v*` 触发：`v1.2.3` → `1.2.3`/`1.2`/`1`/`latest`；预发布 `v1.2.3-beta.1` → `1.2.3-beta.1`（不打 latest）
+    - `workflow_dispatch` 手动触发：默认打 `dev` 标签（可自定义，用于测试包）
+    - 多架构构建（`linux/amd64` + `linux/arm64`），启用 GHA 构建缓存
+  - 新增 `.dockerignore`
+
 - **CORS 细粒度配置**：网关支持通过命令行参数和配置文件自定义跨域规则
   - 配置文件 `hermit.config.json` 的 `gateway.cors` 现在支持三种写法：
     - `true`（默认）：允许所有来源
