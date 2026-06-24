@@ -53,7 +53,7 @@ COPY packages/stdio-to-sse_rn/package.json packages/stdio-to-sse_rn/
 COPY packages/types/package.json          packages/types/
 COPY packages/utils/package.json          packages/utils/
 COPY apps/web/package.json                apps/web/
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile
 
 COPY packages/ packages/
 COPY hermit.config.json ./
