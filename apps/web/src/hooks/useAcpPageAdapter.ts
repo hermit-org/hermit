@@ -17,6 +17,15 @@ import { useAcpClient } from "../acp/hooks";
 import { useSettingsStore } from "../stores/settingsStore";
 import type { Gateway } from "../types";
 
+/**
+ * Per-origin cache of the agent cwd reported by `/api/config`.
+ *
+ * The cwd is fixed for the lifetime of an agent process, so it only needs to
+ * be fetched once per gateway origin. Caching at module scope keeps it across
+ * re-renders and re-mounts, avoiding repeated `/api/config` requests.
+ */
+const agentCwdCache = new Map<string, string>();
+
 const localStorageAdapter = {
   getItem(name: string) {
     try {
@@ -70,18 +79,30 @@ export function useAcpPageAdapter(
   const acp = useAcpClient({ gateway, autoConnect: true });
   const autoArchiveThreshold = useSettingsStore((s) => s.autoArchiveThreshold);
 
+  // Resolve the agent cwd once per gateway origin, then serve it from cache so
+  // switching sessions / re-rendering never re-hits `/api/config`.
+  const getAgentCwd = useCallback(async (gw: Gateway): Promise<string> => {
+    const origin = new URL(gw.url).origin;
+    const cached = agentCwdCache.get(origin);
+    if (cached) return cached;
+    try {
+      const res = await fetch(`${origin}/api/config`);
+      if (!res.ok) return "/";
+      const data = (await res.json()) as { agent?: { cwd?: string } };
+      const cwd = data?.agent?.cwd ?? "/";
+      agentCwdCache.set(origin, cwd);
+      return cwd;
+    } catch {
+      return "/";
+    }
+  }, []);
+
   const adapter = useAcpPageAdapterBase({
     gateway,
     acp,
     storage: localStorageAdapter,
     autoArchiveThreshold,
-    getAgentCwd: async (gw) => {
-      const origin = new URL(gw.url).origin;
-      const res = await fetch(`${origin}/api/config`);
-      if (!res.ok) return "/";
-      const data = (await res.json()) as { agent?: { cwd?: string } };
-      return data?.agent?.cwd ?? "/";
-    },
+    getAgentCwd,
     onConfirmArchive: () =>
       typeof window !== "undefined" && window.confirm("Archive this session?"),
     onConfirmDelete: () =>
