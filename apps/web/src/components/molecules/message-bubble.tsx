@@ -13,6 +13,8 @@ export interface MessageBubbleProps {
   role: AvatarRole;
   /** Message body (markdown for assistant/system, plain text for user). */
   content: string;
+  /** Images attached to the message (base64 data + mime type). */
+  images?: { data: string; mimeType: string }[];
   /** Whether the message is actively streaming. */
   streaming?: boolean;
   /** Display name for the avatar fallback. */
@@ -42,6 +44,7 @@ export interface MessageBubbleProps {
 export function MessageBubble({
   role,
   content,
+  images,
   streaming,
   authorName,
   authorAvatar,
@@ -83,6 +86,12 @@ export function MessageBubble({
               : "rounded-tl-sm bg-card text-card-foreground",
           )}
         >
+          {images && images.length > 0 ? (
+            <MessageImages
+              images={images}
+              alignEnd={isUser}
+            />
+          ) : null}
           {pending ? (
             <div className="flex items-center gap-2 py-0.5 text-muted-foreground">
               <Spinner size={14} />
@@ -131,6 +140,42 @@ export function MessageBubble({
           />
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A compact grid of attached image thumbnails rendered inside a message bubble.
+ * The data is base64-encoded, so a data URL is used directly for the `<img>`.
+ */
+function MessageImages({
+  images,
+  alignEnd,
+}: {
+  images: { data: string; mimeType: string }[];
+  alignEnd?: boolean;
+}): React.JSX.Element {
+  // Cap the visible count so a large set doesn't overflow the bubble.
+  const visible = images.slice(0, 4);
+  const cols = visible.length === 1 ? "grid-cols-1" : "grid-cols-2";
+  return (
+    <div
+      className={cn(
+        "mb-2 grid max-w-[280px] gap-1.5",
+        cols,
+        alignEnd && "ml-auto",
+      )}
+    >
+      {visible.map((img, i) => (
+        <img
+          // eslint-disable-next-line react/no-array-index-key
+          key={i}
+          src={`data:${img.mimeType};base64,${img.data}`}
+          alt=""
+          loading="lazy"
+          className="h-auto max-h-48 w-full rounded-md object-cover"
+        />
+      ))}
     </div>
   );
 }

@@ -28,6 +28,7 @@ import type {
   UsageStats,
   AnsweredPermissionView,
 } from "@/components/domain";
+import type { PendingAttachment } from "@/types";
 
 export interface ACPClientPageProps {
   /** Transport connection state. */
@@ -94,6 +95,12 @@ export interface ACPClientPageProps {
   permissionHistory?: AnsweredPermissionView[];
   /** Auth methods advertised by the agent. */
   authMethods?: { id: string; name: string; description?: string }[];
+  /** Images currently attached to the draft. */
+  attachments?: PendingAttachment[];
+  /** Add image files to the draft. */
+  onAttachImages?: (files: File[]) => void;
+  /** Remove a previously-attached image by id. */
+  onRemoveAttachment?: (id: string) => void;
   /** Select a session. */
   onSelectSession?: (id: string) => void;
   /** Create a new session. */
@@ -182,6 +189,9 @@ export function ACPClientPage({
   queueDepth,
   permissionHistory,
   authMethods = [],
+  attachments,
+  onAttachImages,
+  onRemoveAttachment,
   onSelectSession,
   onCreateSession,
   onDeleteSession,
@@ -426,6 +436,9 @@ export function ACPClientPage({
                 onQuickCommand={(cmd) =>
                   handleDraftChange(`/${cmd.name} `)
                 }
+                attachments={attachments}
+                onAttachImages={onAttachImages}
+                onRemoveAttachment={onRemoveAttachment}
               />
             </div>
 

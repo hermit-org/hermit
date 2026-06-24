@@ -1,12 +1,16 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { LogIn, Paperclip, Slash } from "lucide-react";
+import { LogIn, Paperclip, Slash, X, ImageIcon } from "lucide-react";
 import type { AvailableCommand } from "@hermit-org/acp";
 import { SendButton, StopButton } from "@/components/atoms";
+import type { PendingAttachment } from "@/types";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+/** Maximum number of images a single prompt may carry. */
+export const MAX_IMAGES = 4;
 
 export interface MessageComposerProps {
   /** Current draft text. */
@@ -27,6 +31,12 @@ export interface MessageComposerProps {
   onCommand?: (command: AvailableCommand) => void;
   /** Attach a file (image / context). */
   onAttach?: () => void;
+  /** Images currently attached to the draft. */
+  attachments?: PendingAttachment[];
+  /** Add image files to the draft (the parent owns the max-count check). */
+  onAttachImages?: (files: File[]) => void;
+  /** Remove a previously-attached image by id. */
+  onRemoveAttachment?: (id: string) => void;
   /** Disable submit (e.g. not connected). */
   disabled?: boolean;
   /** Whether authentication is required before the user can type. */
@@ -58,6 +68,9 @@ export function MessageComposer({
   commands = [],
   onCommand,
   onAttach,
+  attachments = [],
+  onAttachImages,
+  onRemoveAttachment,
   disabled,
   requireAuth,
   authMethods = [],
@@ -68,7 +81,25 @@ export function MessageComposer({
   const { t } = useTranslation();
   const placeholder = placeholderProp ?? t("composer.placeholder");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
+  const fileRef = React.useRef<HTMLInputElement>(null);
   const [highlight, setHighlight] = React.useState(0);
+
+  const canAttach = !!onAttachImages && attachments.length < MAX_IMAGES;
+  const openFilePicker = React.useCallback(() => {
+    if (canAttach) fileRef.current?.click();
+  }, [canAttach]);
+
+  const handleFilesPicked = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files ?? []).filter((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (files.length > 0) onAttachImages?.(files);
+      // Reset so picking the same file again re-triggers onChange.
+      e.target.value = "";
+    },
+    [onAttachImages],
+  );
 
   const slash = React.useMemo(() => {
     const m = value.match(/(?:^|\s)\/([\w-]*)$/);
@@ -106,7 +137,8 @@ export function MessageComposer({
 
   const submit = React.useCallback(() => {
     const text = value.trim();
-    if (!text || busy || disabled) return;
+    // Allow an image-only send: submit when there is text OR attached images.
+    if ((!text && attachments.length === 0) || busy || disabled) return;
     // If onSubmit returns a promise, await it and only clear the draft on
     // success so a failed submission can be retried.
     const maybe = onSubmit(text) as unknown;
@@ -120,7 +152,7 @@ export function MessageComposer({
     } else {
       onChange("");
     }
-  }, [value, busy, disabled, onSubmit, onChange]);
+  }, [value, attachments.length, busy, disabled, onSubmit, onChange]);
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -191,49 +223,86 @@ export function MessageComposer({
           e.preventDefault();
           submit();
         }}
-        className="flex items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring"
+        className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring"
       >
-        {onAttach ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={t("composer.attachFile")}
-            className="shrink-0 rounded-full"
-            onClick={onAttach}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-        ) : null}
-        <div className="relative flex-1">
-          <Textarea
-            ref={taRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            rows={1}
-            disabled={disabled || requireAuth}
-            className="max-h-[220px] min-h-[40px] w-full resize-none border-0 bg-transparent p-1.5 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        {attachments.length > 0 ? (
+          <AttachmentStrip
+            attachments={attachments}
+            onRemove={onRemoveAttachment}
           />
-          {requireAuth ? (
-            <AuthOverlay
-              authMethods={authMethods}
-              onAuthenticate={onAuthenticate}
-            />
-          ) : null}
-        </div>
-        {showMenu ? (
-          <span className="mb-1 hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
-            <Slash className="h-3 w-3" />
-            ↑↓ {t("composer.navigateHint")}
-          </span>
         ) : null}
-        {busy ? (
-          <StopButton onClick={onCancel} />
-        ) : (
-          <SendButton disabled={!value.trim() || disabled || requireAuth} />
-        )}
+        <div className="flex items-end gap-2">
+          {onAttachImages ? (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFilesPicked}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={t("composer.attachImage")}
+                title={t("composer.maxImages", { count: MAX_IMAGES })}
+                disabled={!canAttach}
+                className="shrink-0 rounded-full"
+                onClick={openFilePicker}
+              >
+                <ImageIcon className="h-4 w-4" />
+              </Button>
+            </>
+          ) : onAttach ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("composer.attachFile")}
+              className="shrink-0 rounded-full"
+              onClick={onAttach}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+          ) : null}
+          <div className="relative flex-1">
+            <Textarea
+              ref={taRef}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={placeholder}
+              rows={1}
+              disabled={disabled || requireAuth}
+              className="max-h-[220px] min-h-[40px] w-full resize-none border-0 bg-transparent p-1.5 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            />
+            {requireAuth ? (
+              <AuthOverlay
+                authMethods={authMethods}
+                onAuthenticate={onAuthenticate}
+              />
+            ) : null}
+          </div>
+          {showMenu ? (
+            <span className="mb-1 hidden items-center gap-1 text-[10px] text-muted-foreground sm:flex">
+              <Slash className="h-3 w-3" />
+              ↑↓ {t("composer.navigateHint")}
+            </span>
+          ) : null}
+          {busy ? (
+            <StopButton onClick={onCancel} />
+          ) : (
+            <SendButton
+              disabled={
+                (!value.trim() && attachments.length === 0) ||
+                disabled ||
+                requireAuth
+              }
+            />
+          )}
+        </div>
       </form>
     </div>
   );
@@ -278,6 +347,47 @@ function AuthOverlay({
           {method.name}
         </Button>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Thumbnail strip of pending image attachments shown inside the composer.
+ * Each thumbnail has a remove (×) button. Releasing object URLs is the
+ * parent's responsibility (it owns the attachment lifecycle).
+ */
+function AttachmentStrip({
+  attachments,
+  onRemove,
+}: {
+  attachments: PendingAttachment[];
+  onRemove?: (id: string) => void;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap gap-2">
+      {attachments.map((att) => (
+        <div
+          key={att.id}
+          className="group/att relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted"
+        >
+          <img
+            src={att.previewUrl}
+            alt={att.name}
+            className="h-full w-full object-cover"
+          />
+          {onRemove ? (
+            <button
+              type="button"
+              aria-label={t("composer.removeImage")}
+              className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-background/80 text-foreground opacity-0 transition-opacity hover:bg-background group-hover/att:opacity-100"
+              onClick={() => onRemove(att.id)}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
 }

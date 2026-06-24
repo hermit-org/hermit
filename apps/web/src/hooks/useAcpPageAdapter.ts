@@ -26,6 +26,7 @@ import type {
   AvailableCommand,
   ConfigOption,
   ContentBlock,
+  ImageContent,
   PlanEntry,
   SessionInfo,
   SessionMode,
@@ -41,7 +42,7 @@ import { useArchivedSessions } from "./useArchivedSessions";
 import { useOpenSessions } from "./useOpenSessions";
 import { useSettingsStore } from "../stores/settingsStore";
 import { parseDuration, selectAutoArchiveIds } from "../lib/archive";
-import type { Gateway } from "../types";
+import type { Gateway, PendingAttachment } from "../types";
 
 import type {
   ChatItem,
@@ -66,6 +67,34 @@ const EMPTY_TURN: LiveTurn = {
   items: [],
   toolCalls: new Map(),
 };
+
+/** A queued prompt turn: the user's text plus any attached images. */
+interface QueueItem {
+  text: string;
+  images: ImageContent[];
+}
+
+/** Maximum images that may be attached to a single prompt. */
+const MAX_IMAGES = 4;
+
+/** Read a File as base64 (without the data-URL prefix). */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Failed to read file"));
+        return;
+      }
+      // Strip the "data:<mime>;base64," prefix.
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("File read error"));
+    reader.readAsDataURL(file);
+  });
+}
 
 /** Entries buffered while replaying history via `session/load`. */
 type HistoryBufferEntry =
@@ -196,6 +225,12 @@ export interface UseAcpPageAdapterResult {
   queueDepth: number;
   /** Previously-answered permission requests (newest first). */
   permissionHistory: AnsweredPermissionView[];
+  /** Images currently attached to the draft. */
+  attachments: PendingAttachment[];
+  /** Add image files to the draft (capped at MAX_IMAGES). */
+  onAttachImages: (files: File[]) => void;
+  /** Remove a previously-attached image by id. */
+  onRemoveAttachment: (id: string) => void;
 
   onSelectSession: (id: string) => void;
   onCreateSession: () => void;
@@ -269,9 +304,60 @@ export function useAcpPageAdapter(
   }, [allAgentSessions]);
   const [plan, setPlan] = useState<PlanEntry[]>([]);
   const [queueDepth, setQueueDepth] = useState(0);
-  const queueRef = useRef<string[]>([]);
+  const queueRef = useRef<QueueItem[]>([]);
   const processingRef = useRef(false);
   const [usage, setUsage] = useState<UsageStats | undefined>(undefined);
+
+  // Pending image attachments for the current draft. Object URLs are released
+  // when an attachment is removed or after the draft is sent.
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  // Mirror `attachments` into a ref so `onPrompt` (a stable callback) can read
+  // the latest value without re-creating on every attachment change.
+  const attachmentsRef = useRef<PendingAttachment[]>([]);
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  // Release object URLs for a set of attachments and clear them from state.
+  const clearAttachments = useCallback(() => {
+    setAttachments((prev) => {
+      for (const a of prev) {
+        if (a.previewUrl.startsWith("blob:")) URL.revokeObjectURL(a.previewUrl);
+      }
+      return [];
+    });
+  }, []);
+
+  // Add image files to the draft, capped at MAX_IMAGES in total.
+  const onAttachImages = useCallback(async (files: File[]) => {
+    const slots = MAX_IMAGES - attachmentsRef.current.length;
+    const picked = files.slice(0, Math.max(0, slots));
+    if (picked.length === 0) return;
+    const decoded = await Promise.all(
+      picked.map(async (file) => {
+        const data = await readFileAsBase64(file);
+        const attachment: PendingAttachment = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          name: file.name,
+          mimeType: file.type || "image/png",
+          data,
+          previewUrl: URL.createObjectURL(file),
+        };
+        return attachment;
+      }),
+    );
+    setAttachments((prev) => [...prev, ...decoded]);
+  }, []);
+
+  // Remove a single attachment by id, releasing its object URL.
+  const onRemoveAttachment = useCallback((id: string) => {
+    setAttachments((prev) => {
+      const target = prev.find((a) => a.id === id);
+      if (target && target.previewUrl.startsWith("blob:"))
+        URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((a) => a.id !== id);
+    });
+  }, []);
 
   // The agent's working directory, fetched from the gateway's /api/config.
   // Used as the `cwd` for session/new, session/load and session/resume.
@@ -979,13 +1065,26 @@ export function useAcpPageAdapter(
         kind: "message",
         key: `u_${Date.now()}`,
         role: "user",
-        content: next,
+        content: next.text,
+        images:
+          next.images.length > 0
+            ? next.images.map((img) => ({
+                data: img.data,
+                mimeType: img.mimeType,
+              }))
+            : undefined,
         createdAt: Date.now(),
       },
     ]);
 
     try {
-      const prompt: ContentBlock[] = [{ type: "text", text: next }];
+      // Image blocks precede the text block (text omitted if empty, e.g. an
+      // image-only prompt). This matches the conventional ordering agents
+      // expect from multimodal prompts.
+      const prompt: ContentBlock[] = [
+        ...next.images,
+        ...(next.text ? [{ type: "text" as const, text: next.text }] : []),
+      ];
       await client.sessionPrompt({ sessionId, prompt });
       // Commit the full live turn into history, preserving the interleaved
       // order of thoughts, tool calls and the assistant message so the
@@ -1023,7 +1122,16 @@ export function useAcpPageAdapter(
   const onPrompt = useCallback(
     async (value: string) => {
       const text = value.trim();
-      if (!text) return;
+      // Snapshot the current attachments so they ride along with this turn,
+      // then release their object URLs and clear the strip.
+      const pending = attachmentsRef.current;
+      const images: ImageContent[] = pending.map((a) => ({
+        type: "image",
+        data: a.data,
+        mimeType: a.mimeType,
+      }));
+      // Allow an image-only prompt: proceed when there is text OR images.
+      if (!text && images.length === 0) return;
       // Lazy session creation: when there is no active session (e.g. the user
       // clicked "new session" and is now sending the first message), create
       // the session on the agent before queueing the prompt. `createNewSession`
@@ -1034,11 +1142,12 @@ export function useAcpPageAdapter(
         if (!result) return;
       }
       setDraft("");
-      queueRef.current.push(text);
+      if (images.length > 0) clearAttachments();
+      queueRef.current.push({ text, images });
       setQueueDepth((n) => n + 1);
       void pumpQueue();
     },
-    [createNewSession, pumpQueue],
+    [createNewSession, pumpQueue, clearAttachments],
   );
 
   const onCancel = useCallback(async () => {
@@ -1115,7 +1224,8 @@ export function useAcpPageAdapter(
     queueRef.current = [];
     setQueueDepth(0);
     setDraft("");
-  }, []);
+    clearAttachments();
+  }, [clearAttachments]);
 
   const onResolvePermission = useCallback(
     (request: PendingPermission, outcome: string | "cancelled") => {
@@ -1505,6 +1615,9 @@ export function useAcpPageAdapter(
     plan,
     queueDepth,
     permissionHistory,
+    attachments,
+    onAttachImages,
+    onRemoveAttachment,
     onSelectSession,
     onCreateSession,
     onModeChange,

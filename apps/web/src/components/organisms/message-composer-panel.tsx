@@ -5,6 +5,7 @@ import type { AvailableCommand } from "@hermit-org/acp";
 import { MessageComposer } from "@/components/molecules";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { PendingAttachment } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface MessageComposerPanelProps {
@@ -30,6 +31,12 @@ export interface MessageComposerPanelProps {
   commands?: AvailableCommand[];
   /** Attach a file. */
   onAttach?: () => void;
+  /** Images currently attached to the draft. */
+  attachments?: PendingAttachment[];
+  /** Add image files to the draft. */
+  onAttachImages?: (files: File[]) => void;
+  /** Remove a previously-attached image by id. */
+  onRemoveAttachment?: (id: string) => void;
   /** Insert a quick command (e.g. a slash command shortcut). */
   onQuickCommand?: (command: AvailableCommand) => void;
   /** Clear the draft. */
@@ -55,6 +62,9 @@ export function MessageComposerPanel({
   disabled,
   commands = [],
   onAttach,
+  attachments,
+  onAttachImages,
+  onRemoveAttachment,
   onQuickCommand,
   onClear,
   queueDepth,
@@ -117,6 +127,9 @@ export function MessageComposerPanel({
             commands={commands}
             onCommand={onQuickCommand}
             onAttach={onAttach}
+            attachments={attachments}
+            onAttachImages={onAttachImages}
+            onRemoveAttachment={onRemoveAttachment}
           />
         </div>
         {value && onClear ? (

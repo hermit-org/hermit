@@ -352,6 +352,10 @@
   "composer": {
     "placeholder": "Message the agent… (Shift+Enter for newline)",
     "attachFile": "Attach file",
+    "attachImage": "Attach image",
+    "removeImage": "Remove image",
+    "maxImages": "Up to {{count}} images",
+    "imagesFull": "You can attach up to {{count}} images",
     "clearInput": "Clear input",
     "navigateHint": "to navigate",
     "noCommands": "No matching commands",

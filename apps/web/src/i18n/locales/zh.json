@@ -352,6 +352,10 @@
   "composer": {
     "placeholder": "给智能体发送消息…（Shift+Enter 换行）",
     "attachFile": "附加文件",
+    "attachImage": "添加图片",
+    "removeImage": "移除图片",
+    "maxImages": "最多 {{count}} 张图片",
+    "imagesFull": "最多只能添加 {{count}} 张图片",
     "clearInput": "清空输入",
     "navigateHint": "导航",
     "noCommands": "没有匹配的命令",

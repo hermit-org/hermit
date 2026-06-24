@@ -21,6 +21,8 @@ export type ChatItem =
       key: string;
       role: AvatarRole;
       content: string;
+      /** Images attached to the message (base64 data + mime type). */
+      images?: { data: string; mimeType: string }[];
       streaming?: boolean;
       pending?: boolean;
       authorName?: string;
@@ -174,6 +176,7 @@ export function ChatArea({
                         id={item.key}
                         role={item.role}
                         content={item.content}
+                        images={item.images}
                         streaming={item.streaming}
                         pending={item.pending}
                         authorName={

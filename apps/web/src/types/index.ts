@@ -34,6 +34,20 @@ export interface Session {
 
 export type MessageRole = "user" | "assistant" | "system";
 
+/** An image attached to a pending draft, ready to be sent as an ACP image block. */
+export interface PendingAttachment {
+  /** Stable client-side id. */
+  id: string;
+  /** Original file name. */
+  name: string;
+  /** Image MIME type (e.g. `image/png`). */
+  mimeType: string;
+  /** Base64-encoded image data (no data-URL prefix). */
+  data: string;
+  /** Object URL or data URL used for the `<img>` preview. */
+  previewUrl: string;
+}
+
 export interface Message {
   id: string;
   sessionId: string;
