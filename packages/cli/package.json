@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/cli",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "type": "module",
   "module": "src/index.ts",
   "bin": {
