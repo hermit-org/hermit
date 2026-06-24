@@ -51,7 +51,8 @@ jobs:
           npx @react-native-community/cli@15.1.3 init HermitMobile \
             --version 0.76.0 \
             --skip-install \
-            --directory HermitMobile
+            --directory HermitMobile \
+            --package-name click.hermit.app
           cp -r /tmp/HermitMobile/android "$GITHUB_WORKSPACE/apps/mobile/android"
 
       - name: Patch AndroidManifest for camera permission
