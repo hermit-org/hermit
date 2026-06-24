@@ -13,6 +13,7 @@ import {
   PlugZap,
   ArrowRight,
   Info,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,15 @@ import { useSettingsStore, type AppLanguage } from "@/stores/settingsStore";
 import { useGatewayStore } from "@/stores/gatewayStore";
 import { navigate, realGatewayPath } from "@/router";
 import { changeAppLanguage } from "@/i18n";
+import {
+  FEATURE_FLAGS,
+  FEATURE_FLAG_BY_KEY,
+  type FeatureFlagKey,
+} from "@/lib/feature-flags";
+import {
+  useFeatureFlag,
+  useSetFeatureFlag,
+} from "@/components/feature-gate";
 import type { Gateway } from "@/types";
 
 export interface SettingsLayoutProps {
@@ -46,6 +56,7 @@ export interface SettingsLayoutProps {
 export type SettingsSection =
   | "gateways"
   | "appearance"
+  | "features"
   | "shortcuts"
   | "archive"
   | "about";
@@ -54,6 +65,7 @@ const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentTy
   [
     { id: "gateways", labelKey: "settings.gateways", icon: ServerCog },
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
+    { id: "features", labelKey: "settings.features", icon: SlidersHorizontal },
     { id: "archive", labelKey: "settings.archive", icon: Archive },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
     { id: "about", labelKey: "settings.about", icon: Info },
@@ -119,6 +131,8 @@ export function SettingsLayout({
             <GatewaySection />
           ) : section === "appearance" ? (
             <AppearanceSection />
+          ) : section === "features" ? (
+            <FeaturesSection />
           ) : section === "archive" ? (
             <ArchiveSection />
           ) : section === "shortcuts" ? (
@@ -472,6 +486,50 @@ function AppearanceSection(): React.JSX.Element {
           </p>
         </div>
         <RightPanelSwitch />
+      </div>
+    </div>
+  );
+}
+
+function FeatureSwitch({
+  featureKey,
+}: {
+  featureKey: FeatureFlagKey;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const enabled = useFeatureFlag(featureKey);
+  const setEnabled = useSetFeatureFlag(featureKey);
+  const def = FEATURE_FLAG_BY_KEY[featureKey];
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border p-3">
+      <div>
+        <Label htmlFor={featureKey}>{t(def.labelKey)}</Label>
+        <p className="text-xs text-muted-foreground">{t(def.hintKey)}</p>
+      </div>
+      <Switch
+        id={featureKey}
+        checked={enabled}
+        onCheckedChange={setEnabled}
+      />
+    </div>
+  );
+}
+
+function FeaturesSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.featuresTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.featuresHint")}
+        </p>
+      </div>
+      <div className="space-y-3">
+        {FEATURE_FLAGS.map((flag) => (
+          <FeatureSwitch key={flag.key} featureKey={flag.key} />
+        ))}
       </div>
     </div>
   );

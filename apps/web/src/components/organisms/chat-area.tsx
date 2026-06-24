@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { cn } from "@/lib/utils";
+import { withFeatureGate } from "@/components/feature-gate";
 import type { ToolCallState } from "@/components/domain";
 import type { AvatarRole } from "@/components/atoms";
 
@@ -193,7 +194,7 @@ export function ChatArea({
                         <ToolCallRenderer call={item.call} />
                       </div>
                     ) : (
-                      <ThoughtBlock
+                      <GatedThoughtBlock
                         content={item.content}
                         streaming={item.streaming}
                       />
@@ -230,6 +231,8 @@ export function ChatArea({
  * An agent reasoning/thought block embedded in the transcript. Collapsed by
  * default; auto-expands while streaming. Click to toggle.
  */
+const GatedThoughtBlock = withFeatureGate(ThoughtBlock, "showThoughts");
+
 function ThoughtBlock({
   content,
   streaming,

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { FEATURE_FLAG_DEFAULTS } from "@/lib/feature-flags";
 
 export type AppLanguage = "en" | "zh";
 
@@ -11,7 +12,7 @@ export type AppLanguage = "en" | "zh";
  */
 export type AutoArchiveThreshold = string;
 
-interface SettingsState {
+export interface SettingsState {
   /**
    * How many lines of an agent "thought" block to show in its collapsed
    * preview. The full text is revealed when the user expands the block.
@@ -36,6 +37,18 @@ interface SettingsState {
   /** Whether to automatically authenticate when an agent advertises auth methods. */
   autoAuthenticate: boolean;
   setAutoAuthenticate: (enabled: boolean) => void;
+  /** Feature flag: show agent thought/reasoning blocks in the transcript. */
+  showThoughts: boolean;
+  setShowThoughts: (enabled: boolean) => void;
+  /** Feature flag: show the agent plan/todo bar above the composer. */
+  showPlan: boolean;
+  setShowPlan: (enabled: boolean) => void;
+  /** Feature flag: show token usage / cost stats in the status bar. */
+  showUsageStats: boolean;
+  setShowUsageStats: (enabled: boolean) => void;
+  /** Feature flag: show the agent config-option bar above the composer. */
+  showConfigBar: boolean;
+  setShowConfigBar: (enabled: boolean) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
@@ -54,6 +67,7 @@ function resolveDefaultLanguage(): AppLanguage {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
+      ...FEATURE_FLAG_DEFAULTS,
       thoughtPreviewLines: DEFAULT_THOUGHT_PREVIEW_LINES,
       setThoughtPreviewLines: (lines) =>
         set({
@@ -73,6 +87,10 @@ export const useSettingsStore = create<SettingsState>()(
         set({ autoArchiveThreshold }),
       autoAuthenticate: false,
       setAutoAuthenticate: (autoAuthenticate) => set({ autoAuthenticate }),
+      setShowThoughts: (showThoughts) => set({ showThoughts }),
+      setShowPlan: (showPlan) => set({ showPlan }),
+      setShowUsageStats: (showUsageStats) => set({ showUsageStats }),
+      setShowConfigBar: (showConfigBar) => set({ showConfigBar }),
     }),
     {
       name: "hermit-settings",

@@ -294,6 +294,7 @@
     "back": "返回",
     "gateways": "网关",
     "appearance": "外观",
+    "features": "功能",
     "shortcuts": "快捷键",
     "language": "语言",
     "languageHint": "选择界面显示语言。",
@@ -305,6 +306,8 @@
     "toolPanelHint": "控制右侧工具调用面板的显示。",
     "showToolPanel": "显示右侧面板",
     "showToolPanelHint": "开启后在宽屏下显示右侧工具调用面板。",
+    "featuresTitle": "可插拔功能",
+    "featuresHint": "在这里开启或关闭可选的界面功能。",
     "keyboardShortcuts": "键盘快捷键",
     "shortcutsHint": "可用的键盘快捷键。",
     "sendMessage": "发送消息",
@@ -399,5 +402,15 @@
 
   "config": {
     "archiveSession": "归档会话"
+  },
+  "features": {
+    "showThoughts": "显示推理块",
+    "showThoughtsHint": "在聊天记录中显示智能体的思考 / 推理块。",
+    "showPlan": "显示计划栏",
+    "showPlanHint": "在输入框上方显示智能体的待办 / 计划栏。",
+    "showUsageStats": "显示用量统计",
+    "showUsageStatsHint": "在状态栏显示令牌用量与花费。",
+    "showConfigBar": "显示配置栏",
+    "showConfigBarHint": "在输入框上方显示智能体配置选项栏。"
   }
 }

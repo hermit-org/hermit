@@ -294,6 +294,7 @@
     "back": "Back",
     "gateways": "Gateways",
     "appearance": "Appearance",
+    "features": "Features",
     "shortcuts": "Shortcuts",
     "language": "Language",
     "languageHint": "Choose the display language.",
@@ -305,6 +306,8 @@
     "toolPanelHint": "Control the visibility of the right-side tool-call panel.",
     "showToolPanel": "Show tool panel",
     "showToolPanelHint": "Show the right-side tool-call panel on wide screens.",
+    "featuresTitle": "Pluggable features",
+    "featuresHint": "Toggle optional UI features on or off.",
     "keyboardShortcuts": "Keyboard shortcuts",
     "shortcutsHint": "Available keyboard shortcuts.",
     "sendMessage": "Send message",
@@ -399,5 +402,15 @@
 
   "config": {
     "archiveSession": "Archive session"
+  },
+  "features": {
+    "showThoughts": "Show reasoning blocks",
+    "showThoughtsHint": "Display agent thinking / reasoning blocks in the chat transcript.",
+    "showPlan": "Show plan bar",
+    "showPlanHint": "Display the agent's todo / plan bar above the composer.",
+    "showUsageStats": "Show usage stats",
+    "showUsageStatsHint": "Display token usage and cost in the status bar.",
+    "showConfigBar": "Show config bar",
+    "showConfigBarHint": "Display the agent config-option bar above the composer."
   }
 }

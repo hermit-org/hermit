@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ErrorBoundary } from "./error-boundary";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
+import { withFeatureGate } from "@/components/feature-gate";
 import type {
   AgentCapabilities,
   AvailableCommand,
@@ -401,18 +402,16 @@ export function ACPClientPage({
                   }
                 />
               </div>
-              {configOptions.length > 0 || onArchiveSession ? (
-                <ConfigOptionBar
-                  options={configOptions}
-                  onArchive={
-                    activeSessionId && onArchiveSession
-                      ? () => onArchiveSession(activeSessionId)
-                      : undefined
-                  }
-                  onChange={onConfigChange}
-                />
-              ) : null}
-              {plan && plan.length > 0 ? <PlanBar entries={plan} /> : null}
+              <GatedConfigOptionBar
+                options={configOptions}
+                onArchive={
+                  activeSessionId && onArchiveSession
+                    ? () => onArchiveSession(activeSessionId)
+                    : undefined
+                }
+                onChange={onConfigChange}
+              />
+              <GatedPlanBar entries={plan ?? []} />
               <ToolQuestionsPanel
                 requests={permissions}
                 history={permissionHistory}
@@ -537,6 +536,8 @@ function ConfigOptionBar({
   );
 }
 
+const GatedConfigOptionBar = withFeatureGate(ConfigOptionBar, "showConfigBar");
+
 /**
  * Dismissable inline error banner. Mirrors the legacy ChatScreen's in-chat
  * `⚠ error` display.
@@ -642,3 +643,5 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
     </div>
   );
 }
+
+const GatedPlanBar = withFeatureGate(PlanBar, "showPlan");

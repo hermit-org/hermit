@@ -6,6 +6,7 @@ import {
   ModeBadge,
 } from "@/components/atoms";
 import { UsageStats } from "@/components/molecules";
+import { withFeatureGate } from "@/components/feature-gate";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -74,13 +75,11 @@ export function StatusBar({
       ) : null}
 
       <div className="ml-auto flex items-center gap-2">
-        {usage ? (
-          <UsageStats
-            usage={usage}
-            contextWindow={contextWindow}
-            compact
-          />
-        ) : null}
+        <GatedUsageStats
+          usage={usage}
+          contextWindow={contextWindow}
+          compact
+        />
         {onOpenSettings ? (
           <>
             <Separator orientation="vertical" className="h-3.5" />
@@ -101,3 +100,15 @@ export function StatusBar({
     </footer>
   );
 }
+
+function OptionalUsageStats({
+  usage,
+  ...props
+}: Omit<React.ComponentProps<typeof UsageStats>, "usage"> & {
+  usage?: UsageStatsData;
+}): React.ReactElement | null {
+  if (!usage) return null;
+  return <UsageStats usage={usage} {...props} />;
+}
+
+const GatedUsageStats = withFeatureGate(OptionalUsageStats, "showUsageStats");
