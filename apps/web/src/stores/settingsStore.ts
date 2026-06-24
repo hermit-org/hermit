@@ -27,6 +27,9 @@ interface SettingsState {
   /** Whether the right tool panel is expanded. */
   rightPanelOpen: boolean;
   setRightPanelOpen: (open: boolean) => void;
+  /** Whether to show the archived sessions section in the session sidebar. */
+  showArchivedSessions: boolean;
+  setShowArchivedSessions: (show: boolean) => void;
   /** Automatic-archive threshold (e.g. `"3d"`, `"2h"`, `""` to disable). */
   autoArchiveThreshold: AutoArchiveThreshold;
   setAutoArchiveThreshold: (threshold: AutoArchiveThreshold) => void;
@@ -60,8 +63,11 @@ export const useSettingsStore = create<SettingsState>()(
       setLanguage: (language) => set({ language }),
       sidebarOpen: true,
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-      rightPanelOpen: true,
+      rightPanelOpen: false,
       setRightPanelOpen: (rightPanelOpen) => set({ rightPanelOpen }),
+      showArchivedSessions: true,
+      setShowArchivedSessions: (showArchivedSessions) =>
+        set({ showArchivedSessions }),
       autoArchiveThreshold: DEFAULT_AUTO_ARCHIVE_THRESHOLD,
       setAutoArchiveThreshold: (autoArchiveThreshold) =>
         set({ autoArchiveThreshold }),

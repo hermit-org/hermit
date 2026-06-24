@@ -12,6 +12,7 @@ import {
   Trash2,
   PlugZap,
   ArrowRight,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,12 @@ export interface SettingsLayoutProps {
   className?: string;
 }
 
-export type SettingsSection = "gateways" | "appearance" | "shortcuts" | "archive";
+export type SettingsSection =
+  | "gateways"
+  | "appearance"
+  | "shortcuts"
+  | "archive"
+  | "about";
 
 const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] =
   [
@@ -50,6 +56,7 @@ const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentTy
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
     { id: "archive", labelKey: "settings.archive", icon: Archive },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
+    { id: "about", labelKey: "settings.about", icon: Info },
   ];
 
 /**
@@ -114,8 +121,10 @@ export function SettingsLayout({
             <AppearanceSection />
           ) : section === "archive" ? (
             <ArchiveSection />
-          ) : (
+          ) : section === "shortcuts" ? (
             <ShortcutsSection />
+          ) : (
+            <AboutSection />
           )}
         </div>
       </div>
@@ -132,6 +141,7 @@ function GatewaySection(): React.JSX.Element {
   const removeGateway = useGatewayStore((s) => s.removeGateway);
   const setActiveGateway = useGatewayStore((s) => s.setActiveGateway);
 
+  const [view, setView] = React.useState<"list" | "add" | "edit">("list");
   const [name, setName] = React.useState("");
   const [url, setUrl] = React.useState("");
   const [token, setToken] = React.useState("");
@@ -143,6 +153,12 @@ function GatewaySection(): React.JSX.Element {
     setUrl("");
     setToken("");
     setEditingId(null);
+    setNotice(null);
+  };
+
+  const goToList = (): void => {
+    resetForm();
+    setView("list");
   };
 
   const handleSave = (): void => {
@@ -164,8 +180,12 @@ function GatewaySection(): React.JSX.Element {
         sendUrl: "",
       });
     }
+    goToList();
+  };
+
+  const handleAdd = (): void => {
     resetForm();
-    setNotice(null);
+    setView("add");
   };
 
   const handleEdit = (g: Gateway): void => {
@@ -173,12 +193,13 @@ function GatewaySection(): React.JSX.Element {
     setName(g.name);
     setUrl(g.url);
     setToken(g.token);
+    setView("edit");
   };
 
   const handleDelete = (id: string): void => {
     if (!window.confirm(t("gateways.deleteConfirm"))) return;
     removeGateway(id);
-    if (editingId === id) resetForm();
+    if (editingId === id) goToList();
   };
 
   const handleConnect = (g: Gateway): void => {
@@ -186,60 +207,74 @@ function GatewaySection(): React.JSX.Element {
     navigate(realGatewayPath(g.id));
   };
 
+  if (view === "add" || view === "edit") {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 p-6">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("common.back")}
+            onClick={goToList}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h3 className="text-sm font-semibold">
+            {view === "edit" ? t("gateways.edit") : t("gateways.add")}
+          </h3>
+        </div>
+        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <div className="grid gap-2">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t("gateways.name")}
+            />
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={t("gateways.url")}
+              autoCapitalize="none"
+            />
+            <Input
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={t("gateways.token")}
+              type="password"
+              autoCapitalize="none"
+            />
+          </div>
+          {notice ? (
+            <p className="text-sm text-muted-foreground">{notice}</p>
+          ) : null}
+          <Button onClick={handleSave} className="w-full">
+            {view === "edit" ? (
+              <Pencil className="h-4 w-4" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {view === "edit" ? t("gateways.update") : t("gateways.add")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-xl space-y-6 p-6">
-      <div>
-        <h3 className="text-sm font-semibold">{t("gateways.title")}</h3>
-        <p className="text-xs text-muted-foreground">
-          {t("gateways.connectDescription")}
-        </p>
-      </div>
-
-      {/* Add / edit form */}
-      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <Label>
-            {editingId ? t("gateways.edit") : t("gateways.add")}
-          </Label>
-          {editingId ? (
-            <Button variant="ghost" size="sm" onClick={resetForm}>
-              {t("gateways.cancel")}
-            </Button>
-          ) : null}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">{t("gateways.title")}</h3>
+          <p className="text-xs text-muted-foreground">
+            {t("gateways.connectDescription")}
+          </p>
         </div>
-        <div className="grid gap-2">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("gateways.name")}
-          />
-          <Input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={t("gateways.url")}
-            autoCapitalize="none"
-          />
-          <Input
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            placeholder={t("gateways.token")}
-            type="password"
-            autoCapitalize="none"
-          />
-        </div>
-        <Button onClick={handleSave} className="w-full">
-          {editingId ? (
-            <Pencil className="h-4 w-4" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          {editingId ? t("gateways.update") : t("gateways.add")}
+        <Button type="button" size="sm" onClick={handleAdd}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          {t("gateways.add")}
         </Button>
       </div>
-
-      {notice ? (
-        <p className="text-sm text-muted-foreground">{notice}</p>
-      ) : null}
 
       {/* Gateway list */}
       <div className="space-y-2">
@@ -342,6 +377,18 @@ function AutoAuthenticateSwitch(): React.JSX.Element {
   );
 }
 
+function RightPanelSwitch(): React.JSX.Element {
+  const rightPanelOpen = useSettingsStore((s) => s.rightPanelOpen);
+  const setRightPanelOpen = useSettingsStore((s) => s.setRightPanelOpen);
+  return (
+    <Switch
+      id="right-panel"
+      checked={rightPanelOpen}
+      onCheckedChange={setRightPanelOpen}
+    />
+  );
+}
+
 function AppearanceSection(): React.JSX.Element {
   const { t } = useTranslation();
   const { language, setLanguage } = useSettingsStore();
@@ -410,7 +457,37 @@ function AppearanceSection(): React.JSX.Element {
           }}
         />
       </div>
+      <Separator />
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.toolPanel")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.toolPanelHint")}
+        </p>
+      </div>
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label htmlFor="right-panel">{t("settings.showToolPanel")}</Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.showToolPanelHint")}
+          </p>
+        </div>
+        <RightPanelSwitch />
+      </div>
     </div>
+  );
+}
+
+function ShowArchivedSwitch(): React.JSX.Element {
+  const showArchivedSessions = useSettingsStore((s) => s.showArchivedSessions);
+  const setShowArchivedSessions = useSettingsStore(
+    (s) => s.setShowArchivedSessions,
+  );
+  return (
+    <Switch
+      id="show-archived"
+      checked={showArchivedSessions}
+      onCheckedChange={setShowArchivedSessions}
+    />
   );
 }
 
@@ -511,6 +588,18 @@ function ArchiveSection(): React.JSX.Element {
         </>
       ) : null}
       <Separator />
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label htmlFor="show-archived">
+            {t("settings.showArchivedSessions")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.showArchivedSessionsHint")}
+          </p>
+        </div>
+        <ShowArchivedSwitch />
+      </div>
+      <Separator />
       <p className="text-xs text-muted-foreground">
         {t("settings.archiveDescription")}
       </p>
@@ -546,6 +635,28 @@ function ShortcutsSection(): React.JSX.Element {
             </kbd>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AboutSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.aboutTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.aboutHint")}
+        </p>
+      </div>
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
+        <p>{t("settings.aboutDescription")}</p>
+        <p>{t("settings.aboutGatewayDescription")}</p>
+        <div className="pt-2 text-xs text-muted-foreground">
+          <span>{t("settings.version")}</span>
+          <span className="ml-1 font-mono">0.0.1-alpha.7</span>
+        </div>
       </div>
     </div>
   );

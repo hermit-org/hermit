@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useSettingsStore } from "@/stores/settingsStore";
 import type { SessionTag } from "@/components/domain";
 
 export interface SessionSummary {
@@ -88,6 +89,9 @@ export function SessionSidebar({
   className,
 }: SessionSidebarProps): React.JSX.Element {
   const { t } = useTranslation();
+  const showArchivedSessions = useSettingsStore(
+    (s) => s.showArchivedSessions,
+  );
   const [query, setQuery] = React.useState("");
   const [activeTag, setActiveTag] = React.useState<string | null>(null);
   const [archivedOpen, setArchivedOpen] = React.useState(false);
@@ -243,7 +247,7 @@ export function SessionSidebar({
             </ul>
           )}
 
-          {archivedSessions.length > 0 && onUnarchive ? (
+          {showArchivedSessions && archivedSessions.length > 0 && onUnarchive ? (
             <div className="mt-2 border-t border-border pt-1.5">
               <button
                 type="button"

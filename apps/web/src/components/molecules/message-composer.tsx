@@ -12,6 +12,21 @@ import { cn } from "@/lib/utils";
 /** Maximum number of images a single prompt may carry. */
 export const MAX_IMAGES = 4;
 
+/** Extract image files from a clipboard DataTransfer object.
+ * Prefers `files` (copied image files have real names there) and falls back
+ * to `items` for screenshots that some browsers only expose via items. */
+function extractImageFiles(dataTransfer: DataTransfer): File[] {
+  const files = Array.from(dataTransfer.files).filter((f) =>
+    f.type.startsWith("image/"),
+  );
+  if (files.length > 0) return files;
+
+  return Array.from(dataTransfer.items)
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((f): f is File => f !== null);
+}
+
 export interface MessageComposerProps {
   /** Current draft text. */
   value: string;
@@ -99,6 +114,17 @@ export function MessageComposer({
       e.target.value = "";
     },
     [onAttachImages],
+  );
+
+  const handlePaste = React.useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!canAttach) return;
+      const files = extractImageFiles(e.clipboardData);
+      if (files.length === 0) return;
+      e.preventDefault();
+      onAttachImages?.(files);
+    },
+    [canAttach, onAttachImages],
   );
 
   const slash = React.useMemo(() => {
@@ -273,6 +299,7 @@ export function MessageComposer({
               value={value}
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={placeholder}
               rows={1}
               disabled={disabled || requireAuth}
