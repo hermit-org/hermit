@@ -81,9 +81,9 @@ async function main() {
   });
 
   const updates: SessionUpdate[] = [];
-  client.onUpdate((u) => {
+  client.onUpdate((u, sid) => {
     updates.push(u);
-    process.stdout.write(`  [update] ${u.sessionUpdate}\n`);
+    process.stdout.write(`  [update:${sid}] ${u.sessionUpdate}\n`);
   });
 
   console.log("→ initialize");

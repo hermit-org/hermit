@@ -110,8 +110,12 @@ export interface AcpClient {
   sessionList(params?: SessionListParams): Promise<SessionListResult>;
   sessionDelete(params: SessionDeleteParams): Promise<null>;
   sessionCancel(params: SessionCancelParams): Promise<void>;
-  /** Subscribe to `session/update` notifications. */
-  onUpdate(listener: (update: SessionUpdate) => void): () => void;
+  /**
+   * Subscribe to `session/update` notifications. The listener receives the
+   * update payload and the `sessionId` it belongs to, so consumers can scope
+   * updates to the session they are currently viewing.
+   */
+  onUpdate(listener: (update: SessionUpdate, sessionId: string) => void): () => void;
   disconnect(): void;
 }
 
@@ -122,7 +126,9 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
-  const updateListeners = new Set<(update: SessionUpdate) => void>();
+  const updateListeners = new Set<
+    (update: SessionUpdate, sessionId: string) => void
+  >();
   let reading = false;
   let initializeResult: InitializeResult | null = null;
 
@@ -231,10 +237,11 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
       if (message.method === AcpNotification.SessionUpdate) {
         const params = message.params as SessionUpdateParams | undefined;
         const update = params?.update;
-        if (update) {
+        const sessionId = params?.sessionId;
+        if (update && sessionId) {
           for (const listener of updateListeners) {
             try {
-              listener(update);
+              listener(update, sessionId);
             } catch {
               // protect the client from consumer errors
             }
@@ -360,7 +367,9 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
       );
     },
 
-    onUpdate(listener: (update: SessionUpdate) => void): () => void {
+    onUpdate(
+      listener: (update: SessionUpdate, sessionId: string) => void,
+    ): () => void {
       updateListeners.add(listener);
       return () => updateListeners.delete(listener);
     },

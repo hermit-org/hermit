@@ -599,11 +599,21 @@ export function useAcpPageAdapter(
   }, [gateway?.id, gateway?.url, gateway?.token]);
 
   // ---- session/update reducer ------------------------------------------
+  // Apply an update only when it belongs to the currently active session.
+  // The ACP transport can deliver `session/update` for sessions other than the
+  // one the user is viewing (e.g. a still-running turn in a background
+  // session, or a late replay). Without this guard those updates would leak
+  // into the current session detail, showing the wrong content.
   const applyUpdate = useCallback(
-    (update: SessionUpdate) => {
+    (update: SessionUpdate, sessionId: string) => {
+      const activeId = activeSessionIdRef.current;
       switch (update.sessionUpdate) {
         case "agent_message_chunk":
         case "user_message_chunk": {
+          // Only apply message content for the session the user is currently
+          // viewing. Updates from other sessions (e.g. a background turn) must
+          // not leak into the active session detail.
+          if (sessionId !== activeId) break;
           const role =
             update.sessionUpdate === "agent_message_chunk"
               ? "assistant"
@@ -665,6 +675,7 @@ export function useAcpPageAdapter(
         }
         case "tool_call":
         case "tool_call_update": {
+          if (sessionId !== activeId) break;
           // While replaying history, buffer tool calls in arrival order so they
           // stay interleaved with messages instead of sinking to the tail.
           if (isLoadingHistoryRef.current) {
@@ -710,6 +721,7 @@ export function useAcpPageAdapter(
           break;
         }
         case "agent_thought_chunk": {
+          if (sessionId !== activeId) break;
           const text = contentToText(update.content);
           if (!text) break;
           // While replaying history, divert thought chunks into the history
@@ -756,6 +768,7 @@ export function useAcpPageAdapter(
           break;
         }
         case "usage_update": {
+          if (sessionId !== activeId) break;
           const u = update as UsageUpdate;
           setUsage({
             used: u.used,
@@ -767,6 +780,7 @@ export function useAcpPageAdapter(
           break;
         }
         case "current_mode_update": {
+          if (sessionId !== activeId) break;
           setMeta((m) => {
             if (!m.modes) {
               return {
@@ -782,17 +796,19 @@ export function useAcpPageAdapter(
           break;
         }
         case "available_commands_update": {
+          if (sessionId !== activeId) break;
           setMeta((m) => ({ ...m, commands: update.availableCommands }));
           break;
         }
         case "session_info_update": {
           // Update the title in the agent session list directly — no local
-          // session store to mutate.
+          // session store to mutate. Use the update's own sessionId (not the
+          // active one) so a background session's title is still reflected in
+          // the sidebar.
           if (update.title) {
-            const sid = activeSessionIdRef.current;
             setAgentSessions((prev) =>
               prev.map((s) =>
-                s.sessionId === sid
+                s.sessionId === sessionId
                   ? { ...s, title: update.title ?? s.title }
                   : s,
               ),
@@ -801,6 +817,7 @@ export function useAcpPageAdapter(
           break;
         }
         case "plan": {
+          if (sessionId !== activeId) break;
           setPlan(update.entries);
           break;
         }

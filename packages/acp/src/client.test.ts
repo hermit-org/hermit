@@ -119,8 +119,8 @@ describe("AcpClient", () => {
     );
     await init;
 
-    const updates: string[] = [];
-    client.onUpdate((u) => updates.push(u.sessionUpdate));
+    const updates: { kind: string; sessionId: string }[] = [];
+    client.onUpdate((u, sid) => updates.push({ kind: u.sessionUpdate, sessionId: sid }));
 
     mock.feed(
       JSON.stringify({
@@ -138,7 +138,7 @@ describe("AcpClient", () => {
     // Allow the reader loop to process the line.
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(updates).toEqual(["agent_message_chunk"]);
+    expect(updates).toEqual([{ kind: "agent_message_chunk", sessionId: "s1" }]);
     client.disconnect();
   });
 
