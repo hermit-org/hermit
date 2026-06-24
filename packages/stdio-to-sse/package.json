@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/stdio-to-sse",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "module": "src/index.ts",
   "react-native": "./src/index.native.ts",
