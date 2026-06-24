@@ -2,15 +2,15 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import { ServerListScreen } from "../screens/ServerListScreen";
-import { SessionListScreen } from "../screens/SessionListScreen";
-import { ChatScreen } from "../screens/ChatScreen";
+import { GatewayManagerScreen } from "../screens/GatewayManagerScreen";
+import { AcpClientScreen } from "../screens/AcpClientScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
 import { QrScannerScreen } from "../screens/QrScannerScreen";
 
 export type RootStackParamList = {
-  ServerList: undefined;
-  SessionList: { gatewayId: string };
-  Chat: { sessionId: string };
+  GatewayManager: undefined;
+  AcpClient: { gatewayId: string };
+  Settings: undefined;
   QrScanner: undefined;
 };
 
@@ -21,21 +21,21 @@ export function RootNavigator(): React.JSX.Element {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="ServerList">
+      <Stack.Navigator initialRouteName="GatewayManager">
         <Stack.Screen
-          name="ServerList"
-          component={ServerListScreen}
+          name="GatewayManager"
+          component={GatewayManagerScreen}
           options={{ title: t("navigation.gateways") }}
         />
         <Stack.Screen
-          name="SessionList"
-          component={SessionListScreen}
-          options={{ title: t("navigation.sessions") }}
+          name="AcpClient"
+          component={AcpClientScreen}
+          options={{ title: t("navigation.chat") }}
         />
         <Stack.Screen
-          name="Chat"
-          component={ChatScreen}
-          options={{ title: t("navigation.chat") }}
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: t("navigation.settings") }}
         />
         <Stack.Screen
           name="QrScanner"

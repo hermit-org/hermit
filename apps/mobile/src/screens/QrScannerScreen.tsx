@@ -68,7 +68,7 @@ export function QrScannerScreen(): React.JSX.Element {
         text: t("common.connect"),
         onPress: () => {
           navigation.goBack();
-          navigation.navigate("SessionList", { gatewayId: gateway.id });
+          navigation.navigate("AcpClient", { gatewayId: gateway.id });
         },
       },
     ]);

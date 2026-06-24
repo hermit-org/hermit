@@ -1,6 +1,7 @@
 import { readFile, writeFile, access, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
+import type { CorsConfig } from "./cors";
 
 /**
  * Configuration schema for `hermit.config.json`.
@@ -19,7 +20,14 @@ export interface HermitConfig {
     hostname?: string;
     endpoint?: string;
     heartbeatInterval?: number;
-    cors?: boolean;
+    /**
+     * CORS configuration.
+     *
+     * - `true`  : allow all origins (default).
+     * - `false` : disable CORS.
+     * - object  : fine-grained control (`{ origins, methods, headers }`).
+     */
+    cors?: CorsConfig;
     timeout?: number;
   };
   /** Pre-authorized bearer tokens for mobile clients. */

@@ -12,7 +12,8 @@
     "gateways": "Gateways",
     "sessions": "Sessions",
     "chat": "Chat",
-    "scanQr": "Scan QR Code"
+    "scanQr": "Scan QR Code",
+    "settings": "Settings"
   },
   "common": {
     "cancel": "Cancel",
@@ -27,35 +28,46 @@
     "copy": "Copy",
     "loading": "Loading...",
     "sending": "Sending...",
-    "connecting": "Connecting..."
+    "connecting": "Connecting...",
+    "stop": "Stop"
   },
-  "serverList": {
+  "gateways": {
     "title": "Gateways",
     "scanQr": "Scan QR",
     "namePlaceholder": "Gateway name",
     "urlPlaceholder": "SSE URL (e.g. http://192.168.1.5:8787)",
     "tokenPlaceholder": "Bearer token",
-    "addGateway": "Add Gateway",
-    "updateGateway": "Update Gateway",
-    "missingFields": "Please fill in name, URL and token.",
-    "missingFieldsTitle": "Missing fields",
-    "deleteTitle": "Delete gateway",
-    "deleteMessage": "Are you sure?",
+    "add": "Add Gateway",
+    "connect": "Connect",
+    "delete": "Delete",
+    "error": "Error",
+    "urlRequired": "Please enter a gateway URL.",
     "empty": "No gateways. Add one to get started."
   },
-  "sessionList": {
-    "newSession": "+ New Session",
-    "empty": "No sessions yet. Start a new one."
-  },
   "chat": {
+    "title": "Chat",
+    "newSession": "+ New Session",
+    "empty": "No messages yet. Send a message to start.",
+    "noSessions": "No sessions",
+    "inputPlaceholder": "Message...",
+    "send": "Send",
+    "stop": "Stop",
+    "reconnect": "Reconnect",
     "gatewayNotFoundTitle": "Gateway not found",
     "gatewayNotFoundMessage": "The gateway for this session no longer exists.",
-    "reconnect": "Reconnect",
-    "messagePlaceholder": "Message...",
-    "send": "Send",
-    "sending": "Sending...",
     "connectingMessage": "Connecting to gateway...",
     "errorPrefix": "\n\nError: {{message}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "chat": "Chat",
+    "theme": "Theme",
+    "language": "Language",
+    "thoughtPreviewLines": "Thought preview lines",
+    "autoArchiveThreshold": "Auto-archive threshold",
+    "autoArchivePlaceholder": "e.g. 3d",
+    "autoAuthenticate": "Auto-authenticate"
   },
   "qrScanner": {
     "invalidQrTitle": "Invalid QR code",

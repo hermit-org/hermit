@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",
+    "@hermit-org/acp": "workspace:*",
+    "@hermit-org/acp-hooks": "workspace:*",
     "@hermit-org/stdio-to-sse_rn": "workspace:*",
     "@hermit-org/types": "workspace:*",
     "@hermit-org/utils": "workspace:*",
