@@ -109,6 +109,8 @@ export type ChatItem =
       createdAt: number;
       /** ACP messageId — used to merge consecutive chunks of the same message. */
       messageId?: string;
+      /** Images attached to a user message (base64 + mimeType, no preview URL). */
+      images?: { data: string; mimeType: string }[];
     }
   | {
       kind: "tool_call";
