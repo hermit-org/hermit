@@ -3,6 +3,7 @@ import {
   RnSseConnectionState,
   RnSseEvent,
 } from "./types";
+import EventSource from "react-native-sse";
 
 /**
  * Minimal runtime-agnostic shape of `react-native-sse` EventSource.
@@ -10,27 +11,7 @@ import {
  * We describe only the surface we need so the package does not depend on
  * `@types/react-native-sse` at build time.
  */
-interface EventSourceLike {
-  addEventListener(
-    type: string,
-    listener: (event: { type: string; data?: string; message?: string }) => void,
-  ): void;
-  removeEventListener(
-    type: string,
-    listener: (event: { type: string; data?: string; message?: string }) => void,
-  ): void;
-  close(): void;
-}
-
-type EventSourceConstructor = new (
-  url: string,
-  options?: {
-    headers?: Record<string, string>;
-    body?: string;
-    method?: string;
-    pollingInterval?: number;
-  },
-) => EventSourceLike;
+type EventSourceLike = InstanceType<typeof EventSource>;
 
 /**
  * React Native SSE transport that exposes a stdio-like readable interface.
@@ -63,9 +44,6 @@ export class RnSseConnection {
     reject: (reason: Error) => void;
   }> = [];
   private done = false;
-  private textDecoder = new TextDecoder("utf-8");
-  private textEncoder = new TextEncoder();
-  private byteBuffer = new Uint8Array(0);
 
   constructor(private readonly options: RnSseConnectionOptions) {}
 
@@ -182,8 +160,6 @@ export class RnSseConnection {
   private async doConnect(): Promise<void> {
     this.setState("connecting");
 
-    const EventSource = await this.loadEventSource();
-
     return new Promise((resolve, reject) => {
       const {
         url,
@@ -195,7 +171,7 @@ export class RnSseConnection {
       const effectiveBody = body ?? this.pendingBody;
 
       let resolved = false;
-      const onOpen = (): void => {
+      const onOpen = (event: { type: string; data?: string; message?: string }): void => {
         if (resolved) return;
         resolved = true;
         this.reconnectCount = 0;
@@ -204,11 +180,7 @@ export class RnSseConnection {
         resolve();
       };
 
-      const onError = (event: {
-        type: string;
-        data?: string;
-        message?: string;
-      }): void => {
+      const onError = (event: { type: string; data?: string; message?: string }): void => {
         const message = event.message ?? event.data ?? "SSE error";
         const error = new Error(message);
 
@@ -223,11 +195,7 @@ export class RnSseConnection {
         this.scheduleReconnect();
       };
 
-      const onMessage = (event: {
-        type: string;
-        data?: string;
-        message?: string;
-      }): void => {
+      const onMessage = (event: { type: string; data?: string; message?: string }): void => {
         this.resetHeartbeat(heartbeatTimeout);
 
         const payload = event.data ?? "";
@@ -243,7 +211,7 @@ export class RnSseConnection {
         this.flushWaiters();
       };
 
-      const onClose = (): void => {
+      const onClose = (event: { type: string; data?: string; message?: string }): void => {
         if (!resolved) {
           resolved = true;
           reject(new Error("Connection closed before open"));
@@ -252,17 +220,18 @@ export class RnSseConnection {
         this.scheduleReconnect();
       };
 
-      this.eventSource = new EventSource(url, {
+      const eventSource = new EventSource(url, {
         headers,
         body: effectiveBody,
         method: effectiveBody === undefined ? "GET" : "POST",
         pollingInterval: 0,
       });
+      this.eventSource = eventSource;
 
-      this.eventSource.addEventListener("open", onOpen);
-      this.eventSource.addEventListener("message", onMessage);
-      this.eventSource.addEventListener("error", onError);
-      this.eventSource.addEventListener("close", onClose);
+      eventSource.addEventListener("open", onOpen as Parameters<EventSourceLike["addEventListener"]>[1]);
+      eventSource.addEventListener("message", onMessage as Parameters<EventSourceLike["addEventListener"]>[1]);
+      eventSource.addEventListener("error", onError as Parameters<EventSourceLike["addEventListener"]>[1]);
+      eventSource.addEventListener("close", onClose as Parameters<EventSourceLike["addEventListener"]>[1]);
     });
   }
 
@@ -375,15 +344,4 @@ export class RnSseConnection {
     this.waiters = [];
   }
 
-  private async loadEventSource(): Promise<EventSourceConstructor> {
-    const mod = await import("react-native-sse");
-    // react-native-sse exports EventSource as the default export.
-    const ctor = (mod as { default?: EventSourceConstructor }).default;
-    if (!ctor) {
-      throw new Error(
-        "react-native-sse is not available. Install it as a peer dependency.",
-      );
-    }
-    return ctor;
-  }
 }

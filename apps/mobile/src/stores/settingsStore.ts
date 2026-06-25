@@ -69,14 +69,27 @@ export const useSettingsStore = create<SettingsState>()(
       name: "hermit-settings",
       storage: {
         getItem: (name: string) => {
-          const value = hermitStorage.getString(name);
-          return value ? JSON.parse(value) : null;
+          try {
+            const value = hermitStorage.getString(name);
+            return value ? JSON.parse(value) : null;
+          } catch (e) {
+            console.error("[settingsStore] failed to read persisted state:", e);
+            return null;
+          }
         },
         setItem: (name: string, value: unknown) => {
-          hermitStorage.set(name, JSON.stringify(value));
+          try {
+            hermitStorage.set(name, JSON.stringify(value));
+          } catch (e) {
+            console.error("[settingsStore] failed to persist state:", e);
+          }
         },
         removeItem: (name: string) => {
-          hermitStorage.delete(name);
+          try {
+            hermitStorage.delete(name);
+          } catch (e) {
+            console.error("[settingsStore] failed to remove persisted state:", e);
+          }
         },
       },
     },

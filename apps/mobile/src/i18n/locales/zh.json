@@ -42,6 +42,7 @@
     "delete": "删除",
     "error": "错误",
     "urlRequired": "请输入网关 URL。",
+    "urlInvalid": "请输入有效的 HTTP 或 HTTPS URL。",
     "empty": "暂无网关，添加一个开始。"
   },
   "chat": {

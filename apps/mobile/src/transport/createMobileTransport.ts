@@ -10,12 +10,15 @@ import type { StdioTransport } from "@hermit-org/acp";
 import type { Gateway } from "../types";
 
 export function createMobileTransport(gateway: Gateway): StdioTransport {
+  const headers: Record<string, string> = {};
+  if (gateway.token) {
+    headers.Authorization = `Bearer ${gateway.token}`;
+  }
+
   const stdio = createStdioLikeSse({
     url: gateway.url,
     sendUrl: gateway.sendUrl,
-    headers: {
-      Authorization: `Bearer ${gateway.token}`,
-    },
+    headers,
   });
 
   return {

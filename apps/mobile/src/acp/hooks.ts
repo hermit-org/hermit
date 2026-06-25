@@ -36,6 +36,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   const { gateway, autoConnect = false, autoAuthenticate } = options;
   const clientRef = useRef<AcpClient | null>(null);
   const generationRef = useRef(0);
+  const [client, setClient] = useState<AcpClient | null>(null);
   const [connected, setConnected] = useState(false);
   const [state, setState] = useState("disconnected");
   const [error, setError] = useState<Error | null>(null);
@@ -48,6 +49,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
     usePermissionStore.getState().clear();
     clientRef.current?.disconnect();
     clientRef.current = null;
+    setClient(null);
     setConnected(false);
     setState("disconnected");
     setAuthMethods([]);
@@ -60,19 +62,28 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
     disconnect();
     const generation = (generationRef.current += 1);
 
-    const transport = createMobileTransport(gateway);
-    const permissionStore = usePermissionStore;
-
-    const client = createAcpClient({
-      transport,
-      clientInfo: { name: "hermit-mobile", title: "Hermit Mobile", version: "0.0.1" },
-      clientCapabilities: {},
-      handlers: {
-        requestPermission: (params) => permissionStore.getState().request(params),
-      },
-    });
+    let transport;
+    let client: AcpClient;
+    try {
+      transport = createMobileTransport(gateway);
+      const permissionStore = usePermissionStore;
+      client = createAcpClient({
+        transport,
+        clientInfo: { name: "hermit-mobile", title: "Hermit Mobile", version: "0.0.1" },
+        clientCapabilities: {},
+        handlers: {
+          requestPermission: (params) => permissionStore.getState().request(params),
+        },
+      });
+    } catch (e) {
+      if (generationRef.current !== generation) return;
+      setError(e instanceof Error ? e : new Error(String(e)));
+      setState("error");
+      return;
+    }
 
     clientRef.current = client;
+    setClient(client);
     setError(null);
 
     try {
@@ -139,7 +150,7 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
   }, [gateway?.id, autoConnect, connect, disconnect]);
 
   return {
-    client: clientRef.current,
+    client,
     connected,
     state,
     error,

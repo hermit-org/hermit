@@ -2,6 +2,7 @@
   "name": "@hermit-org/stdio-to-sse_rn",
   "version": "0.0.1",
   "type": "module",
+  "main": "src/index.ts",
   "module": "src/index.ts",
   "react-native": "src/index.ts",
   "browser": "src/index.ts",

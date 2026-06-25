@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  type ListRenderItem,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useGatewayStore } from "../stores";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import type { Gateway } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "GatewayManager">;
 
@@ -33,16 +35,56 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
       Alert.alert(t("gateways.error"), t("gateways.urlRequired"));
       return;
     }
-    addGateway({
-      name: trimmedName || trimmedUrl,
-      url: trimmedUrl,
-      sendUrl: "",
-      token: token.trim(),
-    });
-    setName("");
-    setUrl("");
-    setToken("");
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+      Alert.alert(t("gateways.error"), t("gateways.urlInvalid"));
+      return;
+    }
+    try {
+      addGateway({
+        name: trimmedName || trimmedUrl,
+        url: trimmedUrl,
+        sendUrl: "",
+        token: token.trim(),
+      });
+      setName("");
+      setUrl("");
+      setToken("");
+    } catch (e) {
+      console.error("[GatewayManager] failed to add gateway:", e);
+      Alert.alert(
+        t("gateways.error"),
+        e instanceof Error ? e.message : String(e),
+      );
+    }
   };
+
+  const renderItem: ListRenderItem<Gateway> = useCallback(
+    ({ item }) => (
+      <View style={styles.gatewayItem}>
+        <View style={styles.gatewayInfo}>
+          <Text style={styles.gatewayName}>{item.name}</Text>
+          <Text style={styles.gatewayUrl}>{item.url}</Text>
+        </View>
+        <View style={styles.gatewayActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
+          >
+            <Text style={styles.actionText}>{t("gateways.connect")}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => removeGateway(item.id)}
+          >
+            <Text style={styles.actionText}>{t("gateways.delete")}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    ),
+    [navigation, t, removeGateway],
+  );
+
+  const keyExtractor = useCallback((item: Gateway) => item.id, []);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -78,29 +120,8 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
 
       <FlatList
         data={gateways}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.gatewayItem}>
-            <View style={styles.gatewayInfo}>
-              <Text style={styles.gatewayName}>{item.name}</Text>
-              <Text style={styles.gatewayUrl}>{item.url}</Text>
-            </View>
-            <View style={styles.gatewayActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
-              >
-                <Text style={styles.actionText}>{t("gateways.connect")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={() => removeGateway(item.id)}
-              >
-                <Text style={styles.actionText}>{t("gateways.delete")}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         ListEmptyComponent={
           <Text style={styles.emptyText}>{t("gateways.empty")}</Text>
         }

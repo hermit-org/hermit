@@ -54,13 +54,21 @@ export function QrScannerScreen(): React.JSX.Element {
       return;
     }
 
-    const gateway = addGateway({
-      name: t("qrScanner.scannedGatewayName"),
-      url: connection.url,
-      sendUrl: connection.sendUrl,
-      token: connection.token,
-    });
-    setActiveGateway(gateway.id);
+    let gateway;
+    try {
+      gateway = addGateway({
+        name: t("qrScanner.scannedGatewayName"),
+        url: connection.url,
+        sendUrl: connection.sendUrl,
+        token: connection.token,
+      });
+      setActiveGateway(gateway.id);
+    } catch (e) {
+      console.error("[QrScanner] failed to add gateway:", e);
+      Alert.alert(t("qrScanner.invalidQrTitle"), e instanceof Error ? e.message : String(e));
+      setScanning(true);
+      return;
+    }
 
     Alert.alert(t("qrScanner.gatewayAddedTitle"), t("qrScanner.gatewayAddedMessage"), [
       { text: t("common.later"), style: "cancel", onPress: () => navigation.goBack() },

@@ -42,6 +42,7 @@
     "delete": "Delete",
     "error": "Error",
     "urlRequired": "Please enter a gateway URL.",
+    "urlInvalid": "Please enter a valid HTTP or HTTPS URL.",
     "empty": "No gateways. Add one to get started."
   },
   "chat": {
