@@ -302,10 +302,6 @@
     "themeHint": "Toggle between light and dark mode.",
     "darkMode": "Dark mode",
     "darkModeHint": "Uses the system preference when off.",
-    "toolPanel": "Tool panel",
-    "toolPanelHint": "Control the visibility of the right-side tool-call panel.",
-    "showToolPanel": "Show tool panel",
-    "showToolPanelHint": "Show the right-side tool-call panel on wide screens.",
     "featuresTitle": "Pluggable features",
     "featuresHint": "Toggle optional UI features on or off.",
     "keyboardShortcuts": "Keyboard shortcuts",
@@ -411,6 +407,8 @@
     "showUsageStats": "Show usage stats",
     "showUsageStatsHint": "Display token usage and cost in the status bar.",
     "showConfigBar": "Show config bar",
-    "showConfigBarHint": "Display the agent config-option bar above the composer."
+    "showConfigBarHint": "Display the agent config-option bar above the composer.",
+    "showRightPanel": "Show right panel",
+    "showRightPanelHint": "Show the right-side tool-call panel on wide screens. The toggle button is hidden when off."
   }
 }

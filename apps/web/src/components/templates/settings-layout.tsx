@@ -391,18 +391,6 @@ function AutoAuthenticateSwitch(): React.JSX.Element {
   );
 }
 
-function RightPanelSwitch(): React.JSX.Element {
-  const rightPanelOpen = useSettingsStore((s) => s.rightPanelOpen);
-  const setRightPanelOpen = useSettingsStore((s) => s.setRightPanelOpen);
-  return (
-    <Switch
-      id="right-panel"
-      checked={rightPanelOpen}
-      onCheckedChange={setRightPanelOpen}
-    />
-  );
-}
-
 function AppearanceSection(): React.JSX.Element {
   const { t } = useTranslation();
   const { language, setLanguage } = useSettingsStore();
@@ -470,22 +458,6 @@ function AppearanceSection(): React.JSX.Element {
             }
           }}
         />
-      </div>
-      <Separator />
-      <div>
-        <h3 className="text-sm font-semibold">{t("settings.toolPanel")}</h3>
-        <p className="text-xs text-muted-foreground">
-          {t("settings.toolPanelHint")}
-        </p>
-      </div>
-      <div className="flex items-center justify-between rounded-lg border border-border p-3">
-        <div>
-          <Label htmlFor="right-panel">{t("settings.showToolPanel")}</Label>
-          <p className="text-xs text-muted-foreground">
-            {t("settings.showToolPanelHint")}
-          </p>
-        </div>
-        <RightPanelSwitch />
       </div>
     </div>
   );

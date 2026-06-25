@@ -11,7 +11,8 @@ export type FeatureFlagKey =
   | "showThoughts"
   | "showPlan"
   | "showUsageStats"
-  | "showConfigBar";
+  | "showConfigBar"
+  | "showRightPanel";
 
 export interface FeatureFlagDef {
   /** Stable key used by the settings store and the feature-gate HOC. */
@@ -48,6 +49,12 @@ export const FEATURE_FLAGS: FeatureFlagDef[] = [
     defaultValue: true,
     labelKey: "features.showConfigBar",
     hintKey: "features.showConfigBarHint",
+  },
+  {
+    key: "showRightPanel",
+    defaultValue: false,
+    labelKey: "features.showRightPanel",
+    hintKey: "features.showRightPanelHint",
   },
 ];
 

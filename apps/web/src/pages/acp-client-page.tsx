@@ -13,7 +13,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ErrorBoundary } from "./error-boundary";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
-import { withFeatureGate } from "@/components/feature-gate";
+import {
+  useFeatureFlag,
+  withFeatureGate,
+} from "@/components/feature-gate";
 import type {
   AgentCapabilities,
   AvailableCommand,
@@ -229,6 +232,7 @@ export function ACPClientPage({
     rightPanelOpen,
     setRightPanelOpen,
   } = useSettingsStore();
+  const showRightPanel = useFeatureFlag("showRightPanel");
   const effectiveDraft = onDraftChange ? draft : internalDraft;
 
   const handleDraftChange = React.useCallback(
@@ -370,25 +374,27 @@ export function ACPClientPage({
                     <TooltipContent>{t("chat.refreshSession")}</TooltipContent>
                   </Tooltip>
                 ) : null}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className="ml-auto h-7 w-7"
-                      aria-label={t("layout.toggleRightPanel")}
-                      onClick={toggleRightPanel}
-                    >
-                      {rightPanelOpen ? (
-                        <PanelRightClose className="h-4 w-4" />
-                      ) : (
-                        <PanelRightOpen className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("layout.toggleRightPanel")}</TooltipContent>
-                </Tooltip>
+                {showRightPanel ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="ml-auto h-7 w-7"
+                        aria-label={t("layout.toggleRightPanel")}
+                        onClick={toggleRightPanel}
+                      >
+                        {rightPanelOpen ? (
+                          <PanelRightClose className="h-4 w-4" />
+                        ) : (
+                          <PanelRightOpen className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("layout.toggleRightPanel")}</TooltipContent>
+                  </Tooltip>
+                ) : null}
               </div>
 
               <div className="min-h-0 flex-1">
@@ -442,22 +448,24 @@ export function ACPClientPage({
             </div>
 
             {/* Right panel */}
-            <div
-              className={cn(
-                "hidden shrink-0 overflow-hidden border-l border-border lg:block",
-                rightPanelOpen ? "w-80" : "w-0",
-                "transition-[width] duration-200",
-              )}
-            >
-              {rightPanelOpen ? (
-                <>
-                  <div className="flex items-center border-b border-border px-2 py-1">
-                    <span className="text-xs font-semibold">{t("tool.title")}</span>
-                  </div>
-                  <ToolCallPanel calls={toolCalls} className="h-[calc(100%-2rem)]" />
-                </>
-              ) : null}
-            </div>
+            {showRightPanel ? (
+              <div
+                className={cn(
+                  "hidden shrink-0 overflow-hidden border-l border-border lg:block",
+                  rightPanelOpen ? "w-80" : "w-0",
+                  "transition-[width] duration-200",
+                )}
+              >
+                {rightPanelOpen ? (
+                  <>
+                    <div className="flex items-center border-b border-border px-2 py-1">
+                      <span className="text-xs font-semibold">{t("tool.title")}</span>
+                    </div>
+                    <ToolCallPanel calls={toolCalls} className="h-[calc(100%-2rem)]" />
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <StatusBar

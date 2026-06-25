@@ -49,6 +49,9 @@ export interface SettingsState {
   /** Feature flag: show the agent config-option bar above the composer. */
   showConfigBar: boolean;
   setShowConfigBar: (enabled: boolean) => void;
+  /** Feature flag: show the right tool-call panel (and its toggle). */
+  showRightPanel: boolean;
+  setShowRightPanel: (enabled: boolean) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
@@ -91,6 +94,7 @@ export const useSettingsStore = create<SettingsState>()(
       setShowPlan: (showPlan) => set({ showPlan }),
       setShowUsageStats: (showUsageStats) => set({ showUsageStats }),
       setShowConfigBar: (showConfigBar) => set({ showConfigBar }),
+      setShowRightPanel: (showRightPanel) => set({ showRightPanel }),
     }),
     {
       name: "hermit-settings",

@@ -302,10 +302,6 @@
     "themeHint": "在浅色与深色模式之间切换。",
     "darkMode": "深色模式",
     "darkModeHint": "关闭时跟随系统偏好。",
-    "toolPanel": "右侧面板",
-    "toolPanelHint": "控制右侧工具调用面板的显示。",
-    "showToolPanel": "显示右侧面板",
-    "showToolPanelHint": "开启后在宽屏下显示右侧工具调用面板。",
     "featuresTitle": "可插拔功能",
     "featuresHint": "在这里开启或关闭可选的界面功能。",
     "keyboardShortcuts": "键盘快捷键",
@@ -411,6 +407,8 @@
     "showUsageStats": "显示用量统计",
     "showUsageStatsHint": "在状态栏显示令牌用量与花费。",
     "showConfigBar": "显示配置栏",
-    "showConfigBarHint": "在输入框上方显示智能体配置选项栏。"
+    "showConfigBarHint": "在输入框上方显示智能体配置选项栏。",
+    "showRightPanel": "显示右侧面板",
+    "showRightPanelHint": "在宽屏下显示右侧工具调用面板，关闭后折叠按钮一并隐藏。"
   }
 }
