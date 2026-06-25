@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "./i18n";
 import { useGatewayStore, useSettingsStore } from "./stores";
 import { readConfigFromUrl } from "./config";
 import { GatewayRegistration, RealApp, SettingsPage } from "./pages";
-import type { Gateway } from "./types";
-import { navigate, useRoute, realGatewayPath, type Route } from "./router";
+import { navigate, useRoute, realGatewayPath } from "./router";
 
 /**
  * Root component. Routing is path-based (see `src/router.ts`):
@@ -68,48 +67,59 @@ export default function App(): React.JSX.Element {
     navigate(realGatewayPath(id));
   }, []);
 
+  // Resolve the gateway id used for the persistent RealApp instance. When the
+  // user navigates to /settings we keep the *current* gateway's RealApp alive
+  // in the background (hidden) so its SSE connection and loaded data are not
+  // torn down. Returning from settings simply hides the overlay, leaving the
+  // connection and all session state untouched.
+  const persistentGatewayId = useMemo(() => {
+    if (route.name === "real") return route.gatewayId;
+    // settings / landing / unknown — fall back to the active gateway so the
+    // background instance matches what the user was viewing.
+    return activeGatewayId ?? gateways[0]?.id ?? null;
+  }, [route, activeGatewayId, gateways]);
+
+  const persistentGatewayExists =
+    persistentGatewayId != null &&
+    gateways.some((g) => g.id === persistentGatewayId);
+
+  // Whether to show the settings overlay on top of the (hidden) RealApp.
+  const showSettings = route.name === "settings";
+
   return (
     <div style={{ height: "100vh", position: "relative" }}>
-      <FullScreenRoute
-        route={route}
-        gateways={gateways}
-        onGatewayAdded={handleGatewayAdded}
-      />
+      {persistentGatewayExists ? (
+        <div
+          style={{
+            height: "100%",
+            // Keep the RealApp mounted but visually hidden while the settings
+            // overlay is open, so SSE/state survive the round trip.
+            display: showSettings ? "none" : "block",
+          }}
+        >
+          <RealApp gatewayId={persistentGatewayId!} />
+        </div>
+      ) : null}
+
+      {/* Registration page when there are no gateways at all. */}
+      {!persistentGatewayExists && route.name !== "settings" ? (
+        <GatewayRegistration onAdded={handleGatewayAdded} />
+      ) : null}
+
+      {/* Settings overlay rendered on top so the background instance stays alive. */}
+      {showSettings ? (
+        <div style={{ position: "absolute", inset: 0 }}>
+          <SettingsPage
+            onBack={() =>
+              navigate(
+                persistentGatewayId
+                  ? realGatewayPath(persistentGatewayId)
+                  : "/",
+              )
+            }
+          />
+        </div>
+      ) : null}
     </div>
   );
-}
-
-function FullScreenRoute({
-  route,
-  gateways,
-  onGatewayAdded,
-}: {
-  route: Route;
-  gateways: Gateway[];
-  onGatewayAdded: (id: string) => void;
-}): React.JSX.Element | null {
-  switch (route.name) {
-    case "gateways":
-      // Has gateways → the App-level effect redirects to /g/:id; render nothing.
-      if (gateways.length > 0) return null;
-      // No gateways → registration page.
-      return <GatewayRegistration onAdded={onGatewayAdded} />;
-    case "real": {
-      const exists = gateways.some((g) => g.id === route.gatewayId);
-      if (!exists) {
-        if (gateways.length === 0) {
-          return <GatewayRegistration onAdded={onGatewayAdded} />;
-        }
-        return null;
-      }
-      return <RealApp gatewayId={route.gatewayId} />;
-    }
-    case "settings":
-      return <SettingsPage onBack={() => navigate("/")} />;
-    default:
-      if (gateways.length === 0) {
-        return <GatewayRegistration onAdded={onGatewayAdded} />;
-      }
-      return null;
-  }
 }
