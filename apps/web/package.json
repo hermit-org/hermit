@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/web",
-  "version": "0.0.6-alpha.1",
+  "version": "0.0.6-alpha.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -52,4 +52,4 @@
     "typescript": "^5",
     "vite": "^5.4.11"
   }
-}
+}\n

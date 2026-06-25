@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/acp",
-  "version": "0.0.6-alpha.1",
+  "version": "0.0.6-alpha.2",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -12,4 +12,4 @@
   "dependencies": {
     "@hermit-org/types": "workspace:*"
   }
-}
+}\n
