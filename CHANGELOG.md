@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.0] - 2026-06-25
+
 ### 新增
 
 - **Docker 容器化部署**：提供单一自包含镜像，一个容器同时运行网关与 Web 客户端
@@ -55,3 +57,22 @@ hermit start --cors "http://localhost:5180"
 # 禁用 CORS
 hermit start --cors false
 ```
+
+- **Web 可插拔功能开关**：新增特性开关系统与设置面板
+  - 新增 `src/lib/feature-flags.ts` 集中注册特性开关
+  - 新增 `FeatureGate` / `withFeatureGate` / `useFeatureFlag` 能力
+  - 思考过程、计划条、配置项、用量统计等可通过设置开启/关闭
+  - 设置页新增 Features 分区与 About 页面
+
+- **Web 体验优化**：图片粘贴、右侧面板默认隐藏、归档显示开关、网关列表优先
+
+### 修复
+
+- **移动端录入网关后闪退**
+  - 升级 `react-native-mmkv` 到 `3.3.3`，兼容 React Native 0.76 New Architecture
+  - 修正 MMKV encryption key 为 16 字节以内，避免 Native 初始化失败
+  - `gatewayStore` / `settingsStore` 的 persist storage 增加 try-catch，防止脏数据/写失败导致崩溃
+  - RN SSE transport 改用 `react-native-sse` 静态导入，避免 Metro 动态导入异常
+  - `useAcpClient` 增加 `client` state，创建 transport/client 过程增加错误处理
+  - 网关管理页增加 URL 必须以 `http/https` 开头的校验，`addGateway` 加 try-catch
+  - `createMobileTransport` 仅在 token 非空时发送 `Authorization` 头
