@@ -325,6 +325,8 @@
     "connectionHint": "控制连接网关时的自动行为。",
     "autoAuthenticate": "自动认证",
     "autoAuthenticateHint": "连接网关后自动尝试认证，无需手动点击。",
+    "desktopNotifications": "桌面通知",
+    "desktopNotificationsHint": "智能体完成回复时弹出系统通知（仅在标签页处于后台时）。",
     "about": "关于",
     "aboutTitle": "关于 Hermit",
     "aboutHint": "了解本项目的目的与工作原理。",

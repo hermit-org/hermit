@@ -283,6 +283,8 @@ export interface UseAcpPageAdapterOptions {
   onConfirmDelete?: () => boolean | Promise<boolean>;
   /** Maximum images attachable to a single prompt. Defaults to 4. */
   maxAttachments?: number;
+  /** Optional callback invoked after a turn completes successfully. */
+  onTurnComplete?: (assistantText: string) => void;
   /** Build a preview URL for an attachment. Defaults to a `data:` URL. */
   createPreviewUrl?: CreatePreviewUrl;
   /** Release a preview URL. Defaults to a no-op (data URLs need no cleanup). */
@@ -306,10 +308,18 @@ export function useAcpPageAdapter(
     getAgentCwd,
     onConfirmArchive,
     onConfirmDelete,
+    onTurnComplete,
     maxAttachments = 4,
     createPreviewUrl = defaultCreatePreviewUrl,
     revokePreviewUrl = defaultRevokePreviewUrl,
   } = options;
+
+  // Keep the latest `onTurnComplete` in a ref so `pumpQueue` (a useCallback
+  // with no deps) always invokes the current closure without re-creating.
+  const onTurnCompleteRef = useRef(onTurnComplete);
+  useEffect(() => {
+    onTurnCompleteRef.current = onTurnComplete;
+  });
 
   const pendingPermissions = usePermissionStore((s) => s.pending);
   const permissionHistoryStore = usePermissionStore((s) => s.history);
@@ -1149,6 +1159,18 @@ export function useAcpPageAdapter(
         ]);
       }
       setLiveTurn({ items: [], toolCalls: new Map() });
+
+      // Notify platform listeners (e.g. web desktop notifications) that the
+      // turn finished. Surface the last assistant message text so listeners
+      // can show a preview without re-reading React state.
+      const cb = onTurnCompleteRef.current;
+      if (cb) {
+        const assistantText = committed
+          .filter((it) => it.kind === "message" && it.role === "assistant")
+          .map((it) => (it.kind === "message" ? it.content : ""))
+          .join("");
+        cb(assistantText);
+      }
     } catch (e) {
       setSetupError(e instanceof Error ? e.message : String(e));
     } finally {

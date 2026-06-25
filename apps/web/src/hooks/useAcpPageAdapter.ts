@@ -15,6 +15,7 @@ import {
 } from "@hermit-org/acp-hooks";
 import { useAcpClient } from "../acp/hooks";
 import { useSettingsStore } from "../stores/settingsStore";
+import { showNotification } from "../lib/notifications";
 import type { Gateway } from "../types";
 
 /**
@@ -107,6 +108,12 @@ export function useAcpPageAdapter(
       typeof window !== "undefined" && window.confirm("Archive this session?"),
     onConfirmDelete: () =>
       typeof window !== "undefined" && window.confirm("Delete this session?"),
+    onTurnComplete: (assistantText) => {
+      const enabled = useSettingsStore.getState().desktopNotifications;
+      if (!enabled) return;
+      const body = assistantText || "";
+      showNotification("Hermit", body);
+    },
     // Use blob URLs for previews (cheaper than data URLs for large images).
     createPreviewUrl: (input) => {
       const bytes = atob(input.data);

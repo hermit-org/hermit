@@ -325,6 +325,8 @@
     "connectionHint": "Control automatic behaviour when connecting to a gateway.",
     "autoAuthenticate": "Auto-authenticate",
     "autoAuthenticateHint": "Automatically authenticate after connecting, without a manual click.",
+    "desktopNotifications": "Desktop notifications",
+    "desktopNotificationsHint": "Show a system notification when the agent finishes a reply (while the tab is in the background).",
     "about": "About",
     "aboutTitle": "About Hermit",
     "aboutHint": "Learn what this project is for and how it works.",

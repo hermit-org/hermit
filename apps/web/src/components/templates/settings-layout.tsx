@@ -32,6 +32,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useSettingsStore, type AppLanguage } from "@/stores/settingsStore";
 import { useGatewayStore } from "@/stores/gatewayStore";
+import {
+  notificationsSupported,
+  notificationPermission,
+  requestNotificationPermission,
+} from "@/lib/notifications";
 import { navigate, realGatewayPath } from "@/router";
 import { changeAppLanguage } from "@/i18n";
 import {
@@ -373,6 +378,17 @@ function GatewaySection(): React.JSX.Element {
         </div>
         <AutoAuthenticateSwitch />
       </div>
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+        <div>
+          <Label htmlFor="desktop-notifications">
+            {t("settings.desktopNotifications")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.desktopNotificationsHint")}
+          </p>
+        </div>
+        <DesktopNotificationsSwitch />
+      </div>
     </div>
   );
 }
@@ -387,6 +403,48 @@ function AutoAuthenticateSwitch(): React.JSX.Element {
       id="auto-authenticate"
       checked={autoAuthenticate}
       onCheckedChange={setAutoAuthenticate}
+    />
+  );
+}
+
+function DesktopNotificationsSwitch(): React.JSX.Element {
+  const desktopNotifications = useSettingsStore((s) => s.desktopNotifications);
+  const setDesktopNotifications = useSettingsStore(
+    (s) => s.setDesktopNotifications,
+  );
+  const [, force] = React.useReducer((x: number) => x + 1, 0);
+
+  const supported = notificationsSupported();
+
+  const handleChange = React.useCallback(
+    async (checked: boolean) => {
+      if (!checked) {
+        setDesktopNotifications(false);
+        return;
+      }
+      // Turning on: request permission first. Only persist the toggle when
+      // the user actually grants it — otherwise the feature silently no-ops.
+      const permission = await requestNotificationPermission();
+      if (permission === "granted") {
+        setDesktopNotifications(true);
+      } else {
+        setDesktopNotifications(false);
+        force(); // re-render so the switch reflects the denied state
+      }
+    },
+    [setDesktopNotifications],
+  );
+
+  if (!supported) return <Switch id="desktop-notifications" disabled />;
+  // If the user previously granted permission, the switch stays on; if they
+  // denied it in the browser settings, force the toggle off and disable it.
+  const denied = notificationPermission() === "denied";
+  return (
+    <Switch
+      id="desktop-notifications"
+      checked={desktopNotifications && !denied}
+      disabled={denied}
+      onCheckedChange={handleChange}
     />
   );
 }

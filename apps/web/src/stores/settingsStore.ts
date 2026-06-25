@@ -37,6 +37,9 @@ export interface SettingsState {
   /** Whether to automatically authenticate when an agent advertises auth methods. */
   autoAuthenticate: boolean;
   setAutoAuthenticate: (enabled: boolean) => void;
+  /** Whether to show desktop notifications when a turn completes. */
+  desktopNotifications: boolean;
+  setDesktopNotifications: (enabled: boolean) => void;
   /** Feature flag: show agent thought/reasoning blocks in the transcript. */
   showThoughts: boolean;
   setShowThoughts: (enabled: boolean) => void;
@@ -90,6 +93,9 @@ export const useSettingsStore = create<SettingsState>()(
         set({ autoArchiveThreshold }),
       autoAuthenticate: false,
       setAutoAuthenticate: (autoAuthenticate) => set({ autoAuthenticate }),
+      desktopNotifications: false,
+      setDesktopNotifications: (desktopNotifications) =>
+        set({ desktopNotifications }),
       setShowThoughts: (showThoughts) => set({ showThoughts }),
       setShowPlan: (showPlan) => set({ showPlan }),
       setShowUsageStats: (showUsageStats) => set({ showUsageStats }),
