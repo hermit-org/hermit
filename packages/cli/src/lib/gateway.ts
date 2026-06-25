@@ -80,6 +80,7 @@ export class AcpGatewayServer {
   }> = [];
   private stdinWriting = false;
   private started = false;
+  private procExited = false;
   private cors: NormalizedCors = normalizeCors(true);
 
   constructor(private readonly options: AcpGatewayServerOptions) {}
@@ -182,10 +183,12 @@ export class AcpGatewayServer {
     });
 
     this.proc.once("error", (error) => {
+      this.procExited = true;
       this.broadcastError(error.message);
     });
 
     this.proc.once("exit", (code, signal) => {
+      this.procExited = true;
       this.broadcastError(
         signal
           ? `Agent process exited with signal ${signal}`
@@ -380,8 +383,10 @@ export class AcpGatewayServer {
   private async stop(): Promise<void> {
     this.closeAllConnections();
 
-    if (this.proc && !this.proc.killed) {
-      this.proc.kill();
+    if (this.proc && !this.procExited) {
+      if (!this.proc.killed) {
+        this.proc.kill();
+      }
       await new Promise<void>((resolve) => {
         const timeout = setTimeout(() => {
           this.proc?.kill("SIGKILL");
