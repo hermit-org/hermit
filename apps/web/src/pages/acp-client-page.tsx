@@ -133,6 +133,7 @@ export interface ACPClientPageProps {
   onResolvePermission?: (
     request: PendingPermission,
     outcome: string | "cancelled",
+    note?: string,
   ) => void;
   /** Open settings. */
   onOpenSettings?: () => void;
@@ -422,8 +423,8 @@ export function ACPClientPage({
               <ToolQuestionsPanel
                 requests={permissions}
                 history={permissionHistory}
-                onResolve={(req, optionId) =>
-                  onResolvePermission?.(req, optionId)
+                onResolve={(req, optionId, note) =>
+                  onResolvePermission?.(req, optionId, note)
                 }
                 onCancel={(req) => onResolvePermission?.(req, "cancelled")}
               />

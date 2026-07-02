@@ -28,6 +28,7 @@ import type {
   ContentBlock,
   ImageContent,
   PlanEntry,
+  PlanPriority,
   SessionInfo,
   SessionMode,
   SessionModeState,
@@ -176,6 +177,65 @@ function contentToText(content: ContentBlock): string {
   return "";
 }
 
+/**
+ * ACP priority/enum → PlanPriority mapping for todo entries extracted from
+ * tool_call rawInput. TodoList tools typically use "high"|"medium"|"low"
+ * directly, so this is mostly a passthrough with a fallback.
+ */
+function toPlanPriority(value: unknown): PlanPriority | undefined {
+  if (value === "high" || value === "medium" || value === "low") return value;
+  return undefined;
+}
+
+/**
+ * Best-effort extraction of PlanEntry[] from a tool_call's rawInput.
+ *
+ * Agents (e.g. Kimi Code) that manage their todos via a `TodoList` tool send
+ * the full todo list as the tool's input payload rather than via a separate
+ * `session/update` plan notification. This normalises the common shapes:
+ *
+ *   - `{ todos: [{ content / title, status, priority }] }`
+ *   - `{ todos: [{ content / title, status }] }`
+ *
+ * Returns `null` when the payload doesn't look like a todo list, so the caller
+ * can skip the plan sync.
+ */
+function extractPlanFromToolInput(rawInput: unknown): PlanEntry[] | null {
+  if (!rawInput || typeof rawInput !== "object") return null;
+  const obj = rawInput as Record<string, unknown>;
+
+  // Detect TodoList-style payloads: an array under `todos`.
+  const todos = obj.todos;
+  if (!Array.isArray(todos)) return null;
+
+  const entries: PlanEntry[] = [];
+  for (const item of todos) {
+    if (!item || typeof item !== "object") continue;
+    const t = item as Record<string, unknown>;
+    const content =
+      typeof t.content === "string"
+        ? t.content
+        : typeof t.title === "string"
+          ? t.title
+          : undefined;
+    if (!content) continue;
+
+    const status = t.status;
+    const entry: PlanEntry = { content };
+    if (
+      status === "pending" ||
+      status === "in_progress" ||
+      status === "completed"
+    ) {
+      entry.status = status;
+    }
+    const priority = toPlanPriority(t.priority);
+    if (priority) entry.priority = priority;
+    entries.push(entry);
+  }
+  return entries;
+}
+
 export interface UseAcpPageAdapterResult {
   /** Props ready to spread onto <ACPClientPage />. */
   connectionStatus: ConnectionStatus;
@@ -251,6 +311,7 @@ export interface UseAcpPageAdapterResult {
   onResolvePermission: (
     request: PendingPermission,
     outcome: string | "cancelled",
+    note?: string,
   ) => void;
   onAuthenticate: (methodId: string) => void;
   onLogout: () => void;
@@ -690,6 +751,20 @@ export function useAcpPageAdapter(
         case "tool_call":
         case "tool_call_update": {
           if (sessionId !== activeId) break;
+          // Detect TodoList-style tool calls and sync their payload to the
+          // plan state so the PlanBar renders the live todo list. Agents that
+          // manage todos via a tool (rather than a `plan` session/update) send
+          // the full list as the tool's rawInput on every update.
+          // Use the merged tool-call state so rawInput from a prior `tool_call`
+          // is picked up even when a `tool_call_update` omits it.
+          {
+            const prevCall = liveTurnRef.current.toolCalls.get(
+              update.toolCallId,
+            );
+            const merged = mergeToolCall(prevCall, update);
+            const planEntries = extractPlanFromToolInput(merged.rawInput);
+            if (planEntries) setPlan(planEntries);
+          }
           // While replaying history, buffer tool calls in arrival order so they
           // stay interleaved with messages instead of sinking to the tail.
           if (isLoadingHistoryRef.current) {
@@ -700,6 +775,11 @@ export function useAcpPageAdapter(
                 e.call.toolCallId === update.toolCallId,
             );
             const merged = mergeToolCall(existing?.call, update);
+            // Sync plan state during history replay as well.
+            {
+              const planEntries = extractPlanFromToolInput(merged.rawInput);
+              if (planEntries) setPlan(planEntries);
+            }
             if (existing) {
               existing.call = merged;
             } else {
@@ -1327,12 +1407,12 @@ export function useAcpPageAdapter(
   }, [clearAttachments]);
 
   const onResolvePermission = useCallback(
-    (request: PendingPermission, outcome: string | "cancelled") => {
+    (request: PendingPermission, outcome: string | "cancelled", note?: string) => {
       const store = usePermissionStore.getState();
       if (outcome === "cancelled") {
         store.cancel(request.id);
       } else {
-        store.respond(request.id, outcome);
+        store.respond(request.id, outcome, note);
       }
     },
     [],

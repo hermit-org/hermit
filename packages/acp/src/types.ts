@@ -586,6 +586,12 @@ export interface PermissionOutcome {
     | "cancelled"
     | "selected";
   optionId?: string;
+  /**
+   * Optional supplementary explanation the user typed alongside their choice.
+   * Forwarded back to the agent so it can use the context for follow-up
+   * decisions. Only meaningful when `outcome === "selected"`.
+   */
+  note?: string;
 }
 
 export interface RequestPermissionResult {

@@ -147,7 +147,9 @@
     "answered": "已回答",
     "qPrefix": "问：",
     "aPrefix": "答：",
-    "note": "备注"
+    "note": "备注",
+    "notePlaceholder": "补充说明…",
+    "submit": "提交"
   },
   "auth": {
     "signIn": "登录",

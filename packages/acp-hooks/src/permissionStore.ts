@@ -37,8 +37,8 @@ export interface PermissionState {
   history: AnsweredPermission[];
   /** Enqueue a new permission request and return the result promise. */
   request(params: RequestPermissionParams): Promise<RequestPermissionResult>;
-  /** Resolve a pending request with the chosen outcome. */
-  respond(id: string, optionId: string): void;
+  /** Resolve a pending request with the chosen outcome (and optional note). */
+  respond(id: string, optionId: string, note?: string): void;
   /** Resolve every pending request at once and record answers in history. */
   respondAll(
     responses: { id: string; optionId: string; note?: string }[],
@@ -73,11 +73,23 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
     });
   },
 
-  respond(id, optionId) {
+  respond(id, optionId, note) {
     const entry = get().pending.find((p) => p.id === id);
     if (!entry) return;
     set((state) => ({ pending: state.pending.filter((p) => p.id !== id) }));
-    entry.resolve({ outcome: { outcome: "selected", optionId } });
+    // Record the answer in history so the user can review it later.
+    const opt = entry.options.find((o) => o.optionId === optionId);
+    const answered: AnsweredPermission = {
+      toolCallId: entry.id,
+      question: entry.toolCall.title ?? entry.id,
+      answer: opt?.name ?? optionId,
+      note,
+      at: Date.now(),
+    };
+    set((state) => ({ history: [answered, ...state.history] }));
+    entry.resolve({
+      outcome: { outcome: "selected", optionId, note },
+    });
   },
 
   respondAll(responses) {
@@ -94,7 +106,9 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
         note: r.note,
         at: Date.now(),
       });
-      entry.resolve({ outcome: { outcome: "selected", optionId: r.optionId } });
+      entry.resolve({
+        outcome: { outcome: "selected", optionId: r.optionId, note: r.note },
+      });
     }
     const answeredIds = new Set(responses.map((r) => r.id));
     set((state) => ({

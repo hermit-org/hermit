@@ -147,7 +147,9 @@
     "answered": "Answered",
     "qPrefix": "Q:",
     "aPrefix": "A:",
-    "note": "Note"
+    "note": "Note",
+    "notePlaceholder": "Add a supplementary note…",
+    "submit": "Submit"
   },
   "auth": {
     "signIn": "Sign in",

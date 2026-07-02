@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { ShieldAlert, Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   PendingPermission,
@@ -12,8 +12,12 @@ export interface ToolQuestionsPanelProps {
   requests: PendingPermission[];
   /** Previously-answered questions, newest first. */
   history?: AnsweredPermissionView[];
-  /** Resolve a pending request with the chosen option id. */
-  onResolve: (request: PendingPermission, optionId: string) => void;
+  /** Resolve a pending request with the chosen option id (and optional note). */
+  onResolve: (
+    request: PendingPermission,
+    optionId: string,
+    note?: string,
+  ) => void;
   /** Cancel/dismiss a pending request. */
   onCancel?: (request: PendingPermission) => void;
   className?: string;
@@ -33,10 +37,42 @@ function optionClass(kind?: string): string {
 }
 
 /**
+ * Best-effort extraction of rich question metadata from an AskUserQuestion-
+ * style tool call's `rawInput`.
+ *
+ * The ACP `session/request_permission` carries a single `toolCall` plus flat
+ * `options` array. Some agents (e.g. Kimi Code) embed the full multi-question
+ * structure in `toolCall.rawInput` as JSON. This helper extracts:
+ *   - `description` — contextual text to display below the title
+ *   - `header` — a category tag shown as a badge
+ *
+ * Returns `null` when no useful metadata is found.
+ */
+function extractQuestionMeta(
+  rawInput: unknown,
+): { description?: string; header?: string } | null {
+  if (!rawInput || typeof rawInput !== "object") return null;
+  const obj = rawInput as Record<string, unknown>;
+  const description =
+    typeof obj.description === "string" ? obj.description : undefined;
+  const header = typeof obj.header === "string" ? obj.header : undefined;
+  if (!description && !header) return null;
+  return { description, header };
+}
+
+/**
  * Renders agent-initiated permission requests
  * (`session/request_permission`) inline above the message composer, plus a
- * collapsible history of previously-answered questions. Mirrors the legacy
- * `ToolQuestionsView` UX (non-modal).
+ * collapsible history of previously-answered questions.
+ *
+ * Each pending request is shown as a card with:
+ *   - A title (from `toolCall.title`) and optional description/header extracted
+ *     from `toolCall.rawInput`
+ *   - Option buttons (from the flat `options` array)
+ *   - An optional supplementary-note text input for the user to add context
+ *
+ * The note is forwarded to `onResolve` and ultimately back to the agent via
+ * the `PermissionOutcome.note` field.
  */
 export function ToolQuestionsPanel({
   requests,
@@ -47,6 +83,8 @@ export function ToolQuestionsPanel({
 }: ToolQuestionsPanelProps): React.JSX.Element | null {
   const { t } = useTranslation();
   const [showHistory, setShowHistory] = React.useState(false);
+  // Per-request note drafts, keyed by request id.
+  const [notes, setNotes] = React.useState<Record<string, string>>({});
 
   if (requests.length === 0 && (!history || history.length === 0)) return null;
 
@@ -56,6 +94,21 @@ export function ToolQuestionsPanel({
         const tc = req.toolCall;
         const title = tc.title ?? req.id;
         const kind = tc.kind ?? "tool";
+        const meta = extractQuestionMeta(tc.rawInput);
+        const noteValue = notes[req.id] ?? "";
+
+        const handleResolve = (optionId: string) => {
+          const note = noteValue.trim() || undefined;
+          // Clear the draft for this request.
+          setNotes((prev) => {
+            if (!note) return prev;
+            const next = { ...prev };
+            delete next[req.id];
+            return next;
+          });
+          onResolve(req, optionId, note);
+        };
+
         return (
           <div
             key={req.id}
@@ -63,9 +116,15 @@ export function ToolQuestionsPanel({
           >
             <div className="mb-1.5 flex items-center gap-1.5">
               <span className="text-xs font-bold text-primary">{i + 1}.</span>
-              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {kind}
-              </span>
+              {meta?.header ? (
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  {meta.header}
+                </span>
+              ) : (
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {kind}
+                </span>
+              )}
               <span className="flex-1 truncate font-medium">{title}</span>
               {onCancel ? (
                 <button
@@ -78,6 +137,11 @@ export function ToolQuestionsPanel({
                 </button>
               ) : null}
             </div>
+            {meta?.description ? (
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                {meta.description}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-1.5">
               {req.options.map((opt) => (
                 <button
@@ -88,13 +152,32 @@ export function ToolQuestionsPanel({
                     "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium",
                     optionClass(opt.kind),
                   )}
-                  onClick={() => onResolve(req, opt.optionId)}
+                  onClick={() => handleResolve(opt.optionId)}
                 >
                   <Check className="h-3 w-3" />
                   {opt.name}
                 </button>
               ))}
             </div>
+            {/* Supplementary note input — lets the user add context that is
+                forwarded back to the agent alongside the chosen option. */}
+            <input
+              type="text"
+              className="mt-1.5 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder={t("permission.notePlaceholder")}
+              value={noteValue}
+              onChange={(e) =>
+                setNotes((prev) => ({ ...prev, [req.id]: e.target.value }))
+              }
+              onKeyDown={(e) => {
+                // Submit on Enter using the first option (most common UX for
+                // a single-option question with a note).
+                if (e.key === "Enter" && req.options.length > 0) {
+                  e.preventDefault();
+                  handleResolve(req.options[0].optionId);
+                }
+              }}
+            />
           </div>
         );
       })}
