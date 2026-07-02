@@ -151,7 +151,7 @@ export function ChatArea({
   const resolvedEmptyDescription = emptyDescription ?? t("chat.startConversation");
 
   return (
-    <div className={cn("relative flex h-full flex-col", className)}>
+    <div className={cn("relative flex h-full flex-col", className)} data-testid="chat-area">
       <ScrollArea className="flex-1" viewportRef={viewportRef}>
         <div className="min-h-full py-4">
           {showEmpty ? (

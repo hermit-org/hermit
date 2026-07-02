@@ -296,6 +296,7 @@ export function MessageComposer({
           <div className="relative flex-1">
             <Textarea
               ref={taRef}
+              data-testid="composer-textarea"
               value={value}
               onChange={(e) => onChange(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -322,6 +323,7 @@ export function MessageComposer({
             <StopButton onClick={onCancel} />
           ) : (
             <SendButton
+              data-testid="composer-send-button"
               disabled={
                 (!value.trim() && attachments.length === 0) ||
                 disabled ||

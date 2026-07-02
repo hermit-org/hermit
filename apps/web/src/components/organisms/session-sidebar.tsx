@@ -116,6 +116,7 @@ export function SessionSidebar({
         "flex h-full w-64 min-w-0 flex-col overflow-hidden border-r border-border bg-background",
         className,
       )}
+      data-testid="session-sidebar"
     >
       <div className="flex items-center gap-1 border-b border-border p-2">
         <div className="relative flex-1">

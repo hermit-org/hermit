@@ -134,7 +134,10 @@ export function GatewayManager({
   );
 
   return (
-    <div className="flex h-full w-full items-start justify-center overflow-auto bg-background p-6">
+    <div
+      className="flex h-full w-full items-start justify-center overflow-auto bg-background p-6"
+      data-testid="gateway-manager"
+    >
       <div className="w-full max-w-2xl space-y-6">
         <div className="flex items-center gap-2">
           <ServerCog className="h-5 w-5 text-muted-foreground" />
@@ -176,24 +179,27 @@ export function GatewayManager({
           <div className="grid gap-2">
             <Input
               value={name}
+              data-testid="gateway-name-input"
               onChange={(e) => setName(e.target.value)}
               placeholder={t("gateways.name")}
             />
             <Input
               value={url}
+              data-testid="gateway-url-input"
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("gateways.url")}
               autoCapitalize="none"
             />
             <Input
               value={token}
+              data-testid="gateway-token-input"
               onChange={(e) => setToken(e.target.value)}
               placeholder={t("gateways.token")}
               type="password"
               autoCapitalize="none"
             />
           </div>
-          <Button onClick={handleSave} className="w-full">
+          <Button onClick={handleSave} className="w-full" data-testid="gateway-add-button">
             {editingId ? (
               <Pencil className="h-4 w-4" />
             ) : (
@@ -208,7 +214,7 @@ export function GatewayManager({
         ) : null}
 
         {/* List */}
-        <div className="space-y-2">
+        <div className="space-y-2" data-testid="gateway-list">
           {gateways.length === 0 ? (
             <EmptyState
               icon={Globe}
@@ -221,11 +227,16 @@ export function GatewayManager({
               return (
                 <div
                   key={g.id}
+                  data-testid="gateway-item"
+                  data-gateway-id={g.id}
                   className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium">
+                      <span
+                        className="truncate text-sm font-medium"
+                        data-testid="gateway-item-name"
+                      >
                         {g.name}
                       </span>
                       {active ? (
@@ -255,6 +266,7 @@ export function GatewayManager({
                     </Button>
                     <Button
                       size="sm"
+                      data-testid="gateway-item-connect"
                       onClick={() => handleConnect(g)}
                       title={t("gateways.connect")}
                     >

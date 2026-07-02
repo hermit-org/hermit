@@ -247,17 +247,20 @@ function GatewaySection(): React.JSX.Element {
           <div className="grid gap-2">
             <Input
               value={name}
+              data-testid="settings-gateway-name-input"
               onChange={(e) => setName(e.target.value)}
               placeholder={t("gateways.name")}
             />
             <Input
               value={url}
+              data-testid="settings-gateway-url-input"
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("gateways.url")}
               autoCapitalize="none"
             />
             <Input
               value={token}
+              data-testid="settings-gateway-token-input"
               onChange={(e) => setToken(e.target.value)}
               placeholder={t("gateways.token")}
               type="password"
@@ -267,7 +270,7 @@ function GatewaySection(): React.JSX.Element {
           {notice ? (
             <p className="text-sm text-muted-foreground">{notice}</p>
           ) : null}
-          <Button onClick={handleSave} className="w-full">
+          <Button onClick={handleSave} className="w-full" data-testid="settings-gateway-save-button">
             {view === "edit" ? (
               <Pencil className="h-4 w-4" />
             ) : (
@@ -289,14 +292,14 @@ function GatewaySection(): React.JSX.Element {
             {t("gateways.connectDescription")}
           </p>
         </div>
-        <Button type="button" size="sm" onClick={handleAdd}>
+        <Button type="button" size="sm" onClick={handleAdd} data-testid="settings-add-gateway-button">
           <Plus className="mr-1.5 h-4 w-4" />
           {t("gateways.add")}
         </Button>
       </div>
 
       {/* Gateway list */}
-      <div className="space-y-2">
+      <div className="space-y-2" data-testid="settings-gateway-list">
         {gateways.length === 0 ? (
           <EmptyState
             icon={ServerCog}
@@ -309,11 +312,16 @@ function GatewaySection(): React.JSX.Element {
             return (
               <div
                 key={g.id}
+                data-testid="settings-gateway-item"
+                data-gateway-id={g.id}
                 className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">
+                    <span
+                      className="truncate text-sm font-medium"
+                      data-testid="settings-gateway-item-name"
+                    >
                       {g.name}
                     </span>
                     {active ? (

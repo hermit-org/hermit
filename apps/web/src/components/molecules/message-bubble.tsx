@@ -64,6 +64,8 @@ export function MessageBubble({
         isUser && "flex-row-reverse",
         className,
       )}
+      data-testid="message-bubble"
+      data-message-role={role}
     >
       <AvatarAtom
         role={role}

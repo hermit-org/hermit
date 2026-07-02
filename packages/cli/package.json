@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/cli",
-  "version": "0.0.6-alpha.2",
+  "version": "0.0.6-alpha.3",
   "type": "module",
   "module": "src/index.ts",
   "bin": {
@@ -19,4 +19,4 @@
   "devDependencies": {
     "@types/qrcode": "^1.5.5"
   }
-}\n
+}

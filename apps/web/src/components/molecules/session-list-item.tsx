@@ -129,6 +129,8 @@ export function SessionListItem({
   return (
     <li
       data-active={active ? "" : undefined}
+      data-testid="session-list-item"
+      data-session-id={id}
       className={cn(
         "group flex items-center gap-2 rounded-md text-sm transition-colors",
         "hover:bg-accent",

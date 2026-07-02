@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/acp-hooks",
-  "version": "0.0.6-alpha.2",
+  "version": "0.0.6-alpha.3",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
@@ -21,4 +21,4 @@
   "devDependencies": {
     "@types/react": "^18.3.12"
   }
-}\n
+}

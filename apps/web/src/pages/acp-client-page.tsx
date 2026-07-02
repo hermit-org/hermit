@@ -261,7 +261,7 @@ export function ACPClientPage({
 
   return (
     <ErrorBoundary>
-      <div className="h-full w-full">
+      <div className="h-full w-full" data-testid="acp-client-page">
         <div className="flex h-full w-full flex-col bg-background">
           <ConnectionBar
             status={connectionStatus}
@@ -343,6 +343,7 @@ export function ACPClientPage({
                         variant="ghost"
                         size="icon-sm"
                         className="h-7 w-7"
+                        data-testid="new-session-button"
                         aria-label={t("sessionSidebar.newSession")}
                         onClick={onCreateSession}
                       >

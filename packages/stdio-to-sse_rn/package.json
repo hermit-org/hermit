@@ -1,6 +1,6 @@
 {
   "name": "@hermit-org/stdio-to-sse_rn",
-  "version": "0.0.6-alpha.2",
+  "version": "0.0.6-alpha.3",
   "type": "module",
   "main": "src/index.ts",
   "module": "src/index.ts",
@@ -18,4 +18,4 @@
   "scripts": {
     "test": "bun test"
   }
-}\n
+}

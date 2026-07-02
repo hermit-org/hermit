@@ -48,7 +48,10 @@ export function GatewayRegistration({
   };
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background p-6">
+    <div
+      className="flex h-full w-full items-center justify-center bg-background p-6"
+      data-testid="gateway-registration"
+    >
       <div className="w-full max-w-md">
         <EmptyState
           icon={ServerCog}
@@ -60,6 +63,7 @@ export function GatewayRegistration({
             <Label htmlFor="gw-name">{t("gateways.nameLabel")}</Label>
             <Input
               id="gw-name"
+              data-testid="gateway-name-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("gateways.namePlaceholder")}
@@ -69,6 +73,7 @@ export function GatewayRegistration({
             <Label htmlFor="gw-url">{t("gateways.sseUrlLabel")}</Label>
             <Input
               id="gw-url"
+              data-testid="gateway-url-input"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t("gateways.sseUrlPlaceholder")}
@@ -79,6 +84,7 @@ export function GatewayRegistration({
             <Label htmlFor="gw-token">{t("gateways.tokenLabel")}</Label>
             <Input
               id="gw-token"
+              data-testid="gateway-token-input"
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
@@ -88,6 +94,7 @@ export function GatewayRegistration({
           </div>
           <Button
             className="w-full"
+            data-testid="gateway-connect-button"
             disabled={!canSave}
             onClick={handleSave}
             onKeyDown={(e) => {
