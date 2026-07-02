@@ -18,6 +18,7 @@ import { useAcpPageAdapter } from "../hooks/useAcpPageAdapter";
 import { useGatewayStore } from "../stores/gatewayStore";
 import { readConfigFromUrl } from "../config";
 import { navigate } from "../router";
+import { readShareFromHash, applySharePayload, clearShareHash } from "@/lib/share";
 
 export interface RealAppProps {
   /** Override the auto-selected gateway id (e.g. from routing). */
@@ -40,7 +41,16 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
   // `hermit start` keeps working against the new UI. Read from the live store
   // state (not a closure snapshot) so StrictMode's double-invoke and
   // concurrent renders don't add the gateway twice.
+  // Also check for a share-link payload (`#s=...`) and import it.
   useEffect(() => {
+    // 1. Share-link import (takes priority — it may carry both gateway + settings)
+    const sharePayload = readShareFromHash();
+    if (sharePayload) {
+      applySharePayload(sharePayload);
+      clearShareHash();
+    }
+
+    // 2. Legacy connection-string import (hermit start deep link)
     const config = readConfigFromUrl();
     if (!config) return;
     const store = useGatewayStore.getState();

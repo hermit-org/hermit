@@ -14,6 +14,9 @@ import {
   ArrowRight,
   Info,
   SlidersHorizontal,
+  Share2,
+  Check,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -49,6 +52,10 @@ import {
   useSetFeatureFlag,
 } from "@/components/feature-gate";
 import type { Gateway } from "@/types";
+import {
+  buildShareUrl,
+  collectShareableSettings,
+} from "@/lib/share";
 
 export interface SettingsLayoutProps {
   /** Initial active section. */
@@ -64,6 +71,7 @@ export type SettingsSection =
   | "features"
   | "shortcuts"
   | "archive"
+  | "share"
   | "about";
 
 const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] =
@@ -72,6 +80,7 @@ const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentTy
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
     { id: "features", labelKey: "settings.features", icon: SlidersHorizontal },
     { id: "archive", labelKey: "settings.archive", icon: Archive },
+    { id: "share", labelKey: "settings.share", icon: Share2 },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
     { id: "about", labelKey: "settings.about", icon: Info },
   ];
@@ -140,6 +149,8 @@ export function SettingsLayout({
             <FeaturesSection />
           ) : section === "archive" ? (
             <ArchiveSection />
+          ) : section === "share" ? (
+            <ShareSection />
           ) : section === "shortcuts" ? (
             <ShortcutsSection />
           ) : (
@@ -822,6 +833,153 @@ function ArchiveSection(): React.JSX.Element {
       <p className="text-xs text-muted-foreground">
         {t("settings.archiveDescription")}
       </p>
+    </div>
+  );
+}
+
+function ShareSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const gateways = useGatewayStore((s) => s.gateways);
+  const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
+
+  const [selectedGatewayId, setSelectedGatewayId] = React.useState(
+    activeGatewayId ?? gateways[0]?.id ?? "",
+  );
+  const [includeSettings, setIncludeSettings] = React.useState(true);
+  const [shareUrl, setShareUrl] = React.useState("");
+  const [copied, setCopied] = React.useState(false);
+
+  const handleGenerate = (): void => {
+    const gateway = gateways.find((g) => g.id === selectedGatewayId);
+    if (!gateway) return;
+
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const url = buildShareUrl(baseUrl, {
+      gateway: includeSettings
+        ? { name: gateway.name, url: gateway.url, token: gateway.token }
+        : { name: gateway.name, url: gateway.url, token: gateway.token },
+      settings: includeSettings ? collectShareableSettings() : null,
+    });
+    setShareUrl(url);
+    setCopied(false);
+
+    // Auto-copy to clipboard.
+    try {
+      void navigator.clipboard.writeText(url).then(() => {
+        setCopied(true);
+      });
+    } catch {
+      // Clipboard might be blocked; user can copy manually.
+    }
+  };
+
+  const handleCopy = (): void => {
+    try {
+      void navigator.clipboard.writeText(shareUrl).then(() => {
+        setCopied(true);
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.shareTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.shareHint")}
+        </p>
+      </div>
+
+      {gateways.length === 0 ? (
+        <EmptyState
+          icon={Share2}
+          title={t("gateways.noGatewaysTitle")}
+          description={t("gateways.noGatewaysDescription")}
+        />
+      ) : (
+        <>
+          {/* Gateway selector */}
+          <div className="space-y-2">
+            <Label htmlFor="share-gateway">{t("settings.shareGateway")}</Label>
+            <Select value={selectedGatewayId} onValueChange={setSelectedGatewayId}>
+              <SelectTrigger id="share-gateway" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {gateways.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name} ({g.url})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Include settings toggle */}
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <Label htmlFor="include-settings">
+                {t("settings.shareIncludeSettings")}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t("settings.shareIncludeSettingsHint")}
+              </p>
+            </div>
+            <Switch
+              id="include-settings"
+              checked={includeSettings}
+              onCheckedChange={setIncludeSettings}
+            />
+          </div>
+
+          {/* Generate button */}
+          <Button
+            type="button"
+            className="w-full"
+            onClick={handleGenerate}
+            disabled={!selectedGatewayId}
+          >
+            <Share2 className="mr-1.5 h-4 w-4" />
+            {t("settings.shareGenerate")}
+          </Button>
+
+          {/* Generated link */}
+          {shareUrl ? (
+            <div className="space-y-2">
+              <Label htmlFor="share-url">{t("settings.shareLinkLabel")}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="share-url"
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 font-mono text-xs"
+                  onFocus={(e) => e.target.select()}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopy}
+                  title={t("common.copy")}
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {copied ? (
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  {t("settings.shareCopied")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

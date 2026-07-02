@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "./i18n";
 import { useGatewayStore, useSettingsStore } from "./stores";
 import { readConfigFromUrl } from "./config";
+import { readShareFromHash, applySharePayload, clearShareHash } from "@/lib/share";
 import { GatewayRegistration, RealApp, SettingsPage } from "./pages";
 import { navigate, useRoute, realGatewayPath } from "./router";
 
@@ -28,22 +29,45 @@ export default function App(): React.JSX.Element {
   }, [language]);
 
   useEffect(() => {
+    // Share-link import (takes priority — may carry gateway + settings).
+    const sharePayload = readShareFromHash();
+    let importedGatewayId: string | undefined;
+    if (sharePayload) {
+      applySharePayload(sharePayload);
+      clearShareHash();
+    }
+
+    // Legacy connection-string import (hermit start deep link).
     const config = readConfigFromUrl();
-    if (!config) return;
-    const store = useGatewayStore.getState();
-    const existing = store.gateways.find(
-      (g) => g.url === config.url && g.token === config.token,
-    );
-    const g =
-      existing ??
-      store.addGateway({
-        name: config.name || t("gateways.defaultName"),
-        url: config.url,
-        sendUrl: config.sendUrl,
-        token: config.token,
-      });
-    if (typeof window !== "undefined" && window.location.pathname === "/") {
-      navigate(realGatewayPath(g.id), { replace: true });
+    if (config) {
+      const store = useGatewayStore.getState();
+      const existing = store.gateways.find(
+        (g) => g.url === config.url && g.token === config.token,
+      );
+      const g =
+        existing ??
+        store.addGateway({
+          name: config.name || t("gateways.defaultName"),
+          url: config.url,
+          sendUrl: config.sendUrl,
+          token: config.token,
+        });
+      importedGatewayId = g.id;
+    }
+
+    // If we imported from a share link, redirect to the newest gateway.
+    if (sharePayload && !importedGatewayId) {
+      const store = useGatewayStore.getState();
+      const newest = store.gateways[store.gateways.length - 1];
+      if (newest) importedGatewayId = newest.id;
+    }
+
+    if (
+      importedGatewayId &&
+      typeof window !== "undefined" &&
+      window.location.pathname === "/"
+    ) {
+      navigate(realGatewayPath(importedGatewayId), { replace: true });
     }
     // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
