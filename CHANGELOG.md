@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.5] - 2026-07-02
+
+### 修复
+
+- **TodoList 工具调用后不展示 todo 列表**：Agent（如 Kimi Code）通过 `tool_call` 通道发送 todo 数据（放在 `rawInput` 中），而非走 `plan` session/update 通道，导致 PlanBar 一直为空。现在会从 tool_call 的 `rawInput` 中自动检测 `{todos:[...]}` 格式并同步到 plan 状态，PlanBar 正常渲染。
+- **提问工具无法补充说明**：`session/request_permission` 返回结果缺少 `note` 字段，用户无法附带补充说明。现已扩展 `PermissionOutcome` 协议类型新增可选 `note` 字段，贯穿 store → adapter → UI 全链路；每个问题卡片下方新增补充说明输入框，note 会随选项一起传回 agent。
+
 ## [0.0.6-alpha.4] - 2026-07-02
 
 ### 新增
