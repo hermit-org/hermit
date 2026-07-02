@@ -6,6 +6,25 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.8] - 2026-07-02
+
+### 新增
+
+- **Web 快捷指令**:
+  - 在设置页新增「快捷指令」入口，可创建 2-8 字标题、1000 字内容的快捷按钮
+  - 点击快捷指令写入消息框，双击可直接发送（可在设置中开启/关闭）
+  - 支持单独启用/禁用每个快捷指令
+
+- **网关空闲自动断开 agent**:
+  - 当 ACP 无活跃 prompt、SSE 无 `/send` 输入、且 stdout/stderr 静默超过 `gateway.idleTimeout` 时，自动停止 agent 进程
+  - gateway HTTP 服务保持运行，下次 SSE 或 `/send` 请求自动重新 spawn agent
+  - 新增 `gateway.idleTimeout` 配置项，默认 5 分钟（300000 ms），设置为 `0` 可禁用
+
+### 修复
+
+- **测试环境兼容**：当前环境没有 Node.js，将 `gateway.test.ts` 和 `server.test.ts` 中硬编码的 `node -e` 改为根据环境自动选择 `node` 或 `bun`，并改用真正空闲的端口，避免并发测试冲突
+- **Stdout 首行丢失**：`StdioSseServer` 在子进程 spawn 后立即创建 `readline`，防止快速输出的首行丢失
+
 ## [0.0.6-alpha.7] - 2026-07-02
 
 ### 新增

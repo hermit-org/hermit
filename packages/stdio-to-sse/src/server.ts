@@ -154,6 +154,15 @@ export class StdioSseServer {
             stdio: ["pipe", "pipe", "ignore"],
           });
 
+          // Read stdout line-by-line and re-emit each line as an SSE frame.
+          // Set this up immediately after spawning so that fast-emitting child
+          // processes do not lose early stdout lines before the response is
+          // fully prepared.
+          const rl = createInterface({
+            input: proc.stdout!,
+            crlfDelay: Infinity,
+          });
+
           // Forward the HTTP body to the child's stdin and close it so the child
           // knows no more input is coming.
           if (body) {
@@ -208,14 +217,6 @@ export class StdioSseServer {
               finish();
             }, timeout);
           }
-
-          // Read stdout line-by-line and re-emit each line as an SSE frame.
-          // `createInterface` handles UTF-8 boundary preservation internally,
-          // so multi-byte characters split across stdout chunks are not cut.
-          const rl = createInterface({
-            input: proc.stdout!,
-            crlfDelay: Infinity,
-          });
 
           for await (const line of rl) {
             if (res.writableEnded) break;

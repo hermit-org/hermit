@@ -327,6 +327,7 @@ No Docker files, Kubernetes manifests, or other platform-specific deployment scr
 - `gateway.hostname` — Gateway bind address (default: `"0.0.0.0"`).
 - `gateway.endpoint` — SSE endpoint path (default: `"/"`).
 - `gateway.heartbeatInterval` — Heartbeat interval in ms (default: `30000`).
+- `gateway.idleTimeout` — Idle timeout in ms. If no active ACP prompts, no `/send` input, and no stdout/stderr activity occur for this long, the agent process is stopped; the gateway keeps running and respawns the agent on the next SSE or `/send` request. `0` disables it (default: `300000`).
 - `gateway.cors` — Enable CORS headers (default: `true`).
 - `gateway.timeout` — Gateway timeout in ms; `0` means no timeout (default: `0`).
 - `authorizedTokens` — List of bearer tokens authorized to connect (default: `[]`).

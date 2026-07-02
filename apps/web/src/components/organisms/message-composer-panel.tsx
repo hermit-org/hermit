@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { Zap, Eraser, SlashSquare, Layers } from "lucide-react";
 import type { AvailableCommand } from "@hermit-org/acp";
 import { MessageComposer } from "@/components/molecules";
+import { QuickCommandsPanel } from "@/components/molecules/quick-commands-panel";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { PendingAttachment } from "@/types";
+import type { QuickCommand } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface MessageComposerPanelProps {
@@ -43,6 +45,14 @@ export interface MessageComposerPanelProps {
   onClear?: () => void;
   /** Number of prompts queued behind the in-flight turn. */
   queueDepth?: number;
+  /** User-defined quick commands shown above the composer. */
+  quickCommands?: QuickCommand[];
+  /** Whether double-clicking a quick command sends it immediately. */
+  doubleClickSendEnabled?: boolean;
+  /** Insert a quick command into the composer. */
+  onQuickCommandInsert?: (content: string) => void;
+  /** Send a quick command immediately. */
+  onQuickCommandSend?: (content: string) => void;
   className?: string;
 }
 
@@ -71,10 +81,15 @@ export function MessageComposerPanel({
   requireAuth,
   authMethods,
   onAuthenticate,
+  quickCommands = [],
+  doubleClickSendEnabled,
+  onQuickCommandInsert,
+  onQuickCommandSend,
   className,
 }: MessageComposerPanelProps): React.JSX.Element {
   const { t } = useTranslation();
   const shortcuts = commands.slice(0, 4);
+  const enabledQuickCommands = quickCommands.filter((c) => c.enabled);
 
   return (
     <div className={cn("border-t border-border bg-background px-3 py-2", className)}>
@@ -83,6 +98,16 @@ export function MessageComposerPanel({
           <Layers className="h-3 w-3" />
           <span>{queueDepth} {t("common.queued")}</span>
         </div>
+      ) : null}
+      {enabledQuickCommands.length > 0 ? (
+        <QuickCommandsPanel
+          commands={enabledQuickCommands}
+          doubleClickSendEnabled={doubleClickSendEnabled}
+          onInsert={onQuickCommandInsert ?? (() => {})}
+          onSend={onQuickCommandSend ?? (() => {})}
+          disabled={disabled || busy}
+          className="mb-1.5"
+        />
       ) : null}
       {shortcuts.length > 0 ? (
         <div className="mb-1.5 flex flex-wrap items-center gap-1">

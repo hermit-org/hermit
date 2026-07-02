@@ -148,6 +148,7 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
     sendEndpoint,
     cors: gateway!.cors,
     heartbeatInterval: gateway!.heartbeatInterval,
+    idleTimeout: gateway!.idleTimeout,
     getQrPayload: (): ConnectionPayload => {
       const url = getLanAddress(port) + sseEndpoint;
       const sendUrl = getLanAddress(port) + sendEndpoint;

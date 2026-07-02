@@ -13,6 +13,7 @@
 import { useGatewayStore } from "@/stores/gatewayStore";
 import { useSettingsStore, type AppLanguage } from "@/stores/settingsStore";
 import { changeAppLanguage } from "@/i18n";
+import type { QuickCommand } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +43,9 @@ export interface ShareableSettings {
   typewriterInterval: number;
   typewriterFastMultiplier: number;
   thoughtPreviewLines: number;
+  quickCommandsEnabled: boolean;
+  quickCommands: QuickCommand[];
+  doubleClickSendEnabled: boolean;
 }
 
 /** The complete payload embedded in a share link. */
@@ -203,6 +207,9 @@ export function collectShareableSettings(): ShareableSettings {
     typewriterInterval: s.typewriterInterval,
     typewriterFastMultiplier: s.typewriterFastMultiplier,
     thoughtPreviewLines: s.thoughtPreviewLines,
+    quickCommandsEnabled: s.quickCommandsEnabled,
+    quickCommands: s.quickCommands,
+    doubleClickSendEnabled: s.doubleClickSendEnabled,
   };
 }
 
@@ -268,6 +275,11 @@ export function applySharePayload(payload: SharePayload): boolean {
       setters.setTypewriterFastMultiplier(s.typewriterFastMultiplier);
     if (s.thoughtPreviewLines !== undefined)
       setters.setThoughtPreviewLines(s.thoughtPreviewLines);
+    if (s.quickCommandsEnabled !== undefined)
+      setters.setQuickCommandsEnabled(s.quickCommandsEnabled);
+    if (s.quickCommands !== undefined) setters.setQuickCommands(s.quickCommands);
+    if (s.doubleClickSendEnabled !== undefined)
+      setters.setDoubleClickSendEnabled(s.doubleClickSendEnabled);
 
     imported = true;
   }

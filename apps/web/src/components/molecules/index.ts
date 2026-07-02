@@ -12,6 +12,6 @@ export { MessageComposer, type MessageComposerProps } from "./message-composer";
 export { UsageStats, type UsageStatsProps } from "./usage-stats";
 export { SessionInfoBar, type SessionInfoBarProps } from "./session-info-bar";
 export {
-  SlashCommandMenu,
-  type SlashCommandMenuProps,
-} from "./slash-command-menu";
+  QuickCommandsPanel,
+  type QuickCommandsPanelProps,
+} from "./quick-commands-panel";

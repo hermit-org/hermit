@@ -17,6 +17,7 @@ import {
   Share2,
   Check,
   Copy,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/atoms";
 import {
   Select,
@@ -51,7 +53,7 @@ import {
   useFeatureFlag,
   useSetFeatureFlag,
 } from "@/components/feature-gate";
-import type { Gateway } from "@/types";
+import type { Gateway, QuickCommand } from "@/types";
 import {
   buildShareUrl,
   collectShareableSettings,
@@ -70,6 +72,7 @@ export type SettingsSection =
   | "appearance"
   | "features"
   | "shortcuts"
+  | "quickCommands"
   | "archive"
   | "share"
   | "about";
@@ -82,6 +85,7 @@ const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentTy
     { id: "archive", labelKey: "settings.archive", icon: Archive },
     { id: "share", labelKey: "settings.share", icon: Share2 },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
+    { id: "quickCommands", labelKey: "settings.quickCommands", icon: Zap },
     { id: "about", labelKey: "settings.about", icon: Info },
   ];
 
@@ -153,6 +157,8 @@ export function SettingsLayout({
             <ShareSection />
           ) : section === "shortcuts" ? (
             <ShortcutsSection />
+          ) : section === "quickCommands" ? (
+            <QuickCommandsSection />
           ) : (
             <AboutSection />
           )}
@@ -1012,6 +1018,273 @@ function ShortcutsSection(): React.JSX.Element {
             </kbd>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function QuickCommandsSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const quickCommandsEnabled = useSettingsStore((s) => s.quickCommandsEnabled);
+  const setQuickCommandsEnabled = useSettingsStore(
+    (s) => s.setQuickCommandsEnabled,
+  );
+  const doubleClickSendEnabled = useSettingsStore(
+    (s) => s.doubleClickSendEnabled,
+  );
+  const setDoubleClickSendEnabled = useSettingsStore(
+    (s) => s.setDoubleClickSendEnabled,
+  );
+  const quickCommands = useSettingsStore((s) => s.quickCommands);
+  const addQuickCommand = useSettingsStore((s) => s.addQuickCommand);
+  const updateQuickCommand = useSettingsStore((s) => s.updateQuickCommand);
+  const removeQuickCommand = useSettingsStore((s) => s.removeQuickCommand);
+
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [title, setTitle] = React.useState("");
+  const [content, setContent] = React.useState("");
+  const [enabled, setEnabled] = React.useState(true);
+  const [notice, setNotice] = React.useState<string | null>(null);
+
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle("");
+    setContent("");
+    setEnabled(true);
+    setNotice(null);
+  };
+
+  const validate = (
+    draftTitle: string,
+    draftContent: string,
+  ): string | null => {
+    const trimmedTitle = draftTitle.trim();
+    if (trimmedTitle.length < 2) return t("settings.quickCommandTitleTooShort");
+    if (trimmedTitle.length > 8) return t("settings.quickCommandTitleTooLong");
+    if (draftContent.length > 1000) return t("settings.quickCommandContentTooLong");
+    return null;
+  };
+
+  const handleSave = () => {
+    const error = validate(title, content);
+    if (error) {
+      setNotice(error);
+      return;
+    }
+    if (editingId) {
+      updateQuickCommand(editingId, {
+        title: title.trim(),
+        content,
+        enabled,
+      });
+    } else {
+      addQuickCommand({
+        title: title.trim(),
+        content,
+        enabled,
+      });
+    }
+    resetForm();
+  };
+
+  const handleEdit = (cmd: QuickCommand) => {
+    setEditingId(cmd.id);
+    setTitle(cmd.title);
+    setContent(cmd.content);
+    setEnabled(cmd.enabled);
+    setNotice(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+  };
+
+  const titleError = validate(title, content);
+
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">{t("settings.quickCommandsTitle")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.quickCommandsHint")}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label htmlFor="quick-commands-enabled">
+            {t("settings.quickCommandsEnabled")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.quickCommandsEnabledHint")}
+          </p>
+        </div>
+        <Switch
+          id="quick-commands-enabled"
+          checked={quickCommandsEnabled}
+          onCheckedChange={setQuickCommandsEnabled}
+        />
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label htmlFor="double-click-send">
+            {t("settings.doubleClickSend")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.doubleClickSendHint")}
+          </p>
+        </div>
+        <Switch
+          id="double-click-send"
+          checked={doubleClickSendEnabled}
+          onCheckedChange={setDoubleClickSendEnabled}
+        />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+        <div className="grid gap-2">
+          <Label htmlFor="quick-command-title">{t("settings.quickCommandTitle")}</Label>
+          <Input
+            id="quick-command-title"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setNotice(null);
+            }}
+            placeholder={t("settings.quickCommandTitleHint")}
+            maxLength={8}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="quick-command-content">{t("settings.quickCommandContent")}</Label>
+          <Textarea
+            id="quick-command-content"
+            value={content}
+            onChange={(e) => {
+              setContent(e.target.value);
+              setNotice(null);
+            }}
+            placeholder={t("settings.quickCommandContentHint")}
+            rows={4}
+            maxLength={1000}
+          />
+          <p className="text-xs text-muted-foreground text-right">
+            {content.length}/1000
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="quick-command-enabled"
+            checked={enabled}
+            onCheckedChange={setEnabled}
+          />
+          <Label htmlFor="quick-command-enabled" className="text-sm">
+            {t("common.enabled")}
+          </Label>
+        </div>
+        {notice ? (
+          <p className="text-xs text-red-600 dark:text-red-400">{notice}</p>
+        ) : titleError && title.length > 0 ? (
+          <p className="text-xs text-amber-600 dark:text-amber-400">{titleError}</p>
+        ) : null}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            className="flex-1"
+            disabled={!!titleError && title.length > 0}
+            onClick={handleSave}
+          >
+            {editingId ? (
+              <>
+                <Pencil className="mr-1.5 h-4 w-4" />
+                {t("common.update")}
+              </>
+            ) : (
+              <>
+                <Plus className="mr-1.5 h-4 w-4" />
+                {t("settings.addQuickCommand")}
+              </>
+            )}
+          </Button>
+          {editingId ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+            >
+              {t("common.cancel")}
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {quickCommands.length === 0 ? (
+          <EmptyState
+            icon={Zap}
+            title={t("settings.noQuickCommandsTitle")}
+            description={t("settings.noQuickCommandsDescription")}
+          />
+        ) : (
+          quickCommands.map((cmd) => (
+            <div
+              key={cmd.id}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border border-border bg-card p-3",
+                !cmd.enabled && "opacity-60",
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-medium">{cmd.title}</span>
+                  {cmd.enabled ? (
+                    <Badge variant="secondary">{t("common.enabled")}</Badge>
+                  ) : (
+                    <Badge variant="outline">{t("common.disabled")}</Badge>
+                  )}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {cmd.content}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() =>
+                    updateQuickCommand(cmd.id, { enabled: !cmd.enabled })
+                  }
+                  title={cmd.enabled ? t("common.disable") : t("common.enable")}
+                >
+                  {cmd.enabled ? (
+                    <Zap className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => handleEdit(cmd)}
+                  title={t("common.edit")}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => removeQuickCommand(cmd.id)}
+                  title={t("common.delete")}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

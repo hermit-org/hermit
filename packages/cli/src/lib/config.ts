@@ -21,6 +21,14 @@ export interface HermitConfig {
     endpoint?: string;
     heartbeatInterval?: number;
     /**
+     * Idle timeout in milliseconds. If the gateway has no active ACP prompts,
+     * no `/send` input, and no stdout/stderr activity for longer than this
+     * value, the agent process is stopped. The HTTP server stays running and
+     * the agent is respawned on the next SSE or `/send` request. `0` disables
+     * the idle timeout (default: 300000).
+     */
+    idleTimeout?: number;
+    /**
      * CORS configuration.
      *
      * - `true`  : allow all origins (default).
@@ -45,6 +53,7 @@ export const DEFAULT_CONFIG: Required<HermitConfig> = {
     hostname: "0.0.0.0",
     endpoint: "/",
     heartbeatInterval: 30000,
+    idleTimeout: 300000,
     cors: true,
     timeout: 0,
   },
@@ -71,6 +80,7 @@ function mergeConfig(base: HermitConfig, override: HermitConfig): HermitConfig {
             endpoint: override.gateway.endpoint ?? base.gateway!.endpoint,
             heartbeatInterval:
               override.gateway.heartbeatInterval ?? base.gateway!.heartbeatInterval,
+            idleTimeout: override.gateway.idleTimeout ?? base.gateway!.idleTimeout,
             cors: override.gateway.cors ?? base.gateway!.cors,
             timeout: override.gateway.timeout ?? base.gateway!.timeout,
           }

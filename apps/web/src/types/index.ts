@@ -98,3 +98,15 @@ export interface AcpAgentInfo {
   version: string;
   capabilities?: string[];
 }
+
+/** A user-defined quick command / shortcut shown above the composer. */
+export interface QuickCommand {
+  /** Stable client-side id. */
+  id: string;
+  /** 2–8 character title shown on the chip. */
+  title: string;
+  /** Up to 1000 characters inserted into the composer. */
+  content: string;
+  /** Whether this shortcut is currently active. */
+  enabled: boolean;
+}

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { FEATURE_FLAG_DEFAULTS } from "@/lib/feature-flags";
+import type { QuickCommand } from "@/types";
 
 export type AppLanguage = "en" | "zh";
 
@@ -67,6 +68,21 @@ export interface SettingsState {
   /** Speed multiplier applied when the stream ends, to flush the tail quickly. */
   typewriterFastMultiplier: number;
   setTypewriterFastMultiplier: (multiplier: number) => void;
+  /** Whether the quick-commands panel is shown above the composer. */
+  quickCommandsEnabled: boolean;
+  setQuickCommandsEnabled: (enabled: boolean) => void;
+  /** User-defined quick commands / shortcuts. */
+  quickCommands: QuickCommand[];
+  setQuickCommands: (commands: QuickCommand[]) => void;
+  addQuickCommand: (command: Omit<QuickCommand, "id">) => void;
+  updateQuickCommand: (
+    id: string,
+    patch: Partial<Omit<QuickCommand, "id">>,
+  ) => void;
+  removeQuickCommand: (id: string) => void;
+  /** Whether double-clicking a quick command sends it immediately. */
+  doubleClickSendEnabled: boolean;
+  setDoubleClickSendEnabled: (enabled: boolean) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
@@ -131,6 +147,31 @@ export const useSettingsStore = create<SettingsState>()(
             Math.min(50, Math.round(multiplier)),
           ),
         }),
+      quickCommandsEnabled: false,
+      setQuickCommandsEnabled: (quickCommandsEnabled) =>
+        set({ quickCommandsEnabled }),
+      quickCommands: [],
+      setQuickCommands: (quickCommands) =>
+        set({
+          quickCommands: quickCommands.slice(0, 50),
+        }),
+      addQuickCommand: (command) =>
+        set((state) => ({
+          quickCommands: [...state.quickCommands, { ...command, id: crypto.randomUUID() }].slice(0, 50),
+        })),
+      updateQuickCommand: (id, patch) =>
+        set((state) => ({
+          quickCommands: state.quickCommands.map((cmd) =>
+            cmd.id === id ? { ...cmd, ...patch } : cmd,
+          ),
+        })),
+      removeQuickCommand: (id) =>
+        set((state) => ({
+          quickCommands: state.quickCommands.filter((cmd) => cmd.id !== id),
+        })),
+      doubleClickSendEnabled: false,
+      setDoubleClickSendEnabled: (doubleClickSendEnabled) =>
+        set({ doubleClickSendEnabled }),
     }),
     {
       name: "hermit-settings",

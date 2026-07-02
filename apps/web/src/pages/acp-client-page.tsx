@@ -232,9 +232,16 @@ export function ACPClientPage({
     setSidebarOpen,
     rightPanelOpen,
     setRightPanelOpen,
+    quickCommands,
+    quickCommandsEnabled,
+    doubleClickSendEnabled,
   } = useSettingsStore();
   const showRightPanel = useFeatureFlag("showRightPanel");
   const effectiveDraft = onDraftChange ? draft : internalDraft;
+
+  const enabledQuickCommands = quickCommandsEnabled
+    ? quickCommands.filter((c) => c.enabled)
+    : [];
 
   const handleDraftChange = React.useCallback(
     (value: string) => {
@@ -446,6 +453,10 @@ export function ACPClientPage({
                 attachments={attachments}
                 onAttachImages={onAttachImages}
                 onRemoveAttachment={onRemoveAttachment}
+                quickCommands={enabledQuickCommands}
+                doubleClickSendEnabled={doubleClickSendEnabled}
+                onQuickCommandInsert={handleDraftChange}
+                onQuickCommandSend={handlePrompt}
               />
             </div>
 

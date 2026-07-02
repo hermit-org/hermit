@@ -1,13 +1,42 @@
 import { describe, test, expect } from "bun:test";
 import { request, type ClientRequest } from "node:http";
+import { execFileSync } from "node:child_process";
+import { createServer } from "node:net";
 import { AcpGatewayServer } from "./gateway";
 
 /**
- * Pick a random port in the ephemeral range to reduce collisions between
- * parallel test runs.
+ * Resolve a JavaScript runtime to use for spawning child processes in tests.
+ * Prefers `node` (the runtime the tests were originally written for), falls
+ * back to `bun` when Node.js is not available in $PATH.
+ */
+function resolveJsRuntime(): { command: string; evalFlag: string } {
+  try {
+    execFileSync("which", ["node"], { stdio: "ignore" });
+    return { command: "node", evalFlag: "-e" };
+  } catch {
+    return { command: "bun", evalFlag: "-e" };
+  }
+}
+
+const JS = resolveJsRuntime();
+
+/**
+ * Pick an actually free port in the ephemeral range to reduce collisions
+ * between parallel test runs.
  */
 async function getFreePort(): Promise<number> {
-  return 10000 + Math.floor(Math.random() * 30000);
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.listen(0, "0.0.0.0", () => {
+      const address = server.address();
+      const port = typeof address === "object" ? address?.port : undefined;
+      server.close(() => {
+        if (port) resolve(port);
+        else reject(new Error("Could not determine free port"));
+      });
+    });
+    server.once("error", reject);
+  });
 }
 
 async function post(url: string, body: string): Promise<Response> {
@@ -120,8 +149,8 @@ describe("AcpGatewayServer", () => {
   test("streams agent stdout emitted immediately after spawn", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "console.log('startup'); setInterval(() => {}, 1000);"],
+      command: JS.command,
+      args: [JS.evalFlag, "console.log('startup'); setInterval(() => {}, 1000);"],
       port,
     });
 
@@ -138,9 +167,9 @@ describe("AcpGatewayServer", () => {
   test("streams agent stdout over SSE and accepts stdin via /send", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
+      command: JS.command,
       args: [
-        "-e",
+        JS.evalFlag,
         "process.stdin.on('data', d => process.stdout.write(d)); process.stdin.resume(); setInterval(() => {}, 1000);",
       ],
       port,
@@ -168,8 +197,8 @@ describe("AcpGatewayServer", () => {
   test("returns 404 for unmatched paths", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
     });
     const { url, stop } = await server.start();
@@ -185,8 +214,8 @@ describe("AcpGatewayServer", () => {
   test("responds to CORS preflight requests", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
     });
     const { url, stop } = await server.start();
@@ -205,8 +234,8 @@ describe("AcpGatewayServer startup", () => {
   test("throws when start() is called twice", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
     });
 
@@ -221,15 +250,15 @@ describe("AcpGatewayServer startup", () => {
   test("rejects when the port is already in use", async () => {
     const port = await getFreePort();
     const first = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
     });
     const { stop: stopFirst } = await first.start();
 
     const second = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
     });
     try {
@@ -242,8 +271,8 @@ describe("AcpGatewayServer startup", () => {
   test("builds the url from custom hostname and endpoint", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       hostname: "127.0.0.1",
       endpoint: "/events",
@@ -260,8 +289,8 @@ describe("AcpGatewayServer startup", () => {
   test("uses localhost in url when binding to 0.0.0.0", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       hostname: "0.0.0.0",
     });
@@ -277,8 +306,8 @@ describe("AcpGatewayServer startup", () => {
   test("strips trailing slash from custom endpoints", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       sendEndpoint: "/send/",
       qrEndpoint: "/qr/",
@@ -299,8 +328,8 @@ describe("AcpGatewayServer onRequest hook", () => {
     const port = await getFreePort();
     let hit = false;
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       onRequest: (_req, res) => {
         hit = true;
@@ -324,8 +353,8 @@ describe("AcpGatewayServer onRequest hook", () => {
   test("onRequest returning false continues normal routing", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       onRequest: () => false,
     });
@@ -342,8 +371,8 @@ describe("AcpGatewayServer onRequest hook", () => {
   test("onRequest throwing returns 500", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       onRequest: () => {
         throw new Error("boom");
@@ -363,8 +392,8 @@ describe("AcpGatewayServer onRequest hook", () => {
   test("onRequest can be async", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       onRequest: async (_req, res) => {
         await new Promise((r) => setTimeout(r, 10));
@@ -388,8 +417,8 @@ describe("AcpGatewayServer CORS", () => {
   test("disabled CORS makes OPTIONS fall through to 404", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       cors: false,
     });
@@ -405,8 +434,8 @@ describe("AcpGatewayServer CORS", () => {
   test("specific origin is echoed on CORS preflight", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       cors: { origins: ["http://test.local"] },
     });
@@ -429,8 +458,8 @@ describe("AcpGatewayServer CORS", () => {
   test("disallowed origin gets no CORS headers on preflight", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       cors: { origins: ["http://test.local"] },
     });
@@ -452,8 +481,8 @@ describe("AcpGatewayServer SSE heartbeat", () => {
   test("emits keep-alive comment frames at the configured interval", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "setInterval(() => {}, 1000);"],
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
       port,
       heartbeatInterval: 50,
     });
@@ -474,8 +503,8 @@ describe("AcpGatewayServer agent process events", () => {
   test("broadcasts stderr output as error events", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stderr.write('warn-line\\n'); setInterval(() => {}, 1000);"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stderr.write('warn-line\\n'); setInterval(() => {}, 1000);"],
       port,
     });
 
@@ -493,9 +522,9 @@ describe("AcpGatewayServer agent process events", () => {
   test("closes connections when the process exits with a code", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
+      command: JS.command,
       args: [
-        "-e",
+        JS.evalFlag,
         "process.stdout.write('ready\\n'); setTimeout(() => process.exit(2), 300);",
       ],
       port,
@@ -517,9 +546,9 @@ describe("AcpGatewayServer agent process events", () => {
   test("closes connections when the process exits via signal", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
+      command: JS.command,
       args: [
-        "-e",
+        JS.evalFlag,
         "process.stdout.write('ready\\n'); setTimeout(() => process.kill(process.pid, 'SIGINT'), 300);",
       ],
       port,
@@ -551,11 +580,11 @@ describe("AcpGatewayServer agent process events", () => {
 });
 
 describe("AcpGatewayServer /send endpoint", () => {
-  test("returns 503 when the agent process is not running", async () => {
+  test("returns 503 when the agent process cannot be spawned", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.exit(0);"],
+      command: "this-command-does-not-exist-xyz",
+      args: [],
       port,
       sendEndpoint: "/send",
     });
@@ -563,7 +592,7 @@ describe("AcpGatewayServer /send endpoint", () => {
     const { url, stop } = await server.start();
     const sendUrl = `${url.replace(/\/$/, "")}/send`;
     try {
-      // Wait for the spawned process to exit.
+      // Wait for the initial spawn error to surface.
       await new Promise((resolve) => setTimeout(resolve, 300));
       const response = await post(sendUrl, "hello\n");
       expect(response.status).toBe(503);
@@ -580,8 +609,8 @@ describe("AcpGatewayServer /qr endpoint", () => {
   test("returns 404 when getQrPayload is not configured", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       qrEndpoint: "/qr",
     });
@@ -601,8 +630,8 @@ describe("AcpGatewayServer /qr endpoint", () => {
   test("returns 404 when getQrPayload returns null", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       qrEndpoint: "/qr",
       getQrPayload: () => null,
@@ -622,8 +651,8 @@ describe("AcpGatewayServer /qr endpoint", () => {
   test("returns a PNG image when getQrPayload is configured", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "process.stdin.resume();"],
+      command: JS.command,
+      args: [JS.evalFlag, "process.stdin.resume();"],
       port,
       qrEndpoint: "/qr",
       getQrPayload: () => ({
@@ -653,8 +682,8 @@ describe("AcpGatewayServer stop", () => {
   test("gracefully stops a cooperative process", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
-      args: ["-e", "setInterval(() => {}, 1000);"],
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
       port,
     });
 
@@ -667,9 +696,9 @@ describe("AcpGatewayServer stop", () => {
   test("force-kills a process that ignores SIGTERM", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
-      command: "node",
+      command: JS.command,
       args: [
-        "-e",
+        JS.evalFlag,
         // Register the SIGTERM handler before signalling readiness so the
         // gateway's graceful kill has no effect and the SIGKILL fallback
         // kicks in after the internal timeout.
@@ -689,4 +718,143 @@ describe("AcpGatewayServer stop", () => {
     // SIGKILL fallback fires.
     await expect(stop()).resolves.toBeUndefined();
   }, 15000);
+});
+
+
+describe("AcpGatewayServer idle timeout", () => {
+  test("stops the agent after idle timeout and respawns on next /send", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [
+        JS.evalFlag,
+        "process.stdin.on('data', d => process.stdout.write(d)); process.stdin.resume(); setInterval(() => {}, 1000);",
+      ],
+      port,
+      sendEndpoint: "/send",
+      idleTimeout: 200,
+    });
+
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Confirm the agent is running and echoing.
+      const first = await post(sendUrl, "first\n");
+      expect(first.status).toBe(200);
+
+      // Open an SSE connection and wait for the idle timeout to stop the agent.
+      // The server should close the connection when the agent is stopped.
+      const closed = await new Promise<boolean>((resolve, reject) => {
+        const parsed = new URL(url);
+        const req = request(
+          {
+            hostname: parsed.hostname,
+            port: parsed.port,
+            path: parsed.pathname,
+            method: "POST",
+          },
+          (res) => {
+            res.setEncoding("utf-8");
+            res.on("data", () => {});
+            res.once("end", () => resolve(true));
+            res.once("close", () => resolve(true));
+            res.once("error", (err) => reject(err));
+          },
+        );
+        req.once("error", (err) => reject(err));
+        req.end();
+        setTimeout(() => resolve(false), 1500);
+      });
+      expect(closed).toBe(true);
+
+      // After the agent was stopped, a new /send should respawn it and still work.
+      const second = await post(sendUrl, "second\n");
+      expect(second.status).toBe(200);
+    } finally {
+      await stop();
+    }
+  }, 5000);
+
+  test("active ACP prompt prevents idle timeout from stopping the agent", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [
+        JS.evalFlag,
+        "process.stdin.on('data', d => process.stdout.write(d)); process.stdin.resume(); setInterval(() => {}, 1000);",
+      ],
+      port,
+      sendEndpoint: "/send",
+      idleTimeout: 200,
+    });
+
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Send a session/prompt request so the gateway considers a prompt active.
+      const promptRequest = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "session/prompt",
+        params: { sessionId: "s1", prompt: [] },
+      });
+      const response = await post(sendUrl, `${promptRequest}\n`);
+      expect(response.status).toBe(200);
+
+      // Wait longer than the idle timeout. The connection should stay open
+      // because there is an active prompt.
+      const closed = await new Promise<boolean>((resolve, reject) => {
+        const parsed = new URL(url);
+        const req = request(
+          {
+            hostname: parsed.hostname,
+            port: parsed.port,
+            path: parsed.pathname,
+            method: "POST",
+          },
+          (res) => {
+            res.setEncoding("utf-8");
+            res.on("data", () => {});
+            res.once("end", () => resolve(true));
+            res.once("close", () => resolve(true));
+            res.once("error", (err) => reject(err));
+          },
+        );
+        req.once("error", (err) => reject(err));
+        req.end();
+        setTimeout(() => resolve(false), 800);
+      });
+      expect(closed).toBe(false);
+    } finally {
+      await stop();
+    }
+  }, 5000);
+
+  test("disabling idle timeout keeps the agent running", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [
+        JS.evalFlag,
+        "process.stdin.on('data', d => process.stdout.write(d)); process.stdin.resume(); setInterval(() => {}, 1000);",
+      ],
+      port,
+      sendEndpoint: "/send",
+      idleTimeout: 0,
+    });
+
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      const response = await post(sendUrl, "still-running\n");
+      expect(response.status).toBe(200);
+    } finally {
+      await stop();
+    }
+  }, 3000);
 });
