@@ -332,7 +332,17 @@
     "aboutHint": "Learn what this project is for and how it works.",
     "aboutDescription": "Hermit Web is a client for remotely accessing ACP agents. By configuring a gateway URL and pairing token, you can connect to an ACP agent in your browser and chat with it.",
     "aboutGatewayDescription": "The gateway exposes a local ACP agent as an SSE endpoint; the web client sends prompts through that endpoint and receives streaming responses.",
-    "version": "Version"
+    "version": "Version",
+    "typewriter": "Typewriter Effect",
+    "typewriterHint": "Display agent replies with a character-by-character typewriter effect.",
+    "typewriterEnabled": "Enable typewriter",
+    "typewriterEnabledHint": "When on, streaming replies are revealed gradually instead of rendered all at once.",
+    "typewriterSpeed": "Reveal speed",
+    "typewriterSpeedHint": "Characters revealed per tick. Higher values show text faster.",
+    "typewriterInterval": "Tick interval",
+    "typewriterIntervalHint": "Milliseconds between ticks. Lower values produce smoother animation.",
+    "typewriterFast": "Fast-finish multiplier",
+    "typewriterFastHint": "Speed multiplier applied after the stream ends, to flush remaining text quickly."
   },
   "session": {
     "rename": "Rename session",

@@ -55,6 +55,18 @@ export interface SettingsState {
   /** Feature flag: show the right tool-call panel (and its toggle). */
   showRightPanel: boolean;
   setShowRightPanel: (enabled: boolean) => void;
+  /** Whether to apply a typewriter effect to streaming agent output. */
+  typewriterEnabled: boolean;
+  setTypewriterEnabled: (enabled: boolean) => void;
+  /** Characters revealed per tick while streaming (typewriter speed). */
+  typewriterSpeed: number;
+  setTypewriterSpeed: (speed: number) => void;
+  /** Tick interval in milliseconds between typewriter reveals. */
+  typewriterInterval: number;
+  setTypewriterInterval: (interval: number) => void;
+  /** Speed multiplier applied when the stream ends, to flush the tail quickly. */
+  typewriterFastMultiplier: number;
+  setTypewriterFastMultiplier: (multiplier: number) => void;
 }
 
 const DEFAULT_THOUGHT_PREVIEW_LINES = 4;
@@ -101,6 +113,24 @@ export const useSettingsStore = create<SettingsState>()(
       setShowUsageStats: (showUsageStats) => set({ showUsageStats }),
       setShowConfigBar: (showConfigBar) => set({ showConfigBar }),
       setShowRightPanel: (showRightPanel) => set({ showRightPanel }),
+      typewriterEnabled: true,
+      setTypewriterEnabled: (typewriterEnabled) => set({ typewriterEnabled }),
+      typewriterSpeed: 4,
+      setTypewriterSpeed: (speed) =>
+        set({ typewriterSpeed: Math.max(1, Math.min(50, Math.round(speed))) }),
+      typewriterInterval: 16,
+      setTypewriterInterval: (interval) =>
+        set({
+          typewriterInterval: Math.max(1, Math.min(200, Math.round(interval))),
+        }),
+      typewriterFastMultiplier: 8,
+      setTypewriterFastMultiplier: (multiplier) =>
+        set({
+          typewriterFastMultiplier: Math.max(
+            2,
+            Math.min(50, Math.round(multiplier)),
+          ),
+        }),
     }),
     {
       name: "hermit-settings",

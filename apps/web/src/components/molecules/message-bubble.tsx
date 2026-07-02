@@ -4,6 +4,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { StreamingText } from "@/components/streaming-text";
 import { AvatarAtom, Timestamp, CopyButton, Spinner } from "@/components/atoms";
 import type { AvatarRole } from "@/components/atoms";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
 
 export interface MessageBubbleProps {
@@ -57,6 +58,15 @@ export function MessageBubble({
 }: MessageBubbleProps): React.JSX.Element {
   const { t } = useTranslation();
   const isUser = role === "user";
+
+  // Typewriter settings — applied only to assistant markdown output.
+  const typewriterEnabled = useSettingsStore((s) => s.typewriterEnabled);
+  const typewriterSpeed = useSettingsStore((s) => s.typewriterSpeed);
+  const typewriterInterval = useSettingsStore((s) => s.typewriterInterval);
+  const typewriterFastMultiplier = useSettingsStore(
+    (s) => s.typewriterFastMultiplier,
+  );
+
   return (
     <div
       className={cn(
@@ -100,15 +110,28 @@ export function MessageBubble({
               <span className="text-xs">{t("common.thinking")}</span>
             </div>
           ) : markdown ? (
-            <div className="markdown-body relative">
-              <MarkdownRenderer content={content} />
-              {streaming ? (
-                <span
-                  aria-hidden
-                  className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-caret-blink bg-foreground align-middle"
+            typewriterEnabled ? (
+              <div className="markdown-body relative">
+                <StreamingText
+                  text={content}
+                  streaming={streaming}
+                  markdown
+                  charsPerTick={typewriterSpeed}
+                  intervalMs={typewriterInterval}
+                  fastFinishMultiplier={typewriterFastMultiplier}
                 />
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <div className="markdown-body relative">
+                <MarkdownRenderer content={content} />
+                {streaming ? (
+                  <span
+                    aria-hidden
+                    className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[2px] animate-caret-blink bg-foreground align-middle"
+                  />
+                ) : null}
+              </div>
+            )
           ) : (
             <StreamingText
               text={content}

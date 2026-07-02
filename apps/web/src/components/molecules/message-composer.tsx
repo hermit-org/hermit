@@ -138,15 +138,16 @@ export function MessageComposer({
 
   // Mirror the SlashCommandMenu's filter so keyboard navigation can clamp to
   // the actual number of visible commands.
-  const filteredCommandCount = React.useMemo(() => {
+  const filteredCommands = React.useMemo(() => {
     const q = slashQuery.trim().toLowerCase();
-    if (!q) return commands.length;
+    if (!q) return commands;
     return commands.filter((c) => {
       const name = c.name.toLowerCase();
       const desc = (c.description ?? "").toLowerCase();
       return name.includes(q) || desc.includes(q);
-    }).length;
+    });
   }, [commands, slashQuery]);
+  const filteredCommandCount = filteredCommands.length;
 
   const autoGrow = React.useCallback(() => {
     const el = taRef.current;
@@ -180,9 +181,32 @@ export function MessageComposer({
     }
   }, [value, attachments.length, busy, disabled, onSubmit, onChange]);
 
+  const handleCommand = React.useCallback(
+    (cmd: AvailableCommand) => {
+      if (slash) {
+        const before = value.slice(0, slash.start);
+        onChange(`${before}/${cmd.name} `);
+      }
+      onCommand?.(cmd);
+      taRef.current?.focus();
+    },
+    [slash, value, onChange, onCommand],
+  );
+
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if (showMenu) {
+        if (
+          e.key === "Enter" &&
+          !e.shiftKey &&
+          !e.nativeEvent.isComposing &&
+          e.keyCode !== 229
+        ) {
+          e.preventDefault();
+          const cmd = filteredCommands[Math.min(highlight, filteredCommands.length - 1)];
+          if (cmd) handleCommand(cmd);
+          return;
+        }
         if (e.key === "ArrowDown") {
           e.preventDefault();
           setHighlight((h) => {
@@ -216,19 +240,17 @@ export function MessageComposer({
         submit();
       }
     },
-    [showMenu, filteredCommandCount, slash, value, onChange, submit],
-  );
-
-  const handleCommand = React.useCallback(
-    (cmd: AvailableCommand) => {
-      if (slash) {
-        const before = value.slice(0, slash.start);
-        onChange(`${before}/${cmd.name} `);
-      }
-      onCommand?.(cmd);
-      taRef.current?.focus();
-    },
-    [slash, value, onChange, onCommand],
+    [
+      showMenu,
+      filteredCommands,
+      filteredCommandCount,
+      highlight,
+      slash,
+      value,
+      onChange,
+      submit,
+      handleCommand,
+    ],
   );
 
   return (

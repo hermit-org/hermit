@@ -332,7 +332,17 @@
     "aboutHint": "了解本项目的目的与工作原理。",
     "aboutDescription": "Hermit Web 是一个可以远程访问 ACP 智能体的客户端。通过配置网关地址与配对令牌，即可在浏览器中与 ACP 智能体建立连接并进行对话。",
     "aboutGatewayDescription": "网关负责将本地的 ACP 智能体暴露为 SSE 端点；Web 客户端通过该端点发送提示并接收流式响应。",
-    "version": "版本"
+    "version": "版本",
+    "typewriter": "打字机效果",
+    "typewriterHint": "让智能体的回复以逐字打字效果显示。",
+    "typewriterEnabled": "启用打字机效果",
+    "typewriterEnabledHint": "开启后，流式回复将逐字显示，而非一次性渲染。",
+    "typewriterSpeed": "显示速度",
+    "typewriterSpeedHint": "每次刷新显示的字符数，数值越大显示越快。",
+    "typewriterInterval": "刷新间隔",
+    "typewriterIntervalHint": "两次显示之间的时间间隔（毫秒），数值越小越平滑。",
+    "typewriterFast": "加速倍率",
+    "typewriterFastHint": "收到结束信号后的加速倍率，快速显示剩余内容。"
   },
   "session": {
     "rename": "重命名会话",

@@ -525,7 +525,130 @@ function AppearanceSection(): React.JSX.Element {
           }}
         />
       </div>
+      <Separator />
+      <TypewriterSettings />
     </div>
+  );
+}
+
+function TypewriterSettings(): React.JSX.Element {
+  const { t } = useTranslation();
+  const typewriterEnabled = useSettingsStore((s) => s.typewriterEnabled);
+  const setTypewriterEnabled = useSettingsStore(
+    (s) => s.setTypewriterEnabled,
+  );
+  const typewriterSpeed = useSettingsStore((s) => s.typewriterSpeed);
+  const setTypewriterSpeed = useSettingsStore(
+    (s) => s.setTypewriterSpeed,
+  );
+  const typewriterInterval = useSettingsStore((s) => s.typewriterInterval);
+  const setTypewriterInterval = useSettingsStore(
+    (s) => s.setTypewriterInterval,
+  );
+  const typewriterFastMultiplier = useSettingsStore(
+    (s) => s.typewriterFastMultiplier,
+  );
+  const setTypewriterFastMultiplier = useSettingsStore(
+    (s) => s.setTypewriterFastMultiplier,
+  );
+
+  return (
+    <>
+      <div>
+        <h3 className="text-sm font-semibold">
+          {t("settings.typewriter")}
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          {t("settings.typewriterHint")}
+        </p>
+      </div>
+      <div className="flex items-center justify-between rounded-lg border border-border p-3">
+        <div>
+          <Label htmlFor="typewriter-enabled">
+            {t("settings.typewriterEnabled")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.typewriterEnabledHint")}
+          </p>
+        </div>
+        <Switch
+          id="typewriter-enabled"
+          checked={typewriterEnabled}
+          onCheckedChange={setTypewriterEnabled}
+        />
+      </div>
+      {typewriterEnabled ? (
+        <>
+          <div className="rounded-lg border border-border p-3">
+            <div className="mb-2">
+              <Label>{t("settings.typewriterSpeed")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t("settings.typewriterSpeedHint")}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={1}
+                max={20}
+                value={typewriterSpeed}
+                onChange={(e) => setTypewriterSpeed(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="w-10 shrink-0 text-right text-sm tabular-nums">
+                {typewriterSpeed}
+              </span>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <div className="mb-2">
+              <Label>{t("settings.typewriterInterval")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t("settings.typewriterIntervalHint")}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={1}
+                max={100}
+                value={typewriterInterval}
+                onChange={(e) =>
+                  setTypewriterInterval(Number(e.target.value))
+                }
+                className="flex-1"
+              />
+              <span className="w-14 shrink-0 text-right text-sm tabular-nums">
+                {typewriterInterval}ms
+              </span>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border p-3">
+            <div className="mb-2">
+              <Label>{t("settings.typewriterFast")}</Label>
+              <p className="text-xs text-muted-foreground">
+                {t("settings.typewriterFastHint")}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min={2}
+                max={30}
+                value={typewriterFastMultiplier}
+                onChange={(e) =>
+                  setTypewriterFastMultiplier(Number(e.target.value))
+                }
+                className="flex-1"
+              />
+              <span className="w-10 shrink-0 text-right text-sm tabular-nums">
+                ×{typewriterFastMultiplier}
+              </span>
+            </div>
+          </div>
+        </>
+      ) : null}
+    </>
   );
 }
 

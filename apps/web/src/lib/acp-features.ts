@@ -84,8 +84,8 @@ export const FEATURE_CATEGORY_ORDER: readonly FeatureCategory[] = [
  *
  * - Required features are `supported` once the handshake completed.
  * - Optional features map to `supported` when the agent advertises them,
- *   otherwise `partial` (the agent *may* still tolerate the call, but the
- *   capability is unadvertised — so it is treated as best-effort).
+ *   otherwise `unsupported`. Callers can filter out `unsupported` entries
+ *   to display only what the agent actually supports.
  */
 export function resolveAcpFeatures(
   caps: AgentCapabilities | undefined,
@@ -100,17 +100,17 @@ export function resolveAcpFeatures(
 
     switch (def.id) {
       case "session_load":
-        return caps?.loadSession === true ? "supported" : "partial";
+        return caps?.loadSession === true ? "supported" : "unsupported";
       case "session_resume":
-        return sc?.resume != null ? "supported" : "partial";
+        return sc?.resume != null ? "supported" : "unsupported";
       case "session_close":
-        return sc?.close != null ? "supported" : "partial";
+        return sc?.close != null ? "supported" : "unsupported";
       case "session_list":
-        return sc?.list != null ? "supported" : "partial";
+        return sc?.list != null ? "supported" : "unsupported";
       case "session_delete":
-        return sc?.delete != null ? "supported" : "partial";
+        return sc?.delete != null ? "supported" : "unsupported";
       case "session_fork":
-        return sc?.fork != null ? "supported" : "partial";
+        return sc?.fork != null ? "supported" : "unsupported";
       // set_mode / set_config_option availability is only known after
       // session setup; advertise as best-effort until confirmed.
       case "session_set_mode":
@@ -119,17 +119,17 @@ export function resolveAcpFeatures(
       case "authenticate":
         return "partial";
       case "logout":
-        return caps?.auth?.logout != null ? "supported" : "partial";
+        return caps?.auth?.logout != null ? "supported" : "unsupported";
       case "prompt_image":
-        return pc?.image === true ? "supported" : "partial";
+        return pc?.image === true ? "supported" : "unsupported";
       case "prompt_audio":
-        return pc?.audio === true ? "supported" : "partial";
+        return pc?.audio === true ? "supported" : "unsupported";
       case "prompt_embedded_context":
-        return pc?.embeddedContext === true ? "supported" : "partial";
+        return pc?.embeddedContext === true ? "supported" : "unsupported";
       case "mcp_http":
-        return mc?.http === true ? "supported" : "partial";
+        return mc?.http === true ? "supported" : "unsupported";
       case "mcp_sse":
-        return mc?.sse === true ? "supported" : "partial";
+        return mc?.sse === true ? "supported" : "unsupported";
       default:
         return "unsupported";
     }

@@ -424,6 +424,10 @@ export function useAcpPageAdapter(
   // mode even though `activeSessionId` is null.
   const [composingNew, setComposingNew] = useState(false);
 
+  // When the user changes mode during composition (before the session exists),
+  // buffer it here and apply right after `session/new` completes.
+  const pendingModeRef = useRef<string | null>(null);
+
   // Discover the agent cwd as soon as the gateway is known, so it is ready
   // before any session operation needs it. The platform supplies the discovery
   // mechanism (web fetches `/api/config`, mobile may read gateway config or
@@ -1205,6 +1209,24 @@ export function useAcpPageAdapter(
       if (!activeSessionIdRef.current) {
         const result = await createNewSession();
         if (!result) return;
+        // Apply any mode selected during composition, now that the session
+        // exists.
+        const pendingMode = pendingModeRef.current;
+        pendingModeRef.current = null;
+        if (pendingMode) {
+          const client = clientRef.current;
+          if (client) {
+            try {
+              await client.sessionSetMode({
+                sessionId: result.sessionId,
+                modeId: pendingMode,
+              });
+            } catch {
+              // Best-effort: the mode was optimistically reflected in the UI
+              // already; ignore errors here so the prompt still goes through.
+            }
+          }
+        }
       }
       setDraft("");
       if (images.length > 0) clearAttachments();
@@ -1230,9 +1252,19 @@ export function useAcpPageAdapter(
   const onModeChange = useCallback(
     async (modeId: string) => {
       const client = clientRef.current;
-      if (!client || !activeSessionId) return;
+      // During composition mode (no session yet), buffer the mode selection
+      // and optimistically update the UI. It will be applied via
+      // `session/set_mode` right after `session/new` completes.
+      if (!activeSessionIdRef.current) {
+        pendingModeRef.current = modeId;
+        setMeta((m) =>
+          m.modes ? { ...m, modes: { ...m.modes, currentModeId: modeId } } : m,
+        );
+        return;
+      }
+      if (!client) return;
       try {
-        await client.sessionSetMode({ sessionId: activeSessionId, modeId });
+        await client.sessionSetMode({ sessionId: activeSessionIdRef.current, modeId });
         setMeta((m) =>
           m.modes ? { ...m, modes: { ...m.modes, currentModeId: modeId } } : m,
         );
@@ -1240,7 +1272,7 @@ export function useAcpPageAdapter(
         setSetupError(e instanceof Error ? e.message : String(e));
       }
     },
-    [activeSessionId],
+    [],
   );
 
   const onDraftChange = useCallback((value: string) => {
@@ -1277,19 +1309,21 @@ export function useAcpPageAdapter(
     setComposingNew(true);
     setActiveSessionId(null);
     activeSessionIdRef.current = null;
-    // Reset ephemeral view state so the chat area is clean.
+    // Reset ephemeral view state so the chat area is clean, but keep
+    // `meta` (modes, commands, etc.) and `configOptions` intact so the
+    // status bars stay visible during composition.
     setHistoryItems([]);
     setLiveTurn(EMPTY_TURN);
     setBusy(false);
     setUsage(undefined);
     setSetupError(null);
-    setMeta(EMPTY_META);
-    setConfigOptions([]);
     setPlan([]);
     queueRef.current = [];
     setQueueDepth(0);
     setDraft("");
     clearAttachments();
+    // Reset any buffered mode from a previous composition.
+    pendingModeRef.current = null;
   }, [clearAttachments]);
 
   const onResolvePermission = useCallback(
