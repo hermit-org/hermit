@@ -1,6 +1,13 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Check, X, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Check,
+  X,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  SkipForward,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   PendingPermission,
@@ -40,12 +47,6 @@ function optionClass(kind?: string): string {
  * Best-effort extraction of rich question metadata from an AskUserQuestion-
  * style tool call's `rawInput`.
  *
- * The ACP `session/request_permission` carries a single `toolCall` plus flat
- * `options` array. Some agents (e.g. Kimi Code) embed the full multi-question
- * structure in `toolCall.rawInput` as JSON. This helper extracts:
- *   - `description` — contextual text to display below the title
- *   - `header` — a category tag shown as a badge
- *
  * Returns `null` when no useful metadata is found.
  */
 function extractQuestionMeta(
@@ -65,14 +66,9 @@ function extractQuestionMeta(
  * (`session/request_permission`) inline above the message composer, plus a
  * collapsible history of previously-answered questions.
  *
- * Each pending request is shown as a card with:
- *   - A title (from `toolCall.title`) and optional description/header extracted
- *     from `toolCall.rawInput`
- *   - Option buttons (from the flat `options` array)
- *   - An optional supplementary-note text input for the user to add context
- *
- * The note is forwarded to `onResolve` and ultimately back to the agent via
- * the `PermissionOutcome.note` field.
+ * Each pending request is shown as a conversational question card — no
+ * tool-call artifacts (kind labels, raw JSON) are surfaced. Answered items
+ * render as user-style reply bubbles so they feel part of the conversation.
  */
 export function ToolQuestionsPanel({
   requests,
@@ -93,7 +89,6 @@ export function ToolQuestionsPanel({
       {requests.map((req, i) => {
         const tc = req.toolCall;
         const title = tc.title ?? req.id;
-        const kind = tc.kind ?? "tool";
         const meta = extractQuestionMeta(tc.rawInput);
         const noteValue = notes[req.id] ?? "";
 
@@ -112,24 +107,24 @@ export function ToolQuestionsPanel({
         return (
           <div
             key={req.id}
-            className="rounded-lg border border-warning/40 bg-card p-2.5 text-sm shadow-sm"
+            className="rounded-lg border border-border bg-card p-3 text-sm shadow-sm"
           >
-            <div className="mb-1.5 flex items-center gap-1.5">
-              <span className="text-xs font-bold text-primary">{i + 1}.</span>
+            {/* Header: question number badge + optional category tag */}
+            <div className="mb-1 flex items-center gap-1.5">
               {meta?.header ? (
                 <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                   {meta.header}
                 </span>
-              ) : (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {kind}
+              ) : null}
+              {requests.length > 1 ? (
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("permission.questionBadge", { n: i + 1 })}
                 </span>
-              )}
-              <span className="flex-1 truncate font-medium">{title}</span>
+              ) : null}
               {onCancel ? (
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="ml-auto text-muted-foreground hover:text-foreground"
                   onClick={() => onCancel(req)}
                   aria-label={t("common.dismiss")}
                 >
@@ -137,30 +132,34 @@ export function ToolQuestionsPanel({
                 </button>
               ) : null}
             </div>
+            {/* Main question text */}
+            <div className="mb-1.5 flex items-start gap-1.5">
+              <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              <span className="text-sm font-medium leading-snug">{title}</span>
+            </div>
             {meta?.description ? (
-              <p className="mb-1.5 text-xs text-muted-foreground">
+              <p className="mb-2 pl-5 text-xs text-muted-foreground">
                 {meta.description}
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-1.5">
+            {/* Option cards */}
+            <div className="flex flex-wrap gap-1.5 pl-5">
               {req.options.map((opt) => (
                 <button
                   key={opt.optionId}
                   type="button"
                   title={opt.name}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium",
+                    "inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                     optionClass(opt.kind),
                   )}
                   onClick={() => handleResolve(opt.optionId)}
                 >
-                  <Check className="h-3 w-3" />
                   {opt.name}
                 </button>
               ))}
             </div>
-            {/* Supplementary note input — lets the user add context that is
-                forwarded back to the agent alongside the chosen option. */}
+            {/* Supplementary note input */}
             <input
               type="text"
               className="mt-1.5 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -170,8 +169,6 @@ export function ToolQuestionsPanel({
                 setNotes((prev) => ({ ...prev, [req.id]: e.target.value }))
               }
               onKeyDown={(e) => {
-                // Submit on Enter using the first option (most common UX for
-                // a single-option question with a note).
                 if (e.key === "Enter" && req.options.length > 0) {
                   e.preventDefault();
                   handleResolve(req.options[0].optionId);
@@ -182,6 +179,7 @@ export function ToolQuestionsPanel({
         );
       })}
 
+      {/* Answered history — rendered as user-style reply bubbles */}
       {history && history.length > 0 ? (
         <div className="border-t border-dashed border-border pt-1.5">
           <button
@@ -200,19 +198,42 @@ export function ToolQuestionsPanel({
             ? history.map((h) => (
                 <div
                   key={`${h.id}-${h.at}`}
-                  className="border-b border-border/50 py-1 text-[11px]"
+                  className="mt-1.5 flex flex-col items-end gap-0.5"
                 >
-                  <div className="font-semibold text-muted-foreground">
-                    {t("permission.qPrefix")} {h.question}
+                  {/* Question — muted, right-aligned prefix */}
+                  <span className="max-w-[85%] text-[11px] text-muted-foreground">
+                    {h.question}
+                  </span>
+                  {/* Answer / skip — user-style bubble */}
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-2xl rounded-tr-sm px-3 py-1.5 text-xs shadow-sm ring-1 ring-inset",
+                      h.cancelled
+                        ? "bg-muted text-muted-foreground ring-border"
+                        : "bg-primary text-primary-foreground ring-primary",
+                    )}
+                  >
+                    {h.cancelled ? (
+                      <span className="inline-flex items-center gap-1">
+                        <SkipForward className="h-3 w-3" />
+                        {t("permission.skipped")}
+                      </span>
+                    ) : (
+                      <span className="font-medium">{h.answer}</span>
+                    )}
+                    {h.note ? (
+                      <div
+                        className={cn(
+                          "mt-0.5 text-[10px]",
+                          h.cancelled
+                            ? "italic text-muted-foreground"
+                            : "italic text-primary-foreground/80",
+                        )}
+                      >
+                        {h.note}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="text-green-600 dark:text-green-400">
-                    {t("permission.aPrefix")} {h.answer}
-                  </div>
-                  {h.note ? (
-                    <div className="italic text-muted-foreground">
-                      {t("permission.note")}: {h.note}
-                    </div>
-                  ) : null}
                 </div>
               ))
             : null}

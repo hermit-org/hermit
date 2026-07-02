@@ -236,6 +236,15 @@ function extractPlanFromToolInput(rawInput: unknown): PlanEntry[] | null {
   return entries;
 }
 
+/**
+ * Predicate: does this tool call carry a TodoList payload?
+ * Used to hide TodoList tool calls from the chat transcript and side
+ * panel — they are already rendered via the PlanBar above the composer.
+ */
+export function isTodoToolCall(call: { rawInput?: unknown }): boolean {
+  return extractPlanFromToolInput(call.rawInput) !== null;
+}
+
 export interface UseAcpPageAdapterResult {
   /** Props ready to spread onto <ACPClientPage />. */
   connectionStatus: ConnectionStatus;
@@ -1672,12 +1681,18 @@ export function useAcpPageAdapter(
   }, [allAgentSessions, archivedSessions.archived, toSummary]);
 
   const chatItems: ChatItem[] = useMemo(
-    () => [...historyItems, ...liveTurn.items],
+    () =>
+      [...historyItems, ...liveTurn.items].filter(
+        (item) => !(item.kind === "tool_call" && isTodoToolCall(item.call)),
+      ),
     [historyItems, liveTurn.items],
   );
 
   const toolCalls: ToolCallState[] = useMemo(
-    () => Array.from(liveTurn.toolCalls.values()),
+    () =>
+      Array.from(liveTurn.toolCalls.values()).filter(
+        (call) => !isTodoToolCall(call),
+      ),
     [liveTurn.toolCalls],
   );
 
@@ -1751,6 +1766,7 @@ export function useAcpPageAdapter(
         question: h.question,
         answer: h.answer,
         note: h.note,
+        cancelled: h.cancelled,
         at: h.at,
       })),
     [permissionHistoryStore],

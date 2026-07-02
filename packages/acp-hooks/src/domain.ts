@@ -84,8 +84,11 @@ export interface PendingPermission {
 export interface AnsweredPermissionView {
   id: string;
   question: string;
-  answer: string;
+  /** The selected option's display name. `undefined` when the user skipped/cancelled. */
+  answer?: string;
   note?: string;
+  /** Whether the user dismissed the question without answering. */
+  cancelled?: boolean;
   at: number;
 }
 

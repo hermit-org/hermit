@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus, RotateCcw, Loader2 } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus, RotateCcw, Loader2, CheckCircle2, Circle, ListChecks } from "lucide-react";
 import { ConnectionBar } from "@/components/organisms/connection-bar";
 import { SessionSidebar, type SessionSummary } from "@/components/organisms/session-sidebar";
 import { ChatArea, type ChatItem } from "@/components/organisms/chat-area";
@@ -593,29 +593,43 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
     entries[entries.length - 1];
   const allDone = completed === total;
 
+  const progressPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
   if (!expanded) {
     return (
       <button
         type="button"
-        className="mx-3 mt-2 flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-left text-xs"
+        className="group mx-3 mt-2 flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-muted/50"
         onClick={() => setExpanded(true)}
       >
+        <ListChecks className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
           {t("plan.title")}
         </span>
         <span className="tabular-nums text-muted-foreground">
           {completed}/{total}
         </span>
+        {/* Mini progress bar */}
+        <span className="relative h-1 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
+        </span>
         <span className="flex-1 truncate">
           {allDone ? t("plan.allDone") : current.content}
         </span>
+        {allDone ? (
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
+        ) : null}
       </button>
     );
   }
 
   return (
     <div className="mx-3 mt-2 rounded-md border border-border bg-muted/30 px-2.5 py-2 text-xs">
-      <div className="mb-1 flex items-center gap-2">
+      <div className="mb-1.5 flex items-center gap-2">
+        <ListChecks className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="font-semibold uppercase tracking-wide text-muted-foreground">
           {t("plan.title")}
         </span>
@@ -632,14 +646,20 @@ function PlanBar({ entries }: { entries: PlanEntry[] }): React.JSX.Element {
       </div>
       {entries.map((e, i) => {
         const status = e.status ?? "pending";
-        const dot =
-          status === "completed" ? "●" : status === "in_progress" ? "◐" : "○";
         return (
-          <div key={`${i}-${e.content}`} className="flex items-baseline gap-2 py-0.5">
-            <span className="text-muted-foreground">{dot}</span>
+          <div key={`${i}-${e.content}`} className="flex items-center gap-2 py-0.5">
+            <span className="flex shrink-0 items-center justify-center transition-all duration-200">
+              {status === "completed" ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+              ) : status === "in_progress" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+              ) : (
+                <Circle className="h-3.5 w-3.5 text-muted-foreground/50" />
+              )}
+            </span>
             <span
               className={cn(
-                "flex-1",
+                "flex-1 transition-all duration-200",
                 status === "completed" &&
                   "text-muted-foreground line-through",
                 status === "in_progress" && "font-semibold text-primary",

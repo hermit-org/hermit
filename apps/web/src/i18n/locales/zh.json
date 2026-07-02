@@ -149,7 +149,9 @@
     "aPrefix": "答：",
     "note": "备注",
     "notePlaceholder": "补充说明…",
-    "submit": "提交"
+    "submit": "提交",
+    "skipped": "已跳过",
+    "questionBadge": "问题 {{n}}"
   },
   "auth": {
     "signIn": "登录",
@@ -398,7 +400,7 @@
     "dismiss": "关闭"
   },
   "plan": {
-    "title": "待办",
+    "title": "任务",
     "allDone": "全部完成",
     "collapse": "收起"
   },

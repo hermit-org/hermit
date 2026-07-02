@@ -26,8 +26,11 @@ export interface PendingPermissionRequest {
 export interface AnsweredPermission {
   toolCallId: string;
   question: string;
-  answer: string;
+  /** The selected option's display name. `undefined` when the user skipped/cancelled. */
+  answer?: string;
   note?: string;
+  /** Whether the user dismissed the question without answering. */
+  cancelled?: boolean;
   at: number;
 }
 
@@ -121,6 +124,14 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
     const entry = get().pending.find((p) => p.id === id);
     if (!entry) return;
     set((state) => ({ pending: state.pending.filter((p) => p.id !== id) }));
+    // Record the cancellation in history so the user sees a "skipped" entry.
+    const answered: AnsweredPermission = {
+      toolCallId: entry.id,
+      question: entry.toolCall.title ?? entry.id,
+      cancelled: true,
+      at: Date.now(),
+    };
+    set((state) => ({ history: [answered, ...state.history] }));
     entry.reject(new Error("Permission request dismissed"));
   },
 

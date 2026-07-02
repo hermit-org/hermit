@@ -149,7 +149,9 @@
     "aPrefix": "A:",
     "note": "Note",
     "notePlaceholder": "Add a supplementary note…",
-    "submit": "Submit"
+    "submit": "Submit",
+    "skipped": "Skipped",
+    "questionBadge": "Question {{n}}"
   },
   "auth": {
     "signIn": "Sign in",
@@ -398,8 +400,8 @@
     "dismiss": "Dismiss"
   },
   "plan": {
-    "title": "Todo",
-    "allDone": "All done",
+    "title": "Tasks",
+    "allDone": "All tasks complete",
     "collapse": "Collapse"
   },
   "mode": {
