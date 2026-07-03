@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,10 +21,18 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
   const gateways = useGatewayStore((s) => s.gateways);
   const addGateway = useGatewayStore((s) => s.addGateway);
   const removeGateway = useGatewayStore((s) => s.removeGateway);
+  const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
+
+  // Auto-navigate to AcpClient if there's an active gateway
+  useEffect(() => {
+    if (activeGatewayId && gateways.length > 0) {
+      navigation.navigate("AcpClient", { gatewayId: activeGatewayId });
+    }
+  }, [activeGatewayId, gateways, navigation]);
 
   const handleAdd = () => {
     const trimmedUrl = url.trim();
@@ -54,6 +62,7 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
           placeholder={t("gateways.namePlaceholder")}
           value={name}
           onChangeText={setName}
+          accessibilityLabel={t("gateways.namePlaceholder")}
         />
         <TextInput
           style={styles.input}
@@ -62,6 +71,7 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
           onChangeText={setUrl}
           autoCapitalize="none"
           keyboardType="url"
+          accessibilityLabel={t("gateways.urlPlaceholder")}
         />
         <TextInput
           style={styles.input}
@@ -70,8 +80,15 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
           onChangeText={setToken}
           autoCapitalize="none"
           secureTextEntry
+          accessibilityLabel={t("gateways.tokenPlaceholder")}
         />
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAdd}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t("gateways.add")}
+        >
           <Text style={styles.addButtonText}>{t("gateways.add")}</Text>
         </TouchableOpacity>
       </View>
@@ -89,12 +106,18 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={t("gateways.connect") + " " + item.name}
               >
                 <Text style={styles.actionText}>{t("gateways.connect")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.deleteButton]}
                 onPress={() => removeGateway(item.id)}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={t("gateways.delete") + " " + item.name}
               >
                 <Text style={styles.actionText}>{t("gateways.delete")}</Text>
               </TouchableOpacity>
@@ -135,8 +158,9 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: "#007AFF",
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
+    minHeight: 44,
   },
   addButtonText: {
     color: "#fff",
@@ -172,7 +196,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#007AFF",
     borderRadius: 6,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   deleteButton: {
     backgroundColor: "#ff3b30",
@@ -183,7 +209,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
-    color: "#999",
+    color: "#666",
     marginTop: 32,
   },
 });

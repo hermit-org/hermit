@@ -29,7 +29,9 @@
     "loading": "加载中...",
     "sending": "发送中...",
     "connecting": "连接中...",
-    "stop": "停止"
+    "stop": "停止",
+    "menu": "菜单",
+    "newSession": "新建会话"
   },
   "gateways": {
     "title": "网关",
@@ -56,7 +58,11 @@
     "gatewayNotFoundTitle": "网关不存在",
     "gatewayNotFoundMessage": "该会话对应的网关已不存在。",
     "connectingMessage": "正在连接网关...",
-    "errorPrefix": "\n\n错误: {{message}}"
+    "errorPrefix": "\n\n错误: {{message}}",
+    "thinking": "💭 思考中",
+    "toolCall": "🔧 {{title}}",
+    "toolCallFallback": "工具调用",
+    "toolCallRunning": "运行中"
   },
   "settings": {
     "title": "设置",
@@ -64,6 +70,12 @@
     "chat": "聊天",
     "theme": "主题",
     "language": "语言",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "themeSystem": "跟随系统",
+    "languageEn": "English",
+    "languageZh": "中文",
+    "languageSystem": "跟随系统",
     "thoughtPreviewLines": "思考预览行数",
     "autoArchiveThreshold": "自动归档阈值",
     "autoArchivePlaceholder": "例如 3d",

@@ -27,6 +27,18 @@ export function SettingsScreen(): React.JSX.Element {
     setAutoAuthenticate,
   } = useSettingsStore();
 
+  const themeLabels: Record<string, string> = {
+    light: t("settings.themeLight"),
+    dark: t("settings.themeDark"),
+    system: t("settings.themeSystem"),
+  };
+
+  const languageLabels: Record<string, string> = {
+    en: t("settings.languageEn"),
+    zh: t("settings.languageZh"),
+    system: t("settings.languageSystem"),
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -37,17 +49,21 @@ export function SettingsScreen(): React.JSX.Element {
           <View style={styles.row}>
             <Text>{t("settings.theme")}</Text>
             <View style={styles.themeButtons}>
-              {(["light", "dark", "system"] as const).map((t) => (
+              {(["light", "dark", "system"] as const).map((v) => (
                 <TouchableOpacity
-                  key={t}
+                  key={v}
                   style={[
                     styles.themeButton,
-                    theme === t && styles.themeButtonActive,
+                    theme === v && styles.themeButtonActive,
                   ]}
-                  onPress={() => setTheme(t)}
+                  onPress={() => setTheme(v)}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={themeLabels[v]}
+                  accessibilityState={{ selected: theme === v }}
                 >
-                  <Text style={theme === t ? styles.activeText : undefined}>
-                    {t}
+                  <Text style={theme === v ? styles.activeText : undefined}>
+                    {themeLabels[v]}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -64,9 +80,13 @@ export function SettingsScreen(): React.JSX.Element {
                     language === l && styles.themeButtonActive,
                   ]}
                   onPress={() => setLanguage(l)}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={languageLabels[l]}
+                  accessibilityState={{ selected: language === l }}
                 >
                   <Text style={language === l ? styles.activeText : undefined}>
-                    {l}
+                    {languageLabels[l]}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -83,6 +103,7 @@ export function SettingsScreen(): React.JSX.Element {
               value={String(thoughtPreviewLines)}
               onChangeText={(v) => setThoughtPreviewLines(Number(v) || 0)}
               keyboardType="number-pad"
+              accessibilityLabel={t("settings.thoughtPreviewLines")}
             />
           </View>
           <View style={styles.row}>
@@ -92,11 +113,16 @@ export function SettingsScreen(): React.JSX.Element {
               value={autoArchiveThreshold}
               onChangeText={setAutoArchiveThreshold}
               placeholder={t("settings.autoArchivePlaceholder")}
+              accessibilityLabel={t("settings.autoArchiveThreshold")}
             />
           </View>
           <View style={styles.row}>
             <Text>{t("settings.autoAuthenticate")}</Text>
-            <Switch value={autoAuthenticate} onValueChange={setAutoAuthenticate} />
+            <Switch
+              value={autoAuthenticate}
+              onValueChange={setAutoAuthenticate}
+              accessibilityLabel={t("settings.autoAuthenticate")}
+            />
           </View>
         </View>
       </ScrollView>
@@ -139,10 +165,12 @@ const styles = StyleSheet.create({
   },
   themeButton: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: "#ddd",
+    minHeight: 44,
+    justifyContent: "center",
   },
   themeButtonActive: {
     backgroundColor: "#007AFF",
@@ -157,7 +185,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     width: 60,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
     textAlign: "center",
   },
   textInput: {
@@ -166,7 +194,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     width: 120,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
     textAlign: "right",
   },
 });

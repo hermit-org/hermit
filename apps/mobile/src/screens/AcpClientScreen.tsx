@@ -21,6 +21,8 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 type Props = NativeStackScreenProps<RootStackParamList, "AcpClient">;
 
 function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
+  const { t } = useTranslation();
+
   if (item.kind === "message") {
     const isUser = item.role === "user";
     return (
@@ -49,7 +51,7 @@ function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
   if (item.kind === "thought") {
     return (
       <View style={styles.thoughtContainer}>
-        <Text style={styles.thoughtLabel}>💭 Thinking</Text>
+        <Text style={styles.thoughtLabel}>{t("chat.thinking")}</Text>
         <Text style={styles.thoughtText}>{item.content}</Text>
       </View>
     );
@@ -59,9 +61,11 @@ function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
   return (
     <View style={styles.toolCallContainer}>
       <Text style={styles.toolCallTitle}>
-        🔧 {item.call.title ?? item.call.kind ?? "Tool call"}
+        {t("chat.toolCall", { title: item.call.title ?? item.call.kind ?? t("chat.toolCallFallback") })}
       </Text>
-      <Text style={styles.toolCallStatus}>{item.call.status ?? "running"}</Text>
+      <Text style={styles.toolCallStatus}>
+        {item.call.status ?? t("chat.toolCallRunning")}
+      </Text>
     </View>
   );
 }
@@ -85,13 +89,23 @@ export function AcpClientScreen({ route, navigation }: Props): React.JSX.Element
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setDrawerOpen((v) => !v)}>
+        <TouchableOpacity
+          onPress={() => setDrawerOpen((v) => !v)}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t("common.menu")}
+        >
           <Text style={styles.headerButton}>☰</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {gateway?.name ?? t("chat.title")}
         </Text>
-        <TouchableOpacity onPress={adapter.onCreateSession}>
+        <TouchableOpacity
+          onPress={adapter.onCreateSession}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t("common.newSession")}
+        >
           <Text style={styles.headerButton}>+</Text>
         </TouchableOpacity>
       </View>
@@ -99,7 +113,7 @@ export function AcpClientScreen({ route, navigation }: Props): React.JSX.Element
       {/* Connection status */}
       {!adapter.initialized && (
         <View style={styles.statusBar}>
-          <ActivityIndicator size="small" />
+          <ActivityIndicator size="small" accessibilityLabel={t("common.connecting")} />
           <Text style={styles.statusText}>{adapter.connectionStatus}</Text>
           {adapter.error && (
             <Text style={styles.errorText}>{adapter.error}</Text>
@@ -123,6 +137,9 @@ export function AcpClientScreen({ route, navigation }: Props): React.JSX.Element
                   adapter.onSelectSession(item.id);
                   setDrawerOpen(false);
                 }}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={item.title}
               >
                 <Text numberOfLines={1}>{item.title}</Text>
               </TouchableOpacity>
@@ -154,11 +171,15 @@ export function AcpClientScreen({ route, navigation }: Props): React.JSX.Element
           placeholder={t("chat.inputPlaceholder")}
           multiline
           editable={adapter.initialized && !adapter.busy}
+          accessibilityLabel={t("chat.inputPlaceholder")}
         />
         <TouchableOpacity
           style={styles.sendButton}
           onPress={() => (adapter.busy ? adapter.onCancel() : adapter.onPrompt(adapter.draft))}
           disabled={!adapter.busy && !adapter.draft.trim()}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={adapter.busy ? t("chat.stop") : t("chat.send")}
         >
           <Text style={styles.sendButtonText}>
             {adapter.busy ? t("chat.stop") : t("chat.send")}
@@ -185,7 +206,12 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     fontSize: 22,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minWidth: 44,
+    minHeight: 44,
+    textAlign: "center",
+    textAlignVertical: "center",
   },
   headerTitle: {
     fontSize: 17,
@@ -225,7 +251,9 @@ const styles = StyleSheet.create({
   },
   sessionItem: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
+    minHeight: 44,
+    justifyContent: "center",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -301,7 +329,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
-    color: "#999",
+    color: "#666",
     marginTop: 32,
   },
   composer: {
@@ -325,9 +353,13 @@ const styles = StyleSheet.create({
   sendButton: {
     marginLeft: 10,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     backgroundColor: "#007AFF",
     borderRadius: 20,
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: "center",
+    alignItems: "center",
   },
   sendButtonText: {
     color: "#fff",

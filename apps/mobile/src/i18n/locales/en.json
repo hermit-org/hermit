@@ -29,7 +29,9 @@
     "loading": "Loading...",
     "sending": "Sending...",
     "connecting": "Connecting...",
-    "stop": "Stop"
+    "stop": "Stop",
+    "menu": "Menu",
+    "newSession": "New session"
   },
   "gateways": {
     "title": "Gateways",
@@ -56,7 +58,11 @@
     "gatewayNotFoundTitle": "Gateway not found",
     "gatewayNotFoundMessage": "The gateway for this session no longer exists.",
     "connectingMessage": "Connecting to gateway...",
-    "errorPrefix": "\n\nError: {{message}}"
+    "errorPrefix": "\n\nError: {{message}}",
+    "thinking": "💭 Thinking",
+    "toolCall": "🔧 {{title}}",
+    "toolCallFallback": "Tool call",
+    "toolCallRunning": "running"
   },
   "settings": {
     "title": "Settings",
@@ -64,6 +70,12 @@
     "chat": "Chat",
     "theme": "Theme",
     "language": "Language",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
+    "languageEn": "English",
+    "languageZh": "中文",
+    "languageSystem": "System",
     "thoughtPreviewLines": "Thought preview lines",
     "autoArchiveThreshold": "Auto-archive threshold",
     "autoArchivePlaceholder": "e.g. 3d",
