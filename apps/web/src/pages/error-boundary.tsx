@@ -1,6 +1,6 @@
 import * as React from "react";
 import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/Button";
 import i18n from "../i18n";
 
 interface ErrorBoundaryState {

@@ -1,18 +1,18 @@
-export { ConnectionBar, type ConnectionBarProps } from "./connection-bar";
-export { SessionSidebar, type SessionSidebarProps, type SessionSummary } from "./session-sidebar";
-export { ChatArea, type ChatAreaProps, type ChatItem } from "./chat-area";
-export { ToolCallPanel, type ToolCallPanelProps } from "./tool-call-panel";
+export { ConnectionBar, type ConnectionBarProps } from "./ConnectionBar";
+export { SessionSidebar, type SessionSidebarProps, type SessionSummary } from "./SessionSidebar";
+export { ChatArea, type ChatAreaProps, type ChatItem } from "./ChatArea";
+export { ToolCallPanel, type ToolCallPanelProps } from "./ToolCallPanel";
 export {
   ToolQuestionsPanel,
   type ToolQuestionsPanelProps,
-} from "./tool-questions-panel";
+} from "./ToolQuestionsPanel";
 export {
   MessageComposerPanel,
   type MessageComposerPanelProps,
-} from "./message-composer-panel";
-export { StatusBar, type StatusBarProps } from "./status-bar";
+} from "./MessageComposerPanel";
+export { StatusBar, type StatusBarProps } from "./StatusBar";
 export {
   ContentRenderer,
   ContentBlockList,
   type ContentRendererProps,
-} from "./content-renderer";
+} from "./ContentRenderer";

@@ -1,21 +1,21 @@
-export { ConnectionStatusDot, type ConnectionStatusDotProps } from "./connection-status-dot";
-export { ProtocolBadge, type ProtocolBadgeProps } from "./protocol-badge";
-export { ModeBadge, MODE_META, type ModeBadgeProps } from "./mode-badge";
-export { TokenCounter, type TokenCounterProps } from "./token-counter";
-export { CostDisplay, type CostDisplayProps } from "./cost-display";
-export { SessionIcon, type SessionIconProps } from "./session-icon";
-export { ToolStatusIcon, type ToolStatusIconProps } from "./tool-status-icon";
-export { FileIcon, type FileIconProps } from "./file-icon";
-export { SendButton, type SendButtonProps } from "./send-button";
-export { StopButton, type StopButtonProps } from "./stop-button";
-export { CopyButton, type CopyButtonProps } from "./copy-button";
+export { ConnectionStatusDot, type ConnectionStatusDotProps } from "./ConnectionStatusDot";
+export { ProtocolBadge, type ProtocolBadgeProps } from "./ProtocolBadge";
+export { ModeBadge, MODE_META, type ModeBadgeProps } from "./ModeBadge";
+export { TokenCounter, type TokenCounterProps } from "./TokenCounter";
+export { CostDisplay, type CostDisplayProps } from "./CostDisplay";
+export { SessionIcon, type SessionIconProps } from "./SessionIcon";
+export { ToolStatusIcon, type ToolStatusIconProps } from "./ToolStatusIcon";
+export { FileIcon, type FileIconProps } from "./FileIcon";
+export { SendButton, type SendButtonProps } from "./SendButton";
+export { StopButton, type StopButtonProps } from "./StopButton";
+export { CopyButton, type CopyButtonProps } from "./CopyButton";
 export {
   ScrollToBottomButton,
   type ScrollToBottomButtonProps,
-} from "./scroll-to-bottom-button";
-export { AvatarAtom, type AvatarAtomProps, type AvatarRole } from "./avatar";
-export { Timestamp, type TimestampProps } from "./timestamp";
-export { Spinner, type SpinnerProps } from "./spinner";
-export { Divider, type DividerProps } from "./divider";
-export { EmptyState, type EmptyStateProps } from "./empty-state";
-export { BadgeAtom, type BadgeAtomProps, type BadgeTone } from "./badge";
+} from "./ScrollToBottomButton";
+export { AvatarAtom, type AvatarAtomProps, type AvatarRole } from "./AvatarAtom";
+export { Timestamp, type TimestampProps } from "./Timestamp";
+export { Spinner, type SpinnerProps } from "./Spinner";
+export { Divider, type DividerProps } from "./Divider";
+export { EmptyState, type EmptyStateProps } from "./EmptyState";
+export { BadgeAtom, type BadgeAtomProps, type BadgeTone } from "./BadgeAtom";

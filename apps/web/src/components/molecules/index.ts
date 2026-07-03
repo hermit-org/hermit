@@ -1,17 +1,18 @@
 export {
   MessageBubble,
   type MessageBubbleProps,
-} from "./message-bubble";
-export { ToolCallCard, type ToolCallCardProps } from "./tool-call-card";
+} from "./MessageBubble";
+export { ToolCallCard, type ToolCallCardProps } from "./ToolCallCard";
 export {
   SessionListItem,
   type SessionListItemProps,
-} from "./session-list-item";
-export { ModeSelector, type ModeSelectorProps } from "./mode-selector";
-export { MessageComposer, type MessageComposerProps } from "./message-composer";
-export { UsageStats, type UsageStatsProps } from "./usage-stats";
-export { SessionInfoBar, type SessionInfoBarProps } from "./session-info-bar";
+} from "./SessionListItem";
+export { ModeSelector, type ModeSelectorProps } from "./ModeSelector";
+export { MessageComposer, type MessageComposerProps } from "./MessageComposer";
+export { UsageStats, type UsageStatsProps } from "./UsageStats";
+export { SessionInfoBar, type SessionInfoBarProps } from "./SessionInfoBar";
 export {
   QuickCommandsPanel,
   type QuickCommandsPanelProps,
-} from "./quick-commands-panel";
+} from "./QuickCommandsPanel";
+export { SlashCommandMenu } from "./SlashCommandMenu";

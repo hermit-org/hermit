@@ -1,29 +1,29 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus, RotateCcw, Loader2, CheckCircle2, Circle, ListChecks, Bot, RotateCw } from "lucide-react";
-import { ConnectionBar } from "@/components/organisms/connection-bar";
-import { SessionSidebar, type SessionSummary } from "@/components/organisms/session-sidebar";
-import { ChatArea, type ChatItem } from "@/components/organisms/chat-area";
-import { ToolCallPanel } from "@/components/organisms/tool-call-panel";
-import { MessageComposerPanel } from "@/components/organisms/message-composer-panel";
-import { StatusBar } from "@/components/organisms/status-bar";
-import { ToolQuestionsPanel } from "@/components/organisms/tool-questions-panel";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ConnectionBar } from "@/components/organisms/ConnectionBar";
+import { SessionSidebar, type SessionSummary } from "@/components/organisms/SessionSidebar";
+import { ChatArea, type ChatItem } from "@/components/organisms/ChatArea";
+import { ToolCallPanel } from "@/components/organisms/ToolCallPanel";
+import { MessageComposerPanel } from "@/components/organisms/MessageComposerPanel";
+import { StatusBar } from "@/components/organisms/StatusBar";
+import { ToolQuestionsPanel } from "@/components/organisms/ToolQuestionsPanel";
+import { Button } from "@/components/ui/Button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/Tooltip";
 import { ErrorBoundary } from "./error-boundary";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
 import {
   useFeatureFlag,
   withFeatureGate,
-} from "@/components/feature-gate";
+} from "@/components/FeatureGate";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/Select";
 import type {
   AgentCapabilities,
   AvailableCommand,

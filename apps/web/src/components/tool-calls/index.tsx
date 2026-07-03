@@ -1,18 +1,18 @@
 import * as React from "react";
 import type { ToolCallState, ToolKind } from "@/components/domain";
-import { ReadTool } from "./read-tool";
-import { EditTool } from "./edit-tool";
-import { DeleteTool } from "./delete-tool";
-import { MoveTool } from "./move-tool";
-import { SearchTool } from "./search-tool";
-import { ExecuteTool } from "./execute-tool";
-import { ThinkTool } from "./think-tool";
-import { FetchTool } from "./fetch-tool";
-import { SwitchModeTool } from "./switch-mode-tool";
-import { OtherTool } from "./other-tool";
+import { ReadTool } from "./ReadTool";
+import { EditTool } from "./EditTool";
+import { DeleteTool } from "./DeleteTool";
+import { MoveTool } from "./MoveTool";
+import { SearchTool } from "./SearchTool";
+import { ExecuteTool } from "./ExecuteTool";
+import { ThinkTool } from "./ThinkTool";
+import { FetchTool } from "./FetchTool";
+import { SwitchModeTool } from "./SwitchModeTool";
+import { OtherTool } from "./OtherTool";
 
 export { TOOL_KIND_META, getKindMeta, type ToolKindMeta } from "./meta";
-export { ToolCallShell, type ToolCallShellProps } from "./shell";
+export { ToolCallShell, type ToolCallShellProps } from "./Shell";
 export {
   DiffView,
   CodeBlock,
@@ -20,7 +20,7 @@ export {
   ContentBlockView,
   ToolCallContentItem,
   MetaRow,
-} from "./parts";
+} from "./Parts";
 
 /** Maps each `ToolKind` to its specialized renderer component. */
 export const TOOL_KIND_COMPONENTS: Record<

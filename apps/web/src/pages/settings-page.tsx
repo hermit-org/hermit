@@ -1,5 +1,5 @@
 import * as React from "react";
-import { SettingsLayout } from "@/components/templates/settings-layout";
+import { SettingsLayout } from "@/components/templates/SettingsLayout";
 
 export interface SettingsPageProps {
   /** Navigate back to the previous view. */
