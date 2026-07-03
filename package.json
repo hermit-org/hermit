@@ -10,6 +10,7 @@
     "test:e2e": "cd apps/web && bun run e2e"
   },
   "devDependencies": {
+    "@babel/plugin-transform-private-methods": "^8.0.1",
     "@babel/runtime": "^7.25.0",
     "@types/bun": "latest",
     "@types/jest": "^29",
