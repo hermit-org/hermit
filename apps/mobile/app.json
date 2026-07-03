@@ -1,4 +1,11 @@
 {
   "name": "HermitMobile",
-  "displayName": "Hermit Mobile"
+  "displayName": "Hermit Mobile",
+  "icon": "./assets/icon.png",
+  "android": {
+    "icon": "./assets/icon.png"
+  },
+  "ios": {
+    "icon": "./assets/icon.png"
+  }
 }

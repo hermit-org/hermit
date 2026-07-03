@@ -29,6 +29,8 @@ export interface UseAcpClientResult {
   logout: () => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => void;
+  /** Dismiss the current error (does not affect connection state). */
+  clearError: () => void;
 }
 
 /**
@@ -142,6 +144,10 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
     }
   }, [gateway, disconnect]);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const authenticate = useCallback(async (methodId: string) => {
     const client = clientRef.current;
     if (!client) return;
@@ -193,5 +199,6 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
     logout,
     connect,
     disconnect,
+    clearError,
   };
 }

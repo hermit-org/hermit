@@ -1294,18 +1294,25 @@ function AboutSection(): React.JSX.Element {
   const { t } = useTranslation();
   return (
     <div className="mx-auto max-w-xl space-y-6 p-6">
-      <div>
-        <h3 className="text-sm font-semibold">{t("settings.aboutTitle")}</h3>
-        <p className="text-xs text-muted-foreground">
-          {t("settings.aboutHint")}
-        </p>
+      <div className="flex items-start gap-4">
+        <img
+          src="/icon.svg"
+          alt="Hermit"
+          className="h-12 w-12 shrink-0 rounded-xl"
+        />
+        <div>
+          <h3 className="text-sm font-semibold">{t("settings.aboutTitle")}</h3>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.aboutHint")}
+          </p>
+        </div>
       </div>
       <div className="space-y-3 rounded-lg border border-border bg-card p-4 text-sm">
         <p>{t("settings.aboutDescription")}</p>
         <p>{t("settings.aboutGatewayDescription")}</p>
         <div className="pt-2 text-xs text-muted-foreground">
           <span>{t("settings.version")}</span>
-          <span className="ml-1 font-mono">0.0.1-alpha.7</span>
+          <span className="ml-1 font-mono">{__APP_VERSION__}</span>
         </div>
       </div>
     </div>

@@ -1778,7 +1778,8 @@ export function useAcpPageAdapter(
 
   const onDismissError = useCallback(() => {
     setSetupError(null);
-  }, []);
+    acp.clearError();
+  }, [acp]);
 
   return {
     connectionStatus,

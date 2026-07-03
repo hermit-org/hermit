@@ -54,6 +54,8 @@ export interface AcpClientState {
   logout: () => Promise<void>;
   connect: () => Promise<void>;
   disconnect: () => void;
+  /** Dismiss the current error (does not affect connection state). */
+  clearError: () => void;
 }
 
 /**
