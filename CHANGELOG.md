@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.9] - 2026-07-03
+
+### 新增
+
+- **应用图标与 PWA 支持**:
+  - 为 Web 客户端添加图标、Apple Touch Icon、manifest，支持 PWA 安装
+  - 为 React Native 移动应用配置 Android/iOS 应用图标
+  - 设置页面「关于」模块显示项目 Logo 与动态版本号
+
+- **ACP 错误状态管理**:
+  - `useAcpClient` 与 `acp-hooks` 新增 `clearError` 方法，用于清除当前错误状态（不影响连接）
+  - 设置页等入口在关闭错误提示时同步调用 `clearError`
+
+### 变更
+
+- **构建版本号注入**:
+  - Vite 构建时通过 `__APP_VERSION__` 注入版本标签：发布构建使用 git tag，日常构建使用 `<branch>@<short-sha>`
+
 ## [0.0.6-alpha.8] - 2026-07-02
 
 ### 新增
