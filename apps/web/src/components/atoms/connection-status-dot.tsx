@@ -5,7 +5,7 @@ import type { ConnectionStatus } from "@/components/domain";
 
 export interface ConnectionStatusDotProps
   extends React.HTMLAttributes<HTMLSpanElement> {
-  /** Current transport connection state. */
+  /** Connection state (gateway transport or ACP handshake). */
   status: ConnectionStatus;
   /** Show a pulsing ring while connecting/negotiating. */
   pulse?: boolean;
@@ -26,7 +26,7 @@ const STATUS_COLOR: Record<ConnectionStatus, string> = {
 
 
 /**
- * A small colored dot that reflects the ACP transport connection state.
+ * A small colored dot that reflects a connection state (gateway or ACP).
  *
  * @example
  * <ConnectionStatusDot status="connected" />

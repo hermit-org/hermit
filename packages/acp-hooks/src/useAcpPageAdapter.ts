@@ -28,13 +28,14 @@ import type {
   ContentBlock,
   ImageContent,
   PlanEntry,
-  PlanPriority,
   SessionInfo,
   SessionMode,
   SessionModeState,
   SessionUpdate,
   UsageUpdate,
 } from "@hermit-org/acp";
+
+import { extractPlanFromToolInput, isTodoToolCall } from "./plan";
 
 import { usePermissionStore } from "./permissionStore";
 import { useArchivedSessions } from "./useArchivedSessions";
@@ -156,12 +157,28 @@ const EMPTY_META: SessionMeta = {
   agentName: null,
 };
 
-/** Map the transport state string to the UI's ConnectionStatus union. */
+/** Map the transport state string to the UI's gateway ConnectionStatus. */
+function mapGatewayState(state: string): ConnectionStatus {
+  if (state === "error") return "error";
+  if (state === "connected") return "connected";
+  if (state === "connecting" || state === "reconnecting") return "connecting";
+  if (state === "negotiating") return "negotiating";
+  return "disconnected";
+}
+
+/**
+ * Map the ACP-level connected flag + transport state to the UI's ACP
+ * ConnectionStatus.
+ *
+ * When the transport is connected but the ACP `initialize` handshake hasn't
+ * completed yet, the status is "negotiating" — the gateway is reachable but
+ * the agent isn't ready.
+ */
 function mapConnectionState(state: string, connected: boolean): ConnectionStatus {
   if (state === "error") return "error";
   if (connected) return "connected";
-  if (state === "connecting") return "connecting";
-  if (state === "negotiating") return "negotiating";
+  if (state === "connected") return "negotiating";
+  if (state === "connecting" || state === "reconnecting") return "connecting";
   return "disconnected";
 }
 
@@ -177,76 +194,11 @@ function contentToText(content: ContentBlock): string {
   return "";
 }
 
-/**
- * ACP priority/enum → PlanPriority mapping for todo entries extracted from
- * tool_call rawInput. TodoList tools typically use "high"|"medium"|"low"
- * directly, so this is mostly a passthrough with a fallback.
- */
-function toPlanPriority(value: unknown): PlanPriority | undefined {
-  if (value === "high" || value === "medium" || value === "low") return value;
-  return undefined;
-}
-
-/**
- * Best-effort extraction of PlanEntry[] from a tool_call's rawInput.
- *
- * Agents (e.g. Kimi Code) that manage their todos via a `TodoList` tool send
- * the full todo list as the tool's input payload rather than via a separate
- * `session/update` plan notification. This normalises the common shapes:
- *
- *   - `{ todos: [{ content / title, status, priority }] }`
- *   - `{ todos: [{ content / title, status }] }`
- *
- * Returns `null` when the payload doesn't look like a todo list, so the caller
- * can skip the plan sync.
- */
-function extractPlanFromToolInput(rawInput: unknown): PlanEntry[] | null {
-  if (!rawInput || typeof rawInput !== "object") return null;
-  const obj = rawInput as Record<string, unknown>;
-
-  // Detect TodoList-style payloads: an array under `todos`.
-  const todos = obj.todos;
-  if (!Array.isArray(todos)) return null;
-
-  const entries: PlanEntry[] = [];
-  for (const item of todos) {
-    if (!item || typeof item !== "object") continue;
-    const t = item as Record<string, unknown>;
-    const content =
-      typeof t.content === "string"
-        ? t.content
-        : typeof t.title === "string"
-          ? t.title
-          : undefined;
-    if (!content) continue;
-
-    const status = t.status;
-    const entry: PlanEntry = { content };
-    if (
-      status === "pending" ||
-      status === "in_progress" ||
-      status === "completed"
-    ) {
-      entry.status = status;
-    }
-    const priority = toPlanPriority(t.priority);
-    if (priority) entry.priority = priority;
-    entries.push(entry);
-  }
-  return entries;
-}
-
-/**
- * Predicate: does this tool call carry a TodoList payload?
- * Used to hide TodoList tool calls from the chat transcript and side
- * panel — they are already rendered via the PlanBar above the composer.
- */
-export function isTodoToolCall(call: { rawInput?: unknown }): boolean {
-  return extractPlanFromToolInput(call.rawInput) !== null;
-}
-
 export interface UseAcpPageAdapterResult {
   /** Props ready to spread onto <ACPClientPage />. */
+  /** Gateway (transport) connection status — the bottom status bar dot. */
+  gatewayStatus: ConnectionStatus;
+  /** ACP (agent) connection status — the top connection bar dot. */
   connectionStatus: ConnectionStatus;
   requireAuth: boolean;
   protocolVersion: string;
@@ -282,6 +234,8 @@ export interface UseAcpPageAdapterResult {
   draft: string;
   /** Auth method ids advertised by the agent. */
   authMethods: { id: string; name: string; description?: string }[];
+  /** The underlying AcpClient (exposed for ACP extension hooks like useAcpExt). */
+  client: AcpClient | null;
   /** Runtime / setup error to surface. */
   error: string | null;
   /** Current session plan / todo. */
@@ -400,6 +354,10 @@ export function useAcpPageAdapter(
   const [meta, setMeta] = useState<SessionMeta>(EMPTY_META);
   const [busy, setBusy] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
+  // Tracks the last error message the user dismissed so the banner doesn't
+  // re-appear from a recurring background error (e.g. transport reconnect
+  // failures) until a *different* error shows up.
+  const [dismissedError, setDismissedError] = useState<string | null>(null);
   const [configOptions, setConfigOptions] = useState<ConfigOption[]>([]);
   const [agentSessions, setAgentSessions] = useState<SessionInfo[]>([]);
   // Full session/list payload retained so archived sessions can still be
@@ -1713,6 +1671,7 @@ export function useAcpPageAdapter(
   // The legacy authenticate() takes only a methodId; the API-key value is
   // supplied out-of-band by agents that need it, so we ignore the key here.
 
+  const gatewayStatus = mapGatewayState(acp.state);
   const connectionStatus = mapConnectionState(acp.state, acp.connected);
   const requireAuth =
     acp.connected &&
@@ -1755,8 +1714,10 @@ export function useAcpPageAdapter(
   );
 
   // Surface runtime/setup errors (setupError takes precedence over a raw
-  // transport error).
-  const error = setupError ?? (acp.error ? acp.error.message : null);
+  // transport error). If the user dismissed the current error message, hide
+  // it until a different error appears.
+  const rawError = setupError ?? (acp.error ? acp.error.message : null);
+  const error = rawError !== null && rawError === dismissedError ? null : rawError;
 
   // Map the permission store's answered history to the plain view-model.
   const permissionHistory = useMemo<AnsweredPermissionView[]>(
@@ -1779,9 +1740,13 @@ export function useAcpPageAdapter(
   const onDismissError = useCallback(() => {
     setSetupError(null);
     acp.clearError();
-  }, [acp]);
+    // Remember the dismissed message so recurring background errors (e.g.
+    // transport reconnect failures) don't resurrect the banner.
+    setDismissedError(rawError);
+  }, [acp, rawError]);
 
   return {
+    gatewayStatus,
     connectionStatus,
     requireAuth,
     protocolVersion,
@@ -1808,6 +1773,8 @@ export function useAcpPageAdapter(
     permissions: permissionsUi,
     draft,
     authMethods: acp.authMethods.map((m) => ({ id: m.id, name: m.name, description: m.description })),
+    /** The underlying AcpClient (exposed for ACP extension hooks). */
+    client: acp.client,
     error,
     plan,
     queueDepth,

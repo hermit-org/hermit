@@ -6,6 +6,32 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.10] - 2026-07-03
+
+### 新增
+
+- **ACP 扩展协议（多 Agent 管理）**:
+  - 新增 `@hermit-org/acp-ext` 包，实现非标准 `_agent/*` 扩展协议
+  - 支持 agent 的增删改查（`_agent/list`、`_agent/get`、`_agent/create`、`_agent/update`、`_agent/delete`）
+  - 支持运行时切换 agent（`_agent/switch`）和重连 agent（`_agent/reload`）
+  - 网关直接处理 `_` 前缀方法，不转发给 agent 进程，响应通过 SSE 广播
+  - `hermit.config.json` 新增 `agents` 数组与 `activeAgentId` 字段，支持多 agent 配置
+  - 设置页新增「Agent 管理」模块（需开启 ACP 扩展功能开关，默认关闭）
+  - Web 聊天页工具栏新增 agent 切换下拉框与重连按钮
+
+- **两层连接状态指示**:
+  - 底部状态栏显示「网关」连接状态（transport/SSE 层）
+  - 顶部连接栏显示「ACP」连接状态（agent initialize 层）
+  - 网关接受 SSE 连接后立即通知「网关已连接」，agent initialize 完成后通知「ACP 已连接」
+
+### 变更
+
+- **网关 SSE 连接不再阻塞等待 agent**：客户端请求 SSE 端点后立即建立连接，agent 进程在首次 `/send` 标准 ACP 请求时才按需启动，消除首次连接 30s+ 延迟
+
+### 修复
+
+- **错误横幅关闭按钮无效**：transport 后台重连失败会反复触发同一错误，导致关闭后立即重新弹出。现在记录已关闭的错误消息，同一错误不再重复显示，直到出现新的不同错误
+
 ## [0.0.6-alpha.9] - 2026-07-03
 
 ### 新增

@@ -56,6 +56,9 @@ export interface SettingsState {
   /** Feature flag: show the right tool-call panel (and its toggle). */
   showRightPanel: boolean;
   setShowRightPanel: (enabled: boolean) => void;
+  /** Feature flag: enable ACP extension (_agent/* multi-agent management). */
+  acpExt: boolean;
+  setAcpExt: (enabled: boolean) => void;
   /** Whether to apply a typewriter effect to streaming agent output. */
   typewriterEnabled: boolean;
   setTypewriterEnabled: (enabled: boolean) => void;
@@ -129,6 +132,7 @@ export const useSettingsStore = create<SettingsState>()(
       setShowUsageStats: (showUsageStats) => set({ showUsageStats }),
       setShowConfigBar: (showConfigBar) => set({ showConfigBar }),
       setShowRightPanel: (showRightPanel) => set({ showRightPanel }),
+      setAcpExt: (acpExt) => set({ acpExt }),
       typewriterEnabled: true,
       setTypewriterEnabled: (typewriterEnabled) => set({ typewriterEnabled }),
       typewriterSpeed: 4,

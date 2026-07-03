@@ -1,5 +1,5 @@
 {
-  "name": "@hermit-org/acp",
+  "name": "@hermit-org/acp-ext",
   "version": "0.0.6-alpha.10",
   "private": true,
   "type": "module",
@@ -10,6 +10,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@hermit-org/types": "workspace:*"
+    "@hermit-org/acp": "workspace:*"
   }
 }

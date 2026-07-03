@@ -80,7 +80,11 @@ export function useAcpClient(options: UseAcpClientOptions): UseAcpClientResult {
         if (generationRef.current !== generation) return;
         if (event.type === "state") {
           setState(event.state);
-          setConnected(event.state === "connected");
+          // When the transport drops, the ACP layer is also dead — reset it.
+          if (event.state === "disconnected" || event.state === "error") {
+            setConnected(false);
+            setAuthenticated(false);
+          }
         } else if (event.type === "error") {
           setError(event.error);
         }

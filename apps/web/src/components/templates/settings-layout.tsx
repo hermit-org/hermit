@@ -18,6 +18,8 @@ import {
   Check,
   Copy,
   Zap,
+  Bot,
+  RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -53,6 +55,8 @@ import {
   useFeatureFlag,
   useSetFeatureFlag,
 } from "@/components/feature-gate";
+import { useAcpClient } from "@/acp/hooks";
+import { useAcpExt } from "@/hooks/useAcpExt";
 import type { Gateway, QuickCommand } from "@/types";
 import {
   buildShareUrl,
@@ -71,6 +75,7 @@ export type SettingsSection =
   | "gateways"
   | "appearance"
   | "features"
+  | "agents"
   | "shortcuts"
   | "quickCommands"
   | "archive"
@@ -82,6 +87,7 @@ const SECTIONS: { id: SettingsSection; labelKey: string; icon: React.ComponentTy
     { id: "gateways", labelKey: "settings.gateways", icon: ServerCog },
     { id: "appearance", labelKey: "settings.appearance", icon: Palette },
     { id: "features", labelKey: "settings.features", icon: SlidersHorizontal },
+    { id: "agents", labelKey: "settings.agents", icon: Bot },
     { id: "archive", labelKey: "settings.archive", icon: Archive },
     { id: "share", labelKey: "settings.share", icon: Share2 },
     { id: "shortcuts", labelKey: "settings.shortcuts", icon: Keyboard },
@@ -151,6 +157,8 @@ export function SettingsLayout({
             <AppearanceSection />
           ) : section === "features" ? (
             <FeaturesSection />
+          ) : section === "agents" ? (
+            <AgentsSection />
           ) : section === "archive" ? (
             <ArchiveSection />
           ) : section === "share" ? (
@@ -709,6 +717,328 @@ function FeaturesSection(): React.JSX.Element {
           <FeatureSwitch key={flag.key} featureKey={flag.key} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function AgentsSection(): React.JSX.Element {
+  const { t } = useTranslation();
+  const acpExtEnabled = useFeatureFlag("acpExt");
+  const activeGateway = useGatewayStore((s) => {
+    const id = s.activeGatewayId;
+    return id ? s.gateways.find((g) => g.id === id) ?? null : s.gateways[0] ?? null;
+  });
+
+  // useAcpExt requires an AcpClient. Since the settings page is not inside the
+  // RealApp (which owns the live AcpClient), we create a lightweight throwaway
+  // connection here only when the section is visible.
+  const { client, state } = useAcpClient({ gateway: activeGateway, autoConnect: acpExtEnabled });
+  const transportReady = state === "connected";
+  const {
+    agents,
+    currentAgentId,
+    loading,
+    error,
+    createAgent,
+    updateAgent,
+    deleteAgent,
+    switchAgent,
+    reloadAgent,
+  } = useAcpExt(client, acpExtEnabled, transportReady);
+
+  const [view, setView] = React.useState<"list" | "add" | "edit">("list");
+  const [form, setForm] = React.useState({
+    id: "",
+    name: "",
+    command: "",
+    args: "",
+    cwd: "",
+  });
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(null);
+
+  const resetForm = (): void => {
+    setForm({ id: "", name: "", command: "", args: "", cwd: "" });
+    setEditingId(null);
+    setNotice(null);
+  };
+
+  const handleAdd = (): void => {
+    resetForm();
+    setView("add");
+  };
+
+  const handleEdit = (agent: typeof agents[number]): void => {
+    setEditingId(agent.id);
+    setForm({
+      id: agent.id,
+      name: agent.name,
+      command: agent.command,
+      args: agent.args.join(", "),
+      cwd: agent.cwd ?? "",
+    });
+    setView("edit");
+  };
+
+  const handleSave = async (): Promise<void> => {
+    if (!form.name.trim() || !form.command.trim()) {
+      setNotice(t("agents.requiredError"));
+      return;
+    }
+    const args = form.args
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    try {
+      if (view === "edit" && editingId) {
+        await updateAgent({
+          id: editingId,
+          name: form.name.trim(),
+          command: form.command.trim(),
+          args,
+          cwd: form.cwd.trim() || undefined,
+        });
+      } else {
+        await createAgent({
+          id: form.id.trim() || undefined,
+          name: form.name.trim(),
+          command: form.command.trim(),
+          args,
+          cwd: form.cwd.trim() || undefined,
+        });
+      }
+      resetForm();
+      setView("list");
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleDelete = async (agentId: string): Promise<void> => {
+    if (!window.confirm(t("agents.deleteConfirm"))) return;
+    try {
+      await deleteAgent(agentId);
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleSwitch = async (agentId: string): Promise<void> => {
+    if (!window.confirm(t("agents.switchConfirm"))) return;
+    try {
+      await switchAgent(agentId);
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const handleReload = async (): Promise<void> => {
+    if (!window.confirm(t("agents.reloadConfirm"))) return;
+    try {
+      await reloadAgent();
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // --- Feature flag off: show a hint ---
+  if (!acpExtEnabled) {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 p-6">
+        <div>
+          <h3 className="text-sm font-semibold">{t("agents.title")}</h3>
+          <p className="text-xs text-muted-foreground">{t("agents.hint")}</p>
+        </div>
+        <EmptyState
+          icon={Bot}
+          title={t("features.acpExt")}
+          description={t("features.acpExtHint")}
+        />
+      </div>
+    );
+  }
+
+  // --- Add / Edit form ---
+  if (view === "add" || view === "edit") {
+    return (
+      <div className="mx-auto max-w-xl space-y-6 p-6">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={t("common.back")}
+            onClick={() => {
+              resetForm();
+              setView("list");
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h3 className="text-sm font-semibold">
+            {view === "edit" ? t("agents.edit") : t("agents.add")}
+          </h3>
+        </div>
+        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <div className="grid gap-2">
+            {view === "add" ? (
+              <Input
+                value={form.id}
+                onChange={(e) => setForm((f) => ({ ...f, id: e.target.value }))}
+                placeholder={t("agents.id")}
+                autoCapitalize="none"
+              />
+            ) : null}
+            <Input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder={t("agents.name")}
+            />
+            <Input
+              value={form.command}
+              onChange={(e) => setForm((f) => ({ ...f, command: e.target.value }))}
+              placeholder={t("agents.command")}
+              autoCapitalize="none"
+            />
+            <Input
+              value={form.args}
+              onChange={(e) => setForm((f) => ({ ...f, args: e.target.value }))}
+              placeholder={t("agents.args")}
+              autoCapitalize="none"
+            />
+            <Input
+              value={form.cwd}
+              onChange={(e) => setForm((f) => ({ ...f, cwd: e.target.value }))}
+              placeholder={t("agents.cwd")}
+              autoCapitalize="none"
+            />
+          </div>
+          {notice ? (
+            <p className="text-sm text-destructive">{notice}</p>
+          ) : null}
+          <Button onClick={handleSave} className="w-full">
+            {view === "edit" ? (
+              <Pencil className="h-4 w-4" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {view === "edit" ? t("agents.update") : t("agents.add")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- List view ---
+  return (
+    <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">{t("agents.title")}</h3>
+          <p className="text-xs text-muted-foreground">{t("agents.hint")}</p>
+        </div>
+        <Button type="button" size="sm" onClick={handleAdd}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          {t("agents.add")}
+        </Button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : error ? (
+        <p className="text-sm text-destructive">{t("agents.loadFailed")}: {error}</p>
+      ) : agents.length === 0 ? (
+        <EmptyState
+          icon={Bot}
+          title={t("agents.noAgents")}
+          description={t("agents.noAgentsDescription")}
+        />
+      ) : (
+        <>
+          {/* Agent list */}
+          <div className="space-y-2">
+            {agents.map((agent) => {
+              const active = agent.id === currentAgentId;
+              return (
+                <div
+                  key={agent.id}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">
+                        {agent.name}
+                      </span>
+                      {active ? (
+                        <Badge variant="secondary">
+                          {t("agents.activeBadge")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {agent.command} {agent.args.join(" ")}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {!active ? (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => handleSwitch(agent.id)}
+                        title={t("agents.switch")}
+                      >
+                        <PlugZap className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={handleReload}
+                        title={t("agents.reload")}
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleEdit(agent)}
+                      title={t("agents.edit")}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => handleDelete(agent.id)}
+                      title={t("agents.delete")}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Reload current */}
+          {currentAgentId ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleReload}
+            >
+              <RotateCw className="mr-1.5 h-4 w-4" />
+              {t("agents.reload")}
+            </Button>
+          ) : null}
+
+          {notice ? (
+            <p className="text-sm text-destructive">{notice}</p>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

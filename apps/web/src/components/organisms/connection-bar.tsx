@@ -16,7 +16,7 @@ import type {
 } from "@/components/domain";
 
 export interface ConnectionBarProps {
-  /** Transport connection state. */
+  /** ACP (agent) connection state — reflects `initialize` handshake. */
   status: ConnectionStatus;
   /** Negotiated ACP protocol version. */
   protocolVersion?: string;

@@ -303,6 +303,7 @@
     "gateways": "Gateways",
     "appearance": "Appearance",
     "features": "Features",
+    "agents": "Agents",
     "shortcuts": "Shortcuts",
     "language": "Language",
     "languageHint": "Choose the display language.",
@@ -423,6 +424,7 @@
     "authHint": "You can still browse — sign in to send prompts."
   },
   "statusBar": {
+    "gateway": "Gateway",
     "generating": "generating",
     "settings": "Settings"
   },
@@ -457,7 +459,37 @@
     "showConfigBar": "Show config bar",
     "showConfigBarHint": "Display the agent config-option bar above the composer.",
     "showRightPanel": "Show right panel",
-    "showRightPanelHint": "Show the right-side tool-call panel on wide screens. The toggle button is hidden when off."
+    "showRightPanelHint": "Show the right-side tool-call panel on wide screens. The toggle button is hidden when off.",
+    "acpExt": "ACP extension (multi-agent)",
+    "acpExtHint": "Enable _agent/* extension protocol for managing multiple agents on the gateway."
+  },
+  "agents": {
+    "title": "Agent Management",
+    "hint": "Add, edit, switch, and reconnect ACP agents on the gateway.",
+    "add": "Add Agent",
+    "edit": "Edit",
+    "update": "Update",
+    "delete": "Delete",
+    "switch": "Switch",
+    "reload": "Reload",
+    "name": "Display name",
+    "id": "Agent ID",
+    "command": "Command",
+    "args": "Arguments (comma-separated)",
+    "cwd": "Working directory",
+    "current": "Current",
+    "switchConfirm": "Switch to this agent? The current agent process will be restarted.",
+    "reloadConfirm": "Reload the current agent? The process will be restarted.",
+    "deleteConfirm": "Delete this agent configuration?",
+    "noAgents": "No agents configured",
+    "noAgentsDescription": "Add an agent above to get started.",
+    "requiredError": "Name, command are required.",
+    "activeBadge": "active",
+    "switched": "Switched to {{name}}",
+    "reloaded": "Agent reloaded",
+    "switchFailed": "Failed to switch agent",
+    "reloadFailed": "Failed to reload agent",
+    "loadFailed": "Failed to load agents"
   },
   "quickCommands": {
     "doubleClickTooltipEnabled": "Double-click to send",

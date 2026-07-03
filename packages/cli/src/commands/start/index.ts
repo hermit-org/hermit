@@ -1,6 +1,12 @@
 import { Command } from "commander";
 import { AcpGatewayServer, type ConnectionPayload } from "../../lib/gateway";
-import { loadConfig, type HermitConfig } from "../../lib/config";
+import {
+  loadConfig,
+  resolveAgents,
+  readAgentsState,
+  writeAgentsState,
+  type HermitConfig,
+} from "../../lib/config";
 import {
   type CorsConfig,
   type NormalizedCors,
@@ -134,14 +140,22 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
   const port = gateway!.port ?? 8787;
   const corsConfig = normalizeCors(gateway!.cors);
 
+  // Resolve agents: prefer persisted runtime state, then config, then the
+  // legacy single `agent` field.
+  const configAgents = resolveAgents(config);
+  const persisted = await readAgentsState();
+  const agents = persisted?.agents ?? configAgents.agents;
+  const activeAgentId = persisted?.activeAgentId ?? configAgents.activeAgentId;
+  const activeAgent = agents.find((a) => a.id === activeAgentId) ?? agents[0] ?? null;
+
   // Create a persistent bearer token for QR/auto-connect.
   const token = generateToken();
   await authorizeToken(token);
 
   const server = new AcpGatewayServer({
-    command: agent!.command,
-    args: agent!.args,
-    cwd: agent!.cwd,
+    command: activeAgent?.command ?? agent!.command,
+    args: activeAgent?.args ?? agent!.args,
+    cwd: activeAgent?.cwd ?? agent!.cwd,
     port,
     hostname: gateway!.hostname,
     endpoint: sseEndpoint,
@@ -149,6 +163,13 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
     cors: gateway!.cors,
     heartbeatInterval: gateway!.heartbeatInterval,
     idleTimeout: gateway!.idleTimeout,
+    agents,
+    activeAgentId: activeAgent?.id ?? null,
+    onAgentChanged: (updatedAgents, updatedActiveId) => {
+      writeAgentsState({ agents: updatedAgents, activeAgentId: updatedActiveId }).catch(() => {
+        // Persistence failures are non-fatal; the change is still live in memory.
+      });
+    },
     getQrPayload: (): ConnectionPayload => {
       const url = getLanAddress(port) + sseEndpoint;
       const sendUrl = getLanAddress(port) + sendEndpoint;

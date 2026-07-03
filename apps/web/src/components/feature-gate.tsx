@@ -12,6 +12,7 @@ const FEATURE_FLAG_SELECTORS: Record<
   showUsageStats: (state) => state.showUsageStats,
   showConfigBar: (state) => state.showConfigBar,
   showRightPanel: (state) => state.showRightPanel,
+  acpExt: (state) => state.acpExt,
 };
 
 const FEATURE_FLAG_SETTERS: Record<
@@ -23,6 +24,7 @@ const FEATURE_FLAG_SETTERS: Record<
   showUsageStats: (state) => state.setShowUsageStats,
   showConfigBar: (state) => state.setShowConfigBar,
   showRightPanel: (state) => state.setShowRightPanel,
+  acpExt: (state) => state.setAcpExt,
 };
 
 /**

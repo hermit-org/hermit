@@ -16,6 +16,8 @@ import { ACPClientPage } from "./acp-client-page";
 import { GatewayRegistration } from "./gateway-registration";
 import { useAcpPageAdapter } from "../hooks/useAcpPageAdapter";
 import { useGatewayStore } from "../stores/gatewayStore";
+import { useSettingsStore } from "../stores/settingsStore";
+import { useAcpExt } from "../hooks/useAcpExt";
 import { readConfigFromUrl } from "../config";
 import { navigate } from "../router";
 import { readShareFromHash, applySharePayload, clearShareHash } from "@/lib/share";
@@ -79,6 +81,19 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
 
   const adapter = useAcpPageAdapter(gateway);
 
+  // ACP extension: multi-agent management (only active when feature flag is on).
+  const acpExtEnabled = useSettingsStore((s) => s.acpExt);
+  // Activate the ext hook once the transport (SSE) is connected — do NOT wait
+  // for `initialize`. The gateway handles `_agent/*` requests independently of
+  // the agent process, so the agent switcher can appear before ACP is ready.
+  const transportReady = adapter.gatewayStatus === "connected";
+  const {
+    agents: extAgents,
+    currentAgentId: extCurrentAgentId,
+    switchAgent: extSwitchAgent,
+    reloadAgent: extReloadAgent,
+  } = useAcpExt(adapter.client, acpExtEnabled, transportReady);
+
   const handleGatewayAdded = useCallback(
     (id: string) => {
       setActiveGateway(id);
@@ -97,6 +112,10 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
     <ACPClientPage
       {...rest}
       activeSessionId={activeSessionId ?? undefined}
+      agents={acpExtEnabled ? extAgents : []}
+      currentAgentId={acpExtEnabled ? extCurrentAgentId : undefined}
+      onSwitchAgent={acpExtEnabled ? extSwitchAgent : undefined}
+      onReloadAgent={acpExtEnabled ? extReloadAgent : undefined}
       onOpenSettings={() => navigate("/settings")}
     />
   );

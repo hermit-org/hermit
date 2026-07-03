@@ -3,6 +3,21 @@
         "command": "kimi",
         "args": ["acp"]
     },
+    "agents": [
+        {
+            "id": "kimi",
+            "name": "Kimi Code",
+            "command": "kimi",
+            "args": ["acp"]
+        },
+        {
+            "id": "codex",
+            "name": "Codex",
+            "command": "npx",
+            "args": ["codex", "--acp"]
+        }
+    ],
+    "activeAgentId": "kimi",
     "gateway": {
         "port": 8787,
         "hostname": "0.0.0.0",

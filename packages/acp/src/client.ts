@@ -116,6 +116,20 @@ export interface AcpClient {
    * updates to the session they are currently viewing.
    */
   onUpdate(listener: (update: SessionUpdate, sessionId: string) => void): () => void;
+  /**
+   * Subscribe to ALL JSON-RPC notifications (including non-standard ones such
+   * as `_agent/changed`). The listener receives the raw method name and params.
+   * Useful for ACP extensions that piggyback on the same transport.
+   */
+  onNotification(
+    listener: (method: string, params: unknown) => void,
+  ): () => void;
+  /**
+   * Send an arbitrary JSON-RPC request and await the typed response. Exposed
+   * so that ACP extension protocols (e.g. `_agent/*`) can reuse the same
+   * transport without duplicating the request/response machinery.
+   */
+  request<P, R>(method: string, params?: P): Promise<R>;
   disconnect(): void;
 }
 
@@ -128,6 +142,9 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
   >();
   const updateListeners = new Set<
     (update: SessionUpdate, sessionId: string) => void
+  >();
+  const notificationListeners = new Set<
+    (method: string, params: unknown) => void
   >();
   let reading = false;
   let initializeResult: InitializeResult | null = null;
@@ -245,6 +262,16 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
             } catch {
               // protect the client from consumer errors
             }
+          }
+        }
+      } else {
+        // Forward all other notifications (including `_`-prefixed extension
+        // notifications such as `_agent/changed`) to generic listeners.
+        for (const listener of notificationListeners) {
+          try {
+            listener(message.method, message.params);
+          } catch {
+            // protect the client from consumer errors
           }
         }
       }
@@ -373,6 +400,15 @@ export function createAcpClient(options: AcpClientOptions): AcpClient {
       updateListeners.add(listener);
       return () => updateListeners.delete(listener);
     },
+
+    onNotification(
+      listener: (method: string, params: unknown) => void,
+    ): () => void {
+      notificationListeners.add(listener);
+      return () => notificationListeners.delete(listener);
+    },
+
+    request,
 
     disconnect(): void {
       pending.forEach(({ reject }) => reject(new Error("Connection closed")));

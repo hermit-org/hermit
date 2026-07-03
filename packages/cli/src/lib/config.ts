@@ -1,19 +1,48 @@
 import { readFile, writeFile, access, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 import type { CorsConfig } from "./cors";
+
+/**
+ * A single agent definition. Multiple agents can coexist in the config; the
+ * gateway can switch between them at runtime via the `_agent/switch` extension.
+ */
+export interface AgentConfig {
+  /** Unique identifier (e.g. "kimi", "codex"). */
+  id: string;
+  /** Human-readable display name. */
+  name: string;
+  /** Executable command. */
+  command: string;
+  /** Arguments passed to the command. */
+  args: string[];
+  /** Working directory for the spawned process. */
+  cwd?: string;
+}
 
 /**
  * Configuration schema for `hermit.config.json`.
  */
 export interface HermitConfig {
-  /** Command that runs the local ACP agent. */
+  /**
+   * Single agent definition (legacy). When `agents` is absent, this field is
+   * used to construct a single-agent list. Retained for backward compatibility.
+   */
   agent?: {
     command: string;
     args?: string[];
     /** Working directory for the spawned agent process. */
     cwd?: string;
   };
+  /**
+   * Multiple agent definitions. Each entry describes an ACP agent that the
+   * gateway can spawn. The `activeAgentId` determines which one starts by
+   * default; clients can switch at runtime via `_agent/switch`.
+   */
+  agents?: AgentConfig[];
+  /** The agent to activate on startup (defaults to the first entry). */
+  activeAgentId?: string | null;
   /** HTTP gateway settings. */
   gateway?: {
     port?: number;
@@ -48,6 +77,8 @@ export const DEFAULT_CONFIG: Required<HermitConfig> = {
     args: ["codex", "--acp"],
     cwd: undefined,
   },
+  agents: [],
+  activeAgentId: null,
   gateway: {
     port: 8787,
     hostname: "0.0.0.0",
@@ -72,6 +103,8 @@ function mergeConfig(base: HermitConfig, override: HermitConfig): HermitConfig {
             cwd: override.agent.cwd ?? base.agent!.cwd,
           }
         : base.agent,
+    agents: override.agents ?? base.agents,
+    activeAgentId: override.activeAgentId ?? base.activeAgentId,
     gateway:
       override.gateway
         ? {
@@ -182,4 +215,55 @@ export async function writeHermitJson<T>(name: string, data: T): Promise<void> {
   await ensureHermitDataDir();
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(data, null, 2)}\n`, "utf-8");
+}
+
+// ---------------------------------------------------------------------------
+// Runtime agent persistence
+// ---------------------------------------------------------------------------
+
+const AGENTS_FILE = "agents.json";
+
+export interface AgentsState {
+  agents: AgentConfig[];
+  activeAgentId: string | null;
+}
+
+/**
+ * Resolve the initial agent list from config. If `agents` is defined it takes
+ * precedence; otherwise a single-element list is derived from the legacy
+ * `agent` field.
+ */
+export function resolveAgents(config: HermitConfig): AgentsState {
+  if (config.agents && config.agents.length > 0) {
+    return {
+      agents: config.agents,
+      activeAgentId: config.activeAgentId ?? config.agents[0].id ?? null,
+    };
+  }
+  // Derive from legacy `agent` field.
+  const agent = config.agent;
+  if (!agent) return { agents: [], activeAgentId: null };
+  const derived: AgentConfig = {
+    id: "default",
+    name: "Default Agent",
+    command: agent.command,
+    args: agent.args ?? [],
+    cwd: agent.cwd,
+  };
+  return { agents: [derived], activeAgentId: "default" };
+}
+
+/** Read the persisted runtime agents state (`~/.hermit/agents.json`). */
+export async function readAgentsState(): Promise<AgentsState | null> {
+  return readHermitJson<AgentsState>(AGENTS_FILE);
+}
+
+/** Persist the runtime agents state to `~/.hermit/agents.json`. */
+export async function writeAgentsState(state: AgentsState): Promise<void> {
+  await writeHermitJson(AGENTS_FILE, state);
+}
+
+/** Generate a unique agent id (used when the client does not supply one). */
+export function generateAgentId(): string {
+  return randomUUID().slice(0, 8);
 }

@@ -12,7 +12,8 @@ export type FeatureFlagKey =
   | "showPlan"
   | "showUsageStats"
   | "showConfigBar"
-  | "showRightPanel";
+  | "showRightPanel"
+  | "acpExt";
 
 export interface FeatureFlagDef {
   /** Stable key used by the settings store and the feature-gate HOC. */
@@ -55,6 +56,12 @@ export const FEATURE_FLAGS: FeatureFlagDef[] = [
     defaultValue: false,
     labelKey: "features.showRightPanel",
     hintKey: "features.showRightPanelHint",
+  },
+  {
+    key: "acpExt",
+    defaultValue: false,
+    labelKey: "features.acpExt",
+    hintKey: "features.acpExtHint",
   },
 ];
 

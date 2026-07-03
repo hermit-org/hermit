@@ -12,7 +12,7 @@
     },
     "apps/mobile": {
       "name": "@hermit-org/mobile",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
       "dependencies": {
         "@babel/runtime": "^7.25.0",
         "@hermit-org/acp": "workspace:*",
@@ -46,9 +46,10 @@
     },
     "apps/web": {
       "name": "@hermit-org/web",
-      "version": "0.0.1-alpha.7",
+      "version": "0.0.6-alpha.9",
       "dependencies": {
         "@hermit-org/acp": "workspace:*",
+        "@hermit-org/acp-ext": "workspace:*",
         "@hermit-org/acp-hooks": "workspace:*",
         "@hermit-org/types": "workspace:*",
         "@radix-ui/react-avatar": "^1.2.0",
@@ -90,14 +91,21 @@
     },
     "packages/acp": {
       "name": "@hermit-org/acp",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
       "dependencies": {
         "@hermit-org/types": "workspace:*",
       },
     },
+    "packages/acp-ext": {
+      "name": "@hermit-org/acp-ext",
+      "version": "0.0.1",
+      "dependencies": {
+        "@hermit-org/acp": "workspace:*",
+      },
+    },
     "packages/acp-hooks": {
       "name": "@hermit-org/acp-hooks",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
       "dependencies": {
         "@hermit-org/acp": "workspace:*",
         "@hermit-org/types": "workspace:*",
@@ -113,11 +121,12 @@
     },
     "packages/cli": {
       "name": "@hermit-org/cli",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
       "bin": {
         "hermit": "./src/index.ts",
       },
       "dependencies": {
+        "@hermit-org/acp-ext": "workspace:*",
         "@hermit-org/stdio-to-sse": "workspace:*",
         "@hermit-org/types": "workspace:*",
         "@hermit-org/utils": "workspace:*",
@@ -130,11 +139,11 @@
     },
     "packages/stdio-to-sse": {
       "name": "@hermit-org/stdio-to-sse",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
     },
     "packages/stdio-to-sse_rn": {
       "name": "@hermit-org/stdio-to-sse_rn",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
       "devDependencies": {
         "react-native-sse": "^1.0.0",
       },
@@ -144,11 +153,11 @@
     },
     "packages/types": {
       "name": "@hermit-org/types",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
     },
     "packages/utils": {
       "name": "@hermit-org/utils",
-      "version": "0.0.1",
+      "version": "0.0.6-alpha.9",
     },
   },
   "overrides": {
@@ -466,6 +475,8 @@
     "@hapi/topo": ["@hapi/topo@5.1.0", "", { "dependencies": { "@hapi/hoek": "^9.0.0" } }, "sha512-foQZKJig7Ob0BMAYBfcJk8d77QtOe7Wo4ox7ff1lQYoNNAb6jwcY1ncdoy2e9wQZzvNy7ODZCYJkK8kzmcAnAg=="],
 
     "@hermit-org/acp": ["@hermit-org/acp@workspace:packages/acp"],
+
+    "@hermit-org/acp-ext": ["@hermit-org/acp-ext@workspace:packages/acp-ext"],
 
     "@hermit-org/acp-hooks": ["@hermit-org/acp-hooks@workspace:packages/acp-hooks"],
 

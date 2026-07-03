@@ -16,7 +16,7 @@ import type {
 } from "@/components/domain";
 
 export interface StatusBarProps {
-  /** Transport connection state. */
+  /** Gateway (transport) connection state — reflects SSE reachability. */
   status: ConnectionStatus;
   /** Current operating mode id. */
   modeId?: string;
@@ -56,7 +56,9 @@ export function StatusBar({
     >
       <div className="flex items-center gap-1.5">
         <ConnectionStatusDot status={status} size={7} pulse={false} />
-        <span className="text-muted-foreground">{t(`connection.${status}` as const)}</span>
+        <span className="text-muted-foreground">
+          {t("statusBar.gateway")}: {t(`connection.${status}` as const)}
+        </span>
       </div>
       {busy ? (
         <>

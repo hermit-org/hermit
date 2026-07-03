@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus, RotateCcw, Loader2, CheckCircle2, Circle, ListChecks } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MessageCirclePlus, RotateCcw, Loader2, CheckCircle2, Circle, ListChecks, Bot, RotateCw } from "lucide-react";
 import { ConnectionBar } from "@/components/organisms/connection-bar";
 import { SessionSidebar, type SessionSummary } from "@/components/organisms/session-sidebar";
 import { ChatArea, type ChatItem } from "@/components/organisms/chat-area";
@@ -17,6 +17,13 @@ import {
   useFeatureFlag,
   withFeatureGate,
 } from "@/components/feature-gate";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   AgentCapabilities,
   AvailableCommand,
@@ -35,7 +42,9 @@ import type {
 import type { PendingAttachment } from "@/types";
 
 export interface ACPClientPageProps {
-  /** Transport connection state. */
+  /** Gateway (transport) connection state — bottom status bar. */
+  gatewayStatus?: ConnectionStatus;
+  /** ACP (agent) connection state — top connection bar. */
   connectionStatus?: ConnectionStatus;
   /** Whether the agent requires authentication and the user is not authed. */
   requireAuth?: boolean;
@@ -99,6 +108,14 @@ export interface ACPClientPageProps {
   permissionHistory?: AnsweredPermissionView[];
   /** Auth methods advertised by the agent. */
   authMethods?: { id: string; name: string; description?: string }[];
+  /** All configured agents (ACP extension; empty when feature flag is off). */
+  agents?: { id: string; name: string; command: string; args: string[] }[];
+  /** The currently active agent id (ACP extension). */
+  currentAgentId?: string | null;
+  /** Switch to a different agent (ACP extension). */
+  onSwitchAgent?: (agentId: string) => void;
+  /** Reload (restart) the current agent (ACP extension). */
+  onReloadAgent?: () => void;
   /** Images currently attached to the draft. */
   attachments?: PendingAttachment[];
   /** Add image files to the draft. */
@@ -162,6 +179,7 @@ export interface ACPClientPageProps {
  * <ACPClientPage connectionStatus="connected" sessions={sessions} chatItems={items} onPrompt={send} />
  */
 export function ACPClientPage({
+  gatewayStatus = "disconnected",
   connectionStatus = "disconnected",
   requireAuth,
   protocolVersion = "1",
@@ -194,6 +212,10 @@ export function ACPClientPage({
   queueDepth,
   permissionHistory,
   authMethods = [],
+  agents = [],
+  currentAgentId,
+  onSwitchAgent,
+  onReloadAgent,
   attachments,
   onAttachImages,
   onRemoveAttachment,
@@ -383,6 +405,48 @@ export function ACPClientPage({
                     <TooltipContent>{t("chat.refreshSession")}</TooltipContent>
                   </Tooltip>
                 ) : null}
+                {/* Agent switcher (ACP extension) */}
+                {agents.length > 0 && onSwitchAgent ? (
+                  <Select
+                    value={currentAgentId ?? undefined}
+                    onValueChange={onSwitchAgent}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SelectTrigger className="ml-auto h-7 w-auto gap-1 border-none px-2 text-xs">
+                          <Bot className="h-3.5 w-3.5" />
+                          <SelectValue />
+                        </SelectTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("agents.title")}</TooltipContent>
+                    </Tooltip>
+                    <SelectContent>
+                      {agents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                {/* Reload agent (ACP extension) */}
+                {agents.length > 0 && onReloadAgent ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="h-7 w-7"
+                        aria-label={t("agents.reload")}
+                        onClick={onReloadAgent}
+                      >
+                        <RotateCw className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("agents.reload")}</TooltipContent>
+                  </Tooltip>
+                ) : null}
                 {showRightPanel ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -482,7 +546,7 @@ export function ACPClientPage({
           </div>
 
           <StatusBar
-            status={connectionStatus}
+            status={gatewayStatus}
             modeId={currentModeId}
             usage={usage}
             busy={busy}

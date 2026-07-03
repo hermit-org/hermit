@@ -2,6 +2,8 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface } from "node:readline";
 import { encodeSse, encodeSseKeepAlive } from "@hermit-org/stdio-to-sse";
+import type { AgentConfig } from "@hermit-org/acp-ext";
+import { isExtMethod, AcpExtMethod, AcpExtNotification } from "@hermit-org/acp-ext";
 import {
   type CorsConfig,
   type NormalizedCors,
@@ -59,6 +61,12 @@ export interface AcpGatewayServerOptions {
     res: ServerResponse,
   ) => boolean | Promise<boolean>;
   getQrPayload?: () => ConnectionPayload | null | Promise<ConnectionPayload | null>;
+  /** All configured agents (for `_agent/*` extension support). */
+  agents?: AgentConfig[];
+  /** The agent to activate on startup. */
+  activeAgentId?: string | null;
+  /** Called whenever the agent list or the active agent changes. */
+  onAgentChanged?: (agents: AgentConfig[], activeAgentId: string | null) => void;
 }
 
 export interface AcpGatewayServerState {
@@ -99,6 +107,8 @@ export class AcpGatewayServer {
   private idleCheckTimer?: ReturnType<typeof setInterval>;
   private spawnPromise?: Promise<void>;
   private agentStoppedIntentionally = false;
+  private agents: AgentConfig[] = [];
+  private currentAgentId: string | null = null;
 
   constructor(private readonly options: AcpGatewayServerOptions) {}
 
@@ -122,6 +132,8 @@ export class AcpGatewayServer {
 
     this.cors = normalizeCors(this.options.cors ?? true);
     this.idleTimeout = idleTimeout ?? 300000;
+    this.agents = this.options.agents ?? [];
+    this.currentAgentId = this.options.activeAgentId ?? null;
 
     const normalizedEndpoint = endpoint === "/" ? "/" : endpoint.replace(/\/$/, "");
     const normalizedSendEndpoint = sendEndpoint.replace(/\/$/, "");
@@ -263,8 +275,10 @@ export class AcpGatewayServer {
     res: ServerResponse,
     heartbeatInterval: number,
   ): Promise<void> {
-    await this.ensureAgentRunning();
-
+    // Open the SSE stream immediately — do NOT wait for the agent process.
+    // The agent is spawned lazily on the first `/send` request that carries
+    // a standard ACP method. This lets the client receive "gateway connected"
+    // status without blocking on agent startup (which can take 30s+).
     const headers: Record<string, string | string[]> = {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -292,23 +306,217 @@ export class AcpGatewayServer {
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
-    await this.ensureAgentRunning();
-
     try {
-      if (!this.proc || this.proc.killed || !this.proc.stdin || this.proc.stdin.destroyed || this.procExited) {
-        this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, req.headers.origin);
-        return;
+      const body = await readRequestBody(req);
+
+      // Check if any line is an extension method (`_`-prefixed). If so, the
+      // gateway handles those itself; the remaining (standard) lines are
+      // forwarded to the agent stdin as usual.
+      const { extLines, stdLines } = this.splitExtLines(body);
+
+      // Handle extension requests first.
+      for (const line of extLines) {
+        await this.handleExtRequest(line);
       }
 
-      const body = await readRequestBody(req);
-      this.recordActivity();
-      this.trackPromptRequestFromBody(body);
-      await this.writeToStdin(body);
+      // Forward standard lines to the agent.
+      if (stdLines.length > 0) {
+        await this.ensureAgentRunning();
+        if (!this.proc || this.proc.killed || !this.proc.stdin || this.proc.stdin.destroyed || this.procExited) {
+          this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, req.headers.origin);
+          return;
+        }
+        this.recordActivity();
+        const stdBuffer = Buffer.from(stdLines.join("\n") + "\n", "utf-8");
+        this.trackPromptRequestFromBody(stdBuffer);
+        await this.writeToStdin(stdBuffer);
+      }
 
       this.sendJson(res, 200, { ok: true }, req.headers.origin);
     } catch {
       this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, req.headers.origin);
     }
+  }
+
+  /**
+   * Split a raw request body into extension lines (`_`-prefixed method) and
+   * standard lines (everything else).
+   */
+  private splitExtLines(body: Buffer): { extLines: string[]; stdLines: string[] } {
+    const extLines: string[] = [];
+    const stdLines: string[] = [];
+    const text = body.toString("utf-8");
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line) continue;
+      try {
+        const msg = JSON.parse(line) as { jsonrpc?: string; method?: string };
+        if (msg.jsonrpc === "2.0" && msg.method && isExtMethod(msg.method)) {
+          extLines.push(line);
+        } else {
+          stdLines.push(line);
+        }
+      } catch {
+        // Not valid JSON — forward as-is to the agent.
+        stdLines.push(line);
+      }
+    }
+    return { extLines, stdLines };
+  }
+
+  /**
+   * Handle a single `_`-prefixed extension JSON-RPC request. The response is
+   * broadcast to all SSE connections (not written to the agent stdin).
+   */
+  private async handleExtRequest(line: string): Promise<void> {
+    let msg: { id?: string | number; method?: string; params?: unknown };
+    try {
+      msg = JSON.parse(line);
+    } catch {
+      return;
+    }
+    const { id, method, params } = msg;
+    if (!method) return;
+
+    let result: unknown = null;
+    let error: { code: number; message: string } | null = null;
+
+    try {
+      switch (method) {
+        case AcpExtMethod.AgentList:
+          result = { agents: this.agents, currentAgentId: this.currentAgentId };
+          break;
+        case AcpExtMethod.AgentGet: {
+          const p = params as { agentId?: string };
+          const agent = this.agents.find((a) => a.id === p?.agentId);
+          if (!agent) throw new Error(`Agent not found: ${p?.agentId ?? ""}`);
+          result = { agent };
+          break;
+        }
+        case AcpExtMethod.AgentCreate: {
+          const p = params as { agent?: Partial<AgentConfig> };
+          const input = p?.agent;
+          if (!input?.command) throw new Error("agent.command is required");
+          const newAgent: AgentConfig = {
+            id: input.id || this.generateUniqueAgentId(),
+            name: input.name || input.id || input.command,
+            command: input.command,
+            args: input.args ?? [],
+            cwd: input.cwd,
+          };
+          this.agents = [...this.agents, newAgent];
+          if (this.currentAgentId === null) this.currentAgentId = newAgent.id;
+          this.notifyAgentChanged();
+          result = { agent: newAgent };
+          break;
+        }
+        case AcpExtMethod.AgentUpdate: {
+          const p = params as { agent?: AgentConfig };
+          const updated = p?.agent;
+          if (!updated?.id) throw new Error("agent.id is required");
+          const idx = this.agents.findIndex((a) => a.id === updated.id);
+          if (idx === -1) throw new Error(`Agent not found: ${updated.id}`);
+          this.agents = this.agents.map((a) => (a.id === updated.id ? updated : a));
+          this.notifyAgentChanged();
+          result = { agent: updated };
+          break;
+        }
+        case AcpExtMethod.AgentDelete: {
+          const p = params as { agentId?: string };
+          const agentId = p?.agentId;
+          if (!agentId) throw new Error("agentId is required");
+          this.agents = this.agents.filter((a) => a.id !== agentId);
+          if (this.currentAgentId === agentId) {
+            this.currentAgentId = this.agents[0]?.id ?? null;
+          }
+          this.notifyAgentChanged();
+          result = null;
+          break;
+        }
+        case AcpExtMethod.AgentSwitch: {
+          const p = params as { agentId?: string };
+          const agentId = p?.agentId;
+          if (!agentId) throw new Error("agentId is required");
+          const agent = this.agents.find((a) => a.id === agentId);
+          if (!agent) throw new Error(`Agent not found: ${agentId}`);
+          await this.doSwitchAgent(agent);
+          result = { agentId };
+          break;
+        }
+        case AcpExtMethod.AgentReload: {
+          const agentId = this.currentAgentId;
+          if (!agentId) throw new Error("No active agent to reload");
+          await this.doSwitchAgent(
+            this.agents.find((a) => a.id === agentId) ?? null,
+          );
+          result = { agentId };
+          break;
+        }
+        case AcpExtMethod.AgentCurrent:
+          result = { agentId: this.currentAgentId };
+          break;
+        default:
+          error = { code: -32601, message: `Method not found: ${method}` };
+      }
+    } catch (e) {
+      error = {
+        code: -32603,
+        message: e instanceof Error ? e.message : String(e),
+      };
+    }
+
+    // Broadcast the response via SSE.
+    const response =
+      error !== null
+        ? { jsonrpc: "2.0", id, error }
+        : { jsonrpc: "2.0", id, result };
+    this.broadcast(JSON.stringify(response));
+  }
+
+  private generateUniqueAgentId(): string {
+    const existing = new Set(this.agents.map((a) => a.id));
+    let n = 1;
+    let candidate = `agent-${n}`;
+    while (existing.has(candidate)) {
+      n += 1;
+      candidate = `agent-${n}`;
+    }
+    return candidate;
+  }
+
+  /**
+   * Switch the active agent: stop the current process, update the command,
+   * and respawn.
+   */
+  private async doSwitchAgent(agent: AgentConfig | null): Promise<void> {
+    if (!agent) {
+      await this.stopAgent();
+      return;
+    }
+    await this.stopAgent();
+    this.agentCommand = agent.command;
+    this.agentArgs = agent.args ?? [];
+    this.agentCwd = agent.cwd;
+    this.currentAgentId = agent.id;
+    this.notifyAgentChanged();
+    // Respawn immediately if there are active connections.
+    if (this.connections.size > 0) {
+      await this.ensureAgentRunning();
+    }
+  }
+
+  /** Broadcast `_agent/changed` notification and fire the callback. */
+  private notifyAgentChanged(): void {
+    const notification = {
+      jsonrpc: "2.0",
+      method: AcpExtNotification.AgentChanged,
+      params: {
+        agents: this.agents,
+        currentAgentId: this.currentAgentId,
+      },
+    };
+    this.broadcast(JSON.stringify(notification));
+    this.options.onAgentChanged?.(this.agents, this.currentAgentId);
   }
 
   private async handleQrRequest(

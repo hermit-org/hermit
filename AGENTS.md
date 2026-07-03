@@ -11,6 +11,7 @@ Hermit is a Bun-based monorepo that bridges a local ACP (Agent Client Protocol) 
 - `@hermit-org/types` — shared TypeScript domain types.
 - `@hermit-org/utils` — shared TypeScript helpers.
 - `@hermit-org/acp` — ACP v1 client library (typed methods, session/update dispatch, JSON-RPC framing).
+- `@hermit-org/acp-ext` — ACP extension protocol (`_agent/*`) for multi-agent management (CRUD, switch, reload).
 - `@hermit-org/stdio-to-sse` — Node.js server library that exposes a local stdio ACP agent as an SSE gateway.
 - `@hermit-org/stdio-to-sse_rn` — React Native transport library that turns an SSE endpoint into a stdio-like readable stream.
 - `@hermit-org/cli` — Bun CLI that starts the gateway and manages mobile pairing.
@@ -120,6 +121,12 @@ hermit/
     │       ├── jsonrpc.ts    # JSON-RPC 2.0 create/parse/encode helpers
     │       ├── transport.ts  # StdioTransport interface
     │       └── client.test.ts
+    ├── acp-ext/              # @hermit-org/acp-ext — ACP extension (_agent/*) for multi-agent management
+    │   ├── package.json
+    │   └── src/
+    │       ├── index.ts
+    │       ├── types.ts      # AgentConfig, _agent/* method/notification constants, isExtMethod()
+    │       └── client.ts     # createAcpExtClient(), AcpExtClient interface
     ├── cli/                  # @hermit-org/cli — Bun CLI
     │   ├── package.json      # bin: "hermit": "./src/index.ts"
     │   └── src/
@@ -273,6 +280,7 @@ bun run scripts/test-acp-kimi.ts
   - `@hermit-org/types` exports domain types.
   - `@hermit-org/utils` exports `formatId`, `clamp`.
   - `@hermit-org/acp` exports `createAcpClient`, `AcpClient`, `AcpClientOptions`, `AcpClientHandlers`, `StdioTransport`, JSON-RPC utilities, and ACP protocol types/enums.
+  - `@hermit-org/acp-ext` exports `createAcpExtClient`, `AcpExtClient`, `AgentConfig`, `AcpExtMethod`, `AcpExtNotification`, `isExtMethod`, and all `_agent/*` request/response types.
   - `@hermit-org/stdio-to-sse` exports subpaths: `.` (server), `./client`, `./server`.
 - **Environment isolation:**
   - `@hermit-org/acp` is platform-agnostic (only a `StdioTransport` interface).
@@ -323,6 +331,8 @@ No Docker files, Kubernetes manifests, or other platform-specific deployment scr
 - `agent.command` — The ACP agent command (default: `"npx"`).
 - `agent.args` — Arguments passed to the agent command (default: `["codex", "--acp"]`).
 - `agent.cwd` — Working directory for the spawned agent process (default: the directory where `hermit start` is launched).
+- `agents` — Array of multiple agent configurations (`{ id, name, command, args, cwd }`). When present, takes precedence over the single `agent` field and enables runtime agent switching via the `_agent/*` extension protocol.
+- `activeAgentId` — The agent to activate on startup (defaults to the first entry in `agents`).
 - `gateway.port` — Gateway listen port (default: `8787`).
 - `gateway.hostname` — Gateway bind address (default: `"0.0.0.0"`).
 - `gateway.endpoint` — SSE endpoint path (default: `"/"`).
