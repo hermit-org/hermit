@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.11] - 2026-07-03
+
+### 修复
+
+- **打字机效果内容不完整**：streaming 阶段每次收到新 chunk 都会重建 interval 定时器，导致加速阶段无法刷新剩余内容。改为通过 ref 追踪最新文本长度，interval 不再因 chunk 到达而重建
+- **快捷指令显示为两行**：用户自定义快捷指令和 agent 斜杠命令被拆分到不同容器，合并为同一行并共享「快捷」标签
+- **工具调用面板为空**：turn 完成后 `liveTurn` 重置导致工具调用记录消失。改为从 `historyItems` + `liveTurn.toolCalls` 合并提取；右侧面板标签从「right panel」改为「工具面板」
+- **归档最后一个会话后未进入空会话**：归档/删除最后一个会话时自动进入 composition mode，显示空的聊天区域而非停留在已归档的会话
+- **初始切换 mode UI 不生效**：空会话（composition mode）下 `meta.modes` 为 null 导致 ModeSelector 不渲染。新增 `lastKnownModesRef` 缓存上次 session setup 的 modes，空会话时复用；`currentModeId` fallback 到 `pendingModeRef`
+- **刷新会话历史被清空**：`refreshActiveSession` 调用 `sessionLoad` 后无条件用空 buffer 替换 historyItems。改为先处理非 null 返回值（提取 modes/configOptions），再按重放结果设置历史
+- **turn 结束不刷新会话列表**：pumpQueue 成功后主动调用 `refreshSessions` 刷新侧边栏
+- **Docker 版本号 unknown@0000000**：CI 浅克隆导致 `git describe` 失败。`vite.config.ts` 优先读取 `GITHUB_REF_NAME`/`GITHUB_REF_TYPE` 环境变量；Dockerfile 新增 `APP_VERSION` build-arg
+- **Docker 默认工作目录**：agent 进程 cwd 从 `/app` 改为 `/root`（`~`），通过 `--cwd /root` 参数指定
+
 ## [0.0.6-alpha.10] - 2026-07-03
 
 ### 新增

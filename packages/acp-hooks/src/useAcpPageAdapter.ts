@@ -456,6 +456,11 @@ export function useAcpPageAdapter(
   // buffer it here and apply right after `session/new` completes.
   const pendingModeRef = useRef<string | null>(null);
 
+  // Cache the last-known availableModes so the ModeSelector stays visible in
+  // composition mode (no active session) where `meta.modes` is null. Updated
+  // every time a session setup provides modes.
+  const lastKnownModesRef = useRef<SessionMode[]>([]);
+
   // Discover the agent cwd as soon as the gateway is known, so it is ready
   // before any session operation needs it. The platform supplies the discovery
   // mechanism (web fetches `/api/config`, mobile may read gateway config or
@@ -1058,6 +1063,13 @@ export function useAcpPageAdapter(
     }
   }, [supportsList, reconcileSessions]);
 
+  // Mirror `refreshSessions` into a ref so `pumpQueue` (a stable callback with
+  // no deps) can invoke the latest version without a stale closure.
+  const refreshSessionsRef = useRef(refreshSessions);
+  useEffect(() => {
+    refreshSessionsRef.current = refreshSessions;
+  });
+
   /** Reload the active session's authoritative history via `session/load`. */
   const refreshActiveSession = useCallback(async () => {
     const client = clientRef.current;
@@ -1073,8 +1085,9 @@ export function useAcpPageAdapter(
     try {
       historyBufferRef.current = [];
       isLoadingHistoryRef.current = true;
+      let loadResult: unknown = null;
       try {
-        await client.sessionLoad({ sessionId: targetSessionId, cwd: agentCwdRef.current });
+        loadResult = await client.sessionLoad({ sessionId: targetSessionId, cwd: agentCwdRef.current });
       } catch (e) {
         isLoadingHistoryRef.current = false;
         throw e;
@@ -1085,8 +1098,22 @@ export function useAcpPageAdapter(
         return;
       }
       isLoadingHistoryRef.current = false;
+
+      // Some agents return a non-null result with configOptions/modes instead
+      // of replaying history via session/update.
+      if (loadResult && typeof loadResult === "object") {
+        const r = loadResult as {
+          modes?: import("@hermit-org/acp").SessionModeState;
+          configOptions?: import("@hermit-org/acp").ConfigOption[];
+        };
+        if (r.modes) setMeta((m) => ({ ...m, modes: r.modes ?? null }));
+        if (r.configOptions) setConfigOptions(r.configOptions);
+      }
+
       const replayed = historyBufferRef.current;
       historyBufferRef.current = [];
+      // Always apply the replayed history — even if empty — because a zero-
+      // length replay means the session genuinely has no messages yet.
       const now = Date.now();
       setHistoryItems(
         replayed.map((entry, i) =>
@@ -1211,6 +1238,10 @@ export function useAcpPageAdapter(
       }
       setLiveTurn({ items: [], toolCalls: new Map() });
 
+      // Refresh the session list after each turn so the sidebar reflects
+      // updated titles, timestamps, and any sessions the agent created.
+      void refreshSessionsRef.current();
+
       // Notify platform listeners (e.g. web desktop notifications) that the
       // turn finished. Surface the last assistant message text so listeners
       // can show a preview without re-reading React state.
@@ -1299,13 +1330,16 @@ export function useAcpPageAdapter(
   const onModeChange = useCallback(
     async (modeId: string) => {
       const client = clientRef.current;
-      // During composition mode (no session yet), buffer the mode selection
-      // and optimistically update the UI. It will be applied via
-      // `session/set_mode` right after `session/new` completes.
+      // During composition mode (no session yet), buffer the mode selection.
+      // It will be applied via `session/set_mode` right after `session/new`
+      // completes. The UI reflects the change immediately because
+      // `currentModeId` falls back to `pendingModeRef`.
       if (!activeSessionIdRef.current) {
         pendingModeRef.current = modeId;
         setMeta((m) =>
-          m.modes ? { ...m, modes: { ...m.modes, currentModeId: modeId } } : m,
+          m.modes
+            ? { ...m, modes: { ...m.modes, currentModeId: modeId } }
+            : m,
         );
         return;
       }
@@ -1522,6 +1556,11 @@ export function useAcpPageAdapter(
         const visible = allAgentSessionsRef.current.filter(
           (s) => s.sessionId !== id,
         );
+        if (visible.length === 0) {
+          // No sessions left — enter composition mode so the user can start
+          // a new conversation instead of being stuck on an empty screen.
+          setComposingNew(true);
+        }
         return visible[0]?.sessionId ?? null;
       });
     },
@@ -1579,6 +1618,9 @@ export function useAcpPageAdapter(
         const visible = allAgentSessionsRef.current.filter(
           (s) => s.sessionId !== acpId,
         );
+        if (visible.length === 0) {
+          setComposingNew(true);
+        }
         return visible[0]?.sessionId ?? null;
       });
 
@@ -1647,11 +1689,22 @@ export function useAcpPageAdapter(
   );
 
   const toolCalls: ToolCallState[] = useMemo(
-    () =>
-      Array.from(liveTurn.toolCalls.values()).filter(
-        (call) => !isTodoToolCall(call),
-      ),
-    [liveTurn.toolCalls],
+    () => {
+      // Collect tool calls from both the live turn (in-flight) and committed
+      // history (past turns). The live turn is reset when a turn completes,
+      // so without scanning history the panel would empty out after each turn.
+      const all = new Map<string, ToolCallState>();
+      for (const item of historyItems) {
+        if (item.kind === "tool_call" && !isTodoToolCall(item.call)) {
+          all.set(item.call.toolCallId, item.call);
+        }
+      }
+      for (const [id, call] of liveTurn.toolCalls) {
+        if (!isTodoToolCall(call)) all.set(id, call);
+      }
+      return Array.from(all.values());
+    },
+    [historyItems, liveTurn.toolCalls],
   );
 
   const permissionsUi: PendingPermission[] = useMemo(
@@ -1702,7 +1755,17 @@ export function useAcpPageAdapter(
     return list;
   }, [acp.client?.initializeResult?.agentCapabilities]);
 
-  const modes = meta.modes?.availableModes ?? [];
+  // Keep a ref of the last-known availableModes so the ModeSelector remains
+  // visible in composition mode (no active session, `meta.modes` is null).
+  useEffect(() => {
+    if (meta.modes?.availableModes && meta.modes.availableModes.length > 0) {
+      lastKnownModesRef.current = meta.modes.availableModes;
+    }
+  }, [meta.modes?.availableModes]);
+
+  // In composition mode (no active session, meta.modes is null), fall back to
+  // the cached modes so the user can still see and switch the mode selector.
+  const modes = meta.modes?.availableModes ?? lastKnownModesRef.current ?? [];
 
   // Whether the agent implements the optional `session/delete` method.
   // Used to gate the delete action in the UI (hide it when unsupported).
@@ -1758,7 +1821,8 @@ export function useAcpPageAdapter(
     canLogout: acp.canLogout,
     canDeleteSession,
     modes,
-    currentModeId: meta.modes?.currentModeId,
+    currentModeId:
+      meta.modes?.currentModeId ?? pendingModeRef.current ?? undefined,
     configOptions,
     sessions: sessionSummaries,
     archivedSessions: archivedSessionSummaries,

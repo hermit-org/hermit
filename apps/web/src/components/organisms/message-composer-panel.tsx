@@ -1,9 +1,8 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Zap, Eraser, SlashSquare, Layers } from "lucide-react";
+import { Zap, Eraser, SlashSquare, Layers, MousePointerClick } from "lucide-react";
 import type { AvailableCommand } from "@hermit-org/acp";
 import { MessageComposer } from "@/components/molecules";
-import { QuickCommandsPanel } from "@/components/molecules/quick-commands-panel";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { PendingAttachment } from "@/types";
@@ -90,6 +89,7 @@ export function MessageComposerPanel({
   const { t } = useTranslation();
   const shortcuts = commands.slice(0, 4);
   const enabledQuickCommands = quickCommands.filter((c) => c.enabled);
+  const hasQuickRow = enabledQuickCommands.length > 0 || shortcuts.length > 0;
 
   return (
     <div className={cn("border-t border-border bg-background px-3 py-2", className)}>
@@ -99,24 +99,47 @@ export function MessageComposerPanel({
           <span>{queueDepth} {t("common.queued")}</span>
         </div>
       ) : null}
-      {enabledQuickCommands.length > 0 ? (
-        <QuickCommandsPanel
-          commands={enabledQuickCommands}
-          doubleClickSendEnabled={doubleClickSendEnabled}
-          onInsert={onQuickCommandInsert ?? (() => {})}
-          onSend={onQuickCommandSend ?? (() => {})}
-          disabled={disabled || busy}
-          className="mb-1.5"
-        />
-      ) : null}
-      {shortcuts.length > 0 ? (
+      {hasQuickRow ? (
         <div className="mb-1.5 flex flex-wrap items-center gap-1">
           <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
             <Zap className="h-3 w-3" />
             {t("common.quick")}
           </span>
+          {enabledQuickCommands.map((cmd) => (
+            <Tooltip key={`qc-${cmd.id}`}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 gap-1 px-2 text-[11px] select-none"
+                  disabled={disabled || busy}
+                  onClick={() => onQuickCommandInsert?.(cmd.content)}
+                  onDoubleClick={() => {
+                    if (doubleClickSendEnabled) {
+                      onQuickCommandSend?.(cmd.content);
+                    } else {
+                      onQuickCommandInsert?.(cmd.content);
+                    }
+                  }}
+                >
+                  <MousePointerClick className="h-3 w-3" />
+                  {cmd.title}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="font-medium">{cmd.title}</p>
+                <p className="text-muted-foreground truncate">{cmd.content}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {doubleClickSendEnabled
+                    ? t("quickCommands.doubleClickTooltipEnabled")
+                    : t("quickCommands.doubleClickTooltipDisabled")}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
           {shortcuts.map((cmd) => (
-            <Tooltip key={cmd.name}>
+            <Tooltip key={`sc-${cmd.name}`}>
               <TooltipTrigger asChild>
                 <Button
                   type="button"

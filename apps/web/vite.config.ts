@@ -5,10 +5,18 @@ import { fileURLToPath, URL } from "node:url";
 
 /**
  * Resolve the build version label:
- * - When HEAD is exactly on a git tag (release build), use the tag (e.g. "v0.0.6-alpha.5").
+ * - In CI (tag push), use `GITHUB_REF_NAME` (the tag, e.g. "v0.0.6-alpha.10").
+ * - When HEAD is exactly on a git tag (local release build), use the tag.
  * - Otherwise (dev/branch build), use "<branch>@<short-sha>".
  */
 function resolveVersion(): string {
+  // GitHub Actions sets GITHUB_REF_NAME to the tag name on tag-push triggers.
+  // This is more reliable than `git describe` which requires full history
+  // (actions/checkout uses shallow clone by default).
+  if (process.env.GITHUB_REF_NAME && process.env.GITHUB_REF_TYPE === "tag") {
+    return process.env.GITHUB_REF_NAME;
+  }
+
   const run = (cmd: string): string =>
     execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
 

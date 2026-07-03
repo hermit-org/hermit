@@ -9,7 +9,7 @@
     "gateways": "网关",
     "settings": "设置",
     "toggleSidebar": "切换侧边栏",
-    "toggleRightPanel": "切换右侧面板",
+    "toggleRightPanel": "切换工具面板",
     "chat": "对话"
   },
   "common": {
@@ -458,8 +458,8 @@
     "showUsageStatsHint": "在状态栏显示令牌用量与花费。",
     "showConfigBar": "显示配置栏",
     "showConfigBarHint": "在输入框上方显示智能体配置选项栏。",
-    "showRightPanel": "显示右侧面板",
-    "showRightPanelHint": "在宽屏下显示右侧工具调用面板，关闭后折叠按钮一并隐藏。",
+    "showRightPanel": "显示工具面板",
+    "showRightPanelHint": "在宽屏下显示工具调用面板，关闭后折叠按钮一并隐藏。",
     "acpExt": "ACP 扩展（多 Agent）",
     "acpExtHint": "启用 _agent/* 扩展协议，管理网关上的多个 Agent。"
   },

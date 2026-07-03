@@ -24,9 +24,17 @@ WORKDIR /app
 # Build the web client (static SPA)
 # ----------------------------------------------------------------------------
 FROM base AS web-build
+
+# Pass the version label into the build (tag-push CI sets GITHUB_REF_NAME).
+# Falls back to git if available, or "unknown" in plain docker builds.
+ARG APP_VERSION=""
+ENV GITHUB_REF_TYPE="${APP_VERSION:+tag}"
+ENV GITHUB_REF_NAME="${APP_VERSION}"
+
 COPY package.json bun.lock tsconfig.json ./
 COPY packages/acp/package.json            packages/acp/
 COPY packages/acp-hooks/package.json      packages/acp-hooks/
+COPY packages/acp-ext/package.json        packages/acp-ext/
 COPY packages/cli/package.json            packages/cli/
 COPY packages/stdio-to-sse/package.json   packages/stdio-to-sse/
 COPY packages/stdio-to-sse_rn/package.json packages/stdio-to-sse_rn/
@@ -51,6 +59,7 @@ FROM base AS final
 COPY package.json bun.lock tsconfig.json ./
 COPY packages/acp/package.json            packages/acp/
 COPY packages/acp-hooks/package.json      packages/acp-hooks/
+COPY packages/acp-ext/package.json        packages/acp-ext/
 COPY packages/cli/package.json            packages/cli/
 COPY packages/stdio-to-sse/package.json   packages/stdio-to-sse/
 COPY packages/stdio-to-sse_rn/package.json packages/stdio-to-sse_rn/
@@ -87,7 +96,7 @@ logfile=/dev/null
 pidfile=/tmp/supervisord.pid
 
 [program:gateway]
-command=bun packages/cli/src/index.ts start --config /app/hermit.config.json
+command=bun packages/cli/src/index.ts start --config /app/hermit.config.json --cwd /root
 directory=/app
 autorestart=true
 priority=10

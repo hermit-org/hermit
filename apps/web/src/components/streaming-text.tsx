@@ -42,53 +42,71 @@ export function StreamingText({
   const shownRef = React.useRef(shown);
   shownRef.current = shown;
 
+  // Track the latest text length via a ref so the interval callback always
+  // reads the current value without re-creating the interval on every chunk.
+  const textLenRef = React.useRef(text.length);
+  textLenRef.current = text.length;
+
   // Track whether streaming just ended, so we can flush the remaining tail
   // at an accelerated rate.
   const wasStreamingRef = React.useRef(streaming ?? false);
+  const streamingRef = React.useRef(streaming ?? false);
+  streamingRef.current = streaming ?? false;
 
   React.useEffect(() => {
     const wasStreaming = wasStreamingRef.current;
     wasStreamingRef.current = streaming ?? false;
 
     if (!streaming) {
-      // Message finished — if there's still buffered text, accelerate through it.
-      if (text.length > shownRef.current) {
+      // Message finished — flush remaining text at accelerated rate.
+      if (textLenRef.current > shownRef.current) {
         const fastChars = Math.max(charsPerTick * fastFinishMultiplier, 8);
+        const fastInterval = Math.min(intervalMs, 8);
         const id = setInterval(() => {
+          const target = textLenRef.current;
           const next = shownRef.current + fastChars;
-          if (next >= text.length) {
+          if (next >= target) {
             clearInterval(id);
-            setShown(text.length);
+            setShown(target);
             return;
           }
           setShown(next);
-        }, Math.min(intervalMs, 8));
+        }, fastInterval);
         return () => clearInterval(id);
       }
       // Fully shown, nothing to do.
-      setShown(text.length);
+      setShown(textLenRef.current);
       return;
     }
 
     // Still streaming: if the text shrank (e.g. a new message replaced the
     // old one), snap to the new length.
-    if (text.length <= shownRef.current) {
-      setShown(text.length);
+    if (textLenRef.current <= shownRef.current) {
+      setShown(textLenRef.current);
       return;
     }
 
+    // Use a single stable interval that chases `textLenRef` via ref. This
+    // avoids clearing/re-creating the interval on every streaming chunk,
+    // which previously caused ticks to never fire when text arrived at a
+    // rate close to or faster than `intervalMs`.
     const id = setInterval(() => {
+      const target = textLenRef.current;
       const next = shownRef.current + charsPerTick;
-      if (next >= text.length) {
-        // Don't clearInterval here — more text may arrive and the effect will
-        // re-run when `text` changes, creating a fresh interval.
-        setShown(text.length);
+      if (next >= target) {
+        // Caught up — snap to target. The interval stays alive so it can
+        // resume chasing when more text arrives.
+        setShown(target);
         return;
       }
       setShown(next);
     }, intervalMs);
     return () => clearInterval(id);
-  }, [text, streaming, charsPerTick, intervalMs, fastFinishMultiplier]);
+    // Intentionally only depend on `streaming` and config params — NOT `text`.
+    // The interval reads the latest text length via `textLenRef` so it never
+    // goes stale, and avoiding `text` in the deps prevents the interval from
+    // being torn down and rebuilt on every streaming chunk.
+  }, [streaming, charsPerTick, intervalMs, fastFinishMultiplier]);
 
   const visible = text.slice(0, shown);
   const pending = (streaming || text.length > shown) && shown < text.length;

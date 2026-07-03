@@ -9,7 +9,7 @@
     "gateways": "Gateways",
     "settings": "Settings",
     "toggleSidebar": "Toggle sidebar",
-    "toggleRightPanel": "Toggle right panel",
+    "toggleRightPanel": "Toggle tool panel",
     "chat": "Chat"
   },
   "common": {
@@ -458,8 +458,8 @@
     "showUsageStatsHint": "Display token usage and cost in the status bar.",
     "showConfigBar": "Show config bar",
     "showConfigBarHint": "Display the agent config-option bar above the composer.",
-    "showRightPanel": "Show right panel",
-    "showRightPanelHint": "Show the right-side tool-call panel on wide screens. The toggle button is hidden when off.",
+    "showRightPanel": "Show tool panel",
+    "showRightPanelHint": "Show the tool-call panel on wide screens. The toggle button is hidden when off.",
     "acpExt": "ACP extension (multi-agent)",
     "acpExtHint": "Enable _agent/* extension protocol for managing multiple agents on the gateway."
   },
