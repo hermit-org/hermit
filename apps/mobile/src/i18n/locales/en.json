@@ -29,7 +29,8 @@
     "loading": "Loading...",
     "sending": "Sending...",
     "connecting": "Connecting...",
-    "stop": "Stop"
+    "stop": "Stop",
+    "dismiss": "Dismiss"
   },
   "gateways": {
     "title": "Gateways",
@@ -40,6 +41,8 @@
     "add": "Add Gateway",
     "connect": "Connect",
     "delete": "Delete",
+    "editTitle": "Edit Gateway",
+    "editMessage": "Enter a new name",
     "error": "Error",
     "urlRequired": "Please enter a gateway URL.",
     "urlInvalid": "Please enter a valid HTTP or HTTPS URL.",
@@ -57,7 +60,8 @@
     "gatewayNotFoundTitle": "Gateway not found",
     "gatewayNotFoundMessage": "The gateway for this session no longer exists.",
     "connectingMessage": "Connecting to gateway...",
-    "errorPrefix": "\n\nError: {{message}}"
+    "errorPrefix": "\n\nError: {{message}}",
+    "answeredHistory": "Answered ({{count}})"
   },
   "settings": {
     "title": "Settings",
@@ -68,7 +72,43 @@
     "thoughtPreviewLines": "Thought preview lines",
     "autoArchiveThreshold": "Auto-archive threshold",
     "autoArchivePlaceholder": "e.g. 3d",
-    "autoAuthenticate": "Auto-authenticate"
+    "autoAuthenticate": "Auto-authenticate",
+    "features": "Features",
+    "archive": "Archive",
+    "showArchivedSessions": "Show archived sessions",
+    "about": "About",
+    "version": "Version"
+  },
+  "features": {
+    "showThoughts": "Show thoughts",
+    "showThoughtsHint": "Display agent reasoning blocks",
+    "showPlan": "Show plan bar",
+    "showPlanHint": "Display the todo/plan progress bar",
+    "showUsageStats": "Show usage stats",
+    "showUsageStatsHint": "Display token usage and cost",
+    "showConfigBar": "Show config bar",
+    "showConfigBarHint": "Display agent config options (model, mode, etc.)",
+    "showRightPanel": "Show tool panel",
+    "showRightPanelHint": "Display the tool call panel",
+    "acpExt": "Multi-agent management",
+    "acpExtHint": "Enable ACP extension for switching between agents"
+  },
+  "permission": {
+    "notePlaceholder": "Add a note (optional)",
+    "questionBadge": "Question {{n}}",
+    "skipped": "Skipped"
+  },
+  "plan": {
+    "title": "Plan"
+  },
+  "session": {
+    "list": "Sessions",
+    "archived": "Archived"
+  },
+  "sessionItem": {
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "untitled": "Untitled"
   },
   "qrScanner": {
     "invalidQrTitle": "Invalid QR code",

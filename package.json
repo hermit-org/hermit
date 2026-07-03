@@ -12,6 +12,7 @@
   "devDependencies": {
     "@babel/runtime": "^7.25.0",
     "@types/bun": "latest",
+    "@types/jest": "^29",
     "@types/node": "latest"
   },
   "overrides": {

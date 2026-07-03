@@ -6,6 +6,29 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.12] - 2026-07-03
+
+### 新增
+
+- **Mobile 功能同步（Web → RN App）**:
+  - Settings store 新增 6 个 feature flag（showThoughts/showPlan/showUsageStats/showConfigBar/showRightPanel/acpExt）+ showArchivedSessions
+  - 新增 `FeatureGate` 组件用于条件渲染功能模块
+  - 新增 `PermissionPanel`：权限请求面板，支持选项选择 + 备注 + 历史记录
+  - 新增 `PlanBar`：计划进度条，展开/折叠显示任务列表
+  - 新增 `UsageBar`：token 用量与成本显示
+  - 新增 `ModeSelector`：会话模式选择器（下拉列表）
+  - 新增 `ConfigBar`：agent 配置栏（toggle/select 切换）
+  - AcpClientScreen 集成以上组件，支持完整聊天体验
+  - SettingsScreen 新增功能开关设置区域
+  - GatewayManagerScreen 新增归档会话展示
+  - i18n 新增所有功能模块的翻译 key
+
+- **Mobile 单元测试基础设施**:
+  - 搭建 Jest + @testing-library/react-native 测试环境
+  - 配置 babel-jest + metro-react-native-babel-preset
+  - 完整的 react-native mock（解决 Bun `.bun/` 隔离布局下 Flow 语法无法转换的问题）
+  - 7 个测试套件、38 个测试用例覆盖 feature flags、settings store、5 个新组件
+
 ## [0.0.6-alpha.11] - 2026-07-03
 
 ### 修复

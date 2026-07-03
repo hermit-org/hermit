@@ -4,7 +4,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-native",
-    "types": ["bun", "node"],
+    "types": ["bun", "node", "jest"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

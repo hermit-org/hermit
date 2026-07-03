@@ -23,10 +23,12 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
   const gateways = useGatewayStore((s) => s.gateways);
   const addGateway = useGatewayStore((s) => s.addGateway);
   const removeGateway = useGatewayStore((s) => s.removeGateway);
+  const updateGateway = useGatewayStore((s) => s.updateGateway);
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleAdd = () => {
     const trimmedUrl = url.trim();
@@ -40,17 +42,26 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
       return;
     }
     try {
-      addGateway({
-        name: trimmedName || trimmedUrl,
-        url: trimmedUrl,
-        sendUrl: "",
-        token: token.trim(),
-      });
+      if (editingId) {
+        updateGateway(editingId, {
+          name: trimmedName || trimmedUrl,
+          url: trimmedUrl,
+          token: token.trim(),
+        });
+        setEditingId(null);
+      } else {
+        addGateway({
+          name: trimmedName || trimmedUrl,
+          url: trimmedUrl,
+          sendUrl: "",
+          token: token.trim(),
+        });
+      }
       setName("");
       setUrl("");
       setToken("");
     } catch (e) {
-      console.error("[GatewayManager] failed to add gateway:", e);
+      console.error("[GatewayManager] failed to save gateway:", e);
       Alert.alert(
         t("gateways.error"),
         e instanceof Error ? e.message : String(e),
@@ -58,13 +69,31 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
     }
   };
 
+  const handleEdit = (item: Gateway) => {
+    setEditingId(item.id);
+    setName(item.name);
+    setUrl(item.url);
+    setToken(item.token);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setName("");
+    setUrl("");
+    setToken("");
+  };
+
   const renderItem: ListRenderItem<Gateway> = useCallback(
     ({ item }) => (
       <View style={styles.gatewayItem}>
-        <View style={styles.gatewayInfo}>
+        <TouchableOpacity
+          style={styles.gatewayInfo}
+          onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
+          onLongPress={() => handleEdit(item)}
+        >
           <Text style={styles.gatewayName}>{item.name}</Text>
           <Text style={styles.gatewayUrl}>{item.url}</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.gatewayActions}>
           <TouchableOpacity
             style={styles.actionButton}
@@ -81,25 +110,42 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
         </View>
       </View>
     ),
-    [navigation, t, removeGateway],
+    [navigation, t, removeGateway, updateGateway],
   );
 
   const keyExtractor = useCallback((item: Gateway) => item.id, []);
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>{t("gateways.title")}</Text>
+      {/* Header with settings + QR scan buttons */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.topBarButton}
+          onPress={() => navigation.navigate("QrScanner")}
+        >
+          <Text style={styles.topBarIcon}>⌗</Text>
+        </TouchableOpacity>
+        <Text style={styles.title}>{t("gateways.title")}</Text>
+        <TouchableOpacity
+          style={styles.topBarButton}
+          onPress={() => navigation.navigate("Settings")}
+        >
+          <Text style={styles.topBarIcon}>⚙</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
           placeholder={t("gateways.namePlaceholder")}
+          placeholderTextColor="#999"
           value={name}
           onChangeText={setName}
         />
         <TextInput
           style={styles.input}
           placeholder={t("gateways.urlPlaceholder")}
+          placeholderTextColor="#999"
           value={url}
           onChangeText={setUrl}
           autoCapitalize="none"
@@ -108,14 +154,30 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
         <TextInput
           style={styles.input}
           placeholder={t("gateways.tokenPlaceholder")}
+          placeholderTextColor="#999"
           value={token}
           onChangeText={setToken}
           autoCapitalize="none"
           secureTextEntry
         />
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-          <Text style={styles.addButtonText}>{t("gateways.add")}</Text>
-        </TouchableOpacity>
+        <View style={styles.formActions}>
+          <TouchableOpacity
+            style={[styles.addButton, { flex: 1 }]}
+            onPress={handleAdd}
+          >
+            <Text style={styles.addButtonText}>
+              {editingId ? t("common.save") : t("gateways.add")}
+            </Text>
+          </TouchableOpacity>
+          {editingId ? (
+            <TouchableOpacity
+              style={[styles.addButton, styles.cancelEditButton, { flex: 1 }]}
+              onPress={handleCancelEdit}
+            >
+              <Text style={styles.cancelEditText}>{t("common.cancel")}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
       <FlatList
@@ -136,10 +198,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 16,
   },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  topBarButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topBarIcon: {
+    fontSize: 20,
+  },
   title: {
     fontSize: 22,
     fontWeight: "700",
-    marginBottom: 16,
   },
   form: {
     marginBottom: 16,
@@ -158,6 +236,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
+  },
+  formActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  cancelEditButton: {
+    backgroundColor: "#f0f0f0",
+  },
+  cancelEditText: {
+    color: "#666",
+    fontWeight: "600",
+    fontSize: 16,
   },
   addButtonText: {
     color: "#fff",

@@ -18,6 +18,16 @@ interface SettingsState {
   sidebarOpen: boolean;
   /** Whether the right tool/permissions panel is open. */
   rightPanelOpen: boolean;
+  /** Whether to show the archived sessions section in the session drawer. */
+  showArchivedSessions: boolean;
+
+  // Feature flags
+  showThoughts: boolean;
+  showPlan: boolean;
+  showUsageStats: boolean;
+  showConfigBar: boolean;
+  showRightPanel: boolean;
+  acpExt: boolean;
 
   setTheme: (theme: SettingsState["theme"]) => void;
   setCodeTheme: (theme: SettingsState["codeTheme"]) => void;
@@ -27,6 +37,13 @@ interface SettingsState {
   setAutoAuthenticate: (value: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
+  setShowArchivedSessions: (show: boolean) => void;
+  setShowThoughts: (value: boolean) => void;
+  setShowPlan: (value: boolean) => void;
+  setShowUsageStats: (value: boolean) => void;
+  setShowConfigBar: (value: boolean) => void;
+  setShowRightPanel: (value: boolean) => void;
+  setAcpExt: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -40,6 +57,14 @@ export const useSettingsStore = create<SettingsState>()(
       autoAuthenticate: false,
       sidebarOpen: true,
       rightPanelOpen: false,
+      showArchivedSessions: true,
+      // Feature flag defaults (aligned with web)
+      showThoughts: true,
+      showPlan: true,
+      showUsageStats: true,
+      showConfigBar: true,
+      showRightPanel: false,
+      acpExt: false,
       setTheme(theme) {
         set({ theme });
       },
@@ -63,6 +88,27 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setRightPanelOpen(rightPanelOpen) {
         set({ rightPanelOpen });
+      },
+      setShowArchivedSessions(showArchivedSessions) {
+        set({ showArchivedSessions });
+      },
+      setShowThoughts(showThoughts) {
+        set({ showThoughts });
+      },
+      setShowPlan(showPlan) {
+        set({ showPlan });
+      },
+      setShowUsageStats(showUsageStats) {
+        set({ showUsageStats });
+      },
+      setShowConfigBar(showConfigBar) {
+        set({ showConfigBar });
+      },
+      setShowRightPanel(showRightPanel) {
+        set({ showRightPanel });
+      },
+      setAcpExt(acpExt) {
+        set({ acpExt });
       },
     }),
     {
