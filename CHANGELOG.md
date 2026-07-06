@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.14] - 2026-07-06
+
+### 新增
+
+- **并行 Config + SSE 初始化**：页面加载时 `GET /api/config` 与 SSE 连接并行发起，Config 先返回即渲染 UI（主题、语言），SSE 后台接入不阻塞渲染。Config 请求失败时使用默认配置，SSE 连接失败时 UI 保持已渲染状态显示"连接中..."
+
+- **`/api/config` 响应扩展**：服务端新增 `theme`、`language`、`agents`、`activeAgentId` 字段，支持客户端从服务端获取主题/语言/agent 列表配置
+
+### 修复
+
+- **`_agent/switch` 阻塞问题**：切换 agent 时不再等待进程重启完成（最多 15s），改为立即返回响应，后台异步执行 stop/spawn，状态变更通过 SSE 通知推送
+
+- **设置页额外 SSE 连接**：打开设置页时不再创建多余的 SSE 连接。修复 `persistentGatewayId` 在路由切换时不稳定导致的断开重连；`AgentsSection` 改为复用 RealApp 的 AcpClient（通过 `acpClientStore` 共享），不再创建独立连接
+
 ## [0.0.6-alpha.13] - 2026-07-06
 
 ### 新增
