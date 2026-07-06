@@ -15,6 +15,7 @@ import {
 } from "@hermit-org/acp-hooks";
 import { useAcpClient } from "../acp/hooks";
 import { useSettingsStore } from "../stores/settingsStore";
+import { useConfigStore } from "../stores/configStore";
 import { showNotification } from "../lib/notifications";
 import type { Gateway } from "../types";
 
@@ -80,17 +81,29 @@ export function useAcpPageAdapter(
   const acp = useAcpClient({ gateway, autoConnect: true });
   const autoArchiveThreshold = useSettingsStore((s) => s.autoArchiveThreshold);
 
-  // Resolve the agent cwd once per gateway origin, then serve it from cache so
-  // switching sessions / re-rendering never re-hits `/api/config`.
+  // Resolve the agent cwd from the page-load config fetch (configStore), then
+  // cache it per gateway origin. The configStore is populated in parallel with
+  // the SSE auto-connect, so this avoids a redundant `/api/config` round trip
+  // in the common case. If the store hasn't loaded yet (e.g. this effect fires
+  // before the page-load fetch completes), fall back to a direct fetch.
   const getAgentCwd = useCallback(async (gw: Gateway): Promise<string> => {
     const origin = new URL(gw.url).origin;
     const cached = agentCwdCache.get(origin);
     if (cached) return cached;
+
+    // Prefer the already-loaded config from the store.
+    const storeConfig = useConfigStore.getState().config;
+    if (storeConfig?.agent?.cwd) {
+      agentCwdCache.set(origin, storeConfig.agent.cwd);
+      return storeConfig.agent.cwd;
+    }
+
+    // Store not loaded yet — fetch directly as a fallback so the caller is not
+    // blocked waiting for the page-load fetch.
     try {
-      const res = await fetch(`${origin}/api/config`);
-      if (!res.ok) return "/";
-      const data = (await res.json()) as { agent?: { cwd?: string } };
-      const cwd = data?.agent?.cwd ?? "/";
+      await useConfigStore.getState().loadConfig(origin);
+      const config = useConfigStore.getState().config;
+      const cwd = config?.agent?.cwd ?? "/";
       agentCwdCache.set(origin, cwd);
       return cwd;
     } catch {

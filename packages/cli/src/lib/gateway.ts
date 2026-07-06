@@ -469,17 +469,19 @@ export class AcpGatewayServer {
           if (!agentId) throw new Error("agentId is required");
           const agent = this.agents.find((a) => a.id === agentId);
           if (!agent) throw new Error(`Agent not found: ${agentId}`);
-          await this.doSwitchAgent(agent);
+          // Return immediately — the actual stop/respawn happens in the
+          // background. Progress (agent changed, spawn errors) is delivered
+          // via `_agent/changed` and error broadcasts over SSE.
           result = { agentId };
+          void this.doSwitchAgent(agent).catch(() => {});
           break;
         }
         case AcpExtMethod.AgentReload: {
           const agentId = this.currentAgentId;
           if (!agentId) throw new Error("No active agent to reload");
-          await this.doSwitchAgent(
-            this.agents.find((a) => a.id === agentId) ?? null,
-          );
+          const agent = this.agents.find((a) => a.id === agentId) ?? null;
           result = { agentId };
+          void this.doSwitchAgent(agent).catch(() => {});
           break;
         }
         case AcpExtMethod.AgentCurrent:

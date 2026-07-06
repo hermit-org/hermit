@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { changeAppLanguage } from "./i18n";
 import { useGatewayStore, useSettingsStore } from "./stores";
@@ -96,11 +96,23 @@ export default function App(): React.JSX.Element {
   // in the background (hidden) so its SSE connection and loaded data are not
   // torn down. Returning from settings simply hides the overlay, leaving the
   // connection and all session state untouched.
+  //
+  // The id is tracked in a ref so that navigating to /settings (which loses the
+  // `route.gatewayId` from the URL) does NOT cause the memo to fall back to
+  // `activeGatewayId` — which may differ and would trigger a disconnect/reconnect
+  // of the SSE connection inside `useAcpClient`.
+  const persistentGatewayRef = useRef<string | null>(null);
   const persistentGatewayId = useMemo(() => {
-    if (route.name === "real") return route.gatewayId;
-    // settings / landing / unknown — fall back to the active gateway so the
-    // background instance matches what the user was viewing.
-    return activeGatewayId ?? gateways[0]?.id ?? null;
+    let id: string | null;
+    if (route.name === "real") {
+      id = route.gatewayId;
+    } else {
+      // For non-"real" routes, keep whatever was last shown so settings/overlay
+      // navigation doesn't swap the background RealApp instance.
+      id = persistentGatewayRef.current ?? activeGatewayId ?? gateways[0]?.id ?? null;
+    }
+    persistentGatewayRef.current = id;
+    return id;
   }, [route, activeGatewayId, gateways]);
 
   const persistentGatewayExists =

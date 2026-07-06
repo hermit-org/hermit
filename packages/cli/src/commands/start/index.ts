@@ -204,6 +204,16 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
             endpoint: sseEndpoint,
             port,
           },
+          theme: config.theme ?? "system",
+          language: config.language ?? "en",
+          agents: agents.map((a) => ({
+            id: a.id,
+            name: a.name,
+            command: a.command,
+            args: a.args ?? [],
+            cwd: a.cwd,
+          })),
+          activeAgentId: activeAgent?.id ?? null,
         }, corsConfig, req.headers.origin);
         return true;
       }

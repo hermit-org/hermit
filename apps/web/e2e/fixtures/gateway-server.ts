@@ -189,7 +189,13 @@ function startServer() {
         if (req.method === "GET" && req.url === "/api/config") {
           setCorsHeaders(res);
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ agent: { cwd: "/" } }));
+          res.end(JSON.stringify({
+            agent: { cwd: "/" },
+            theme: "system",
+            language: "en",
+            agents: [],
+            activeAgentId: null,
+          }));
           return;
         }
 

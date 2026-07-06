@@ -67,6 +67,13 @@ export interface HermitConfig {
     cors?: CorsConfig;
     timeout?: number;
   };
+  /**
+   * Default UI theme served to web/mobile clients via `/api/config`.
+   * `"system"` follows the OS preference (default).
+   */
+  theme?: "light" | "dark" | "system";
+  /** Default display language served to clients via `/api/config`. */
+  language?: string;
   /** Pre-authorized bearer tokens for mobile clients. */
   authorizedTokens?: string[];
 }
@@ -88,6 +95,8 @@ export const DEFAULT_CONFIG: Required<HermitConfig> = {
     cors: true,
     timeout: 0,
   },
+  theme: "system",
+  language: "en",
   authorizedTokens: [],
 };
 
@@ -118,6 +127,8 @@ function mergeConfig(base: HermitConfig, override: HermitConfig): HermitConfig {
             timeout: override.gateway.timeout ?? base.gateway!.timeout,
           }
         : base.gateway,
+    theme: override.theme ?? base.theme,
+    language: override.language ?? base.language,
     authorizedTokens: override.authorizedTokens ?? base.authorizedTokens,
   };
 }

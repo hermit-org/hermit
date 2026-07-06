@@ -56,7 +56,7 @@ import {
   useFeatureFlag,
   useSetFeatureFlag,
 } from "@/components/FeatureGate";
-import { useAcpClient } from "@/acp/hooks";
+import { useAcpClientStore } from "@/stores";
 import { useAcpExt } from "@/hooks/useAcpExt";
 import type { Gateway, QuickCommand } from "@/types";
 import {
@@ -738,16 +738,12 @@ function AgentsSection(): React.JSX.Element {
   const { t } = useTranslation();
   const acpExtEnabled = useFeatureFlag("acpExt");
   const setAcpExt = useSetFeatureFlag("acpExt");
-  const activeGateway = useGatewayStore((s) => {
-    const id = s.activeGatewayId;
-    return id ? s.gateways.find((g) => g.id === id) ?? null : s.gateways[0] ?? null;
-  });
 
-  // useAcpExt requires an AcpClient. Since the settings page is not inside the
-  // RealApp (which owns the live AcpClient), we create a lightweight throwaway
-  // connection here only when the section is visible.
-  const { client, state } = useAcpClient({ gateway: activeGateway, autoConnect: acpExtEnabled });
-  const transportReady = state === "connected";
+  // Reuse the RealApp's live AcpClient from the shared store instead of
+  // creating a second SSE connection. The client and transport state are
+  // registered by RealApp via `useAcpClientStore`.
+  const client = useAcpClientStore((s) => s.client);
+  const transportReady = useAcpClientStore((s) => s.transportReady);
   const {
     agents,
     currentAgentId,

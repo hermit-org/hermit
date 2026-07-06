@@ -17,6 +17,8 @@ import { GatewayRegistration } from "./gateway-registration";
 import { useAcpPageAdapter } from "../hooks/useAcpPageAdapter";
 import { useGatewayStore } from "../stores/gatewayStore";
 import { useSettingsStore } from "../stores/settingsStore";
+import { useConfigStore } from "../stores/configStore";
+import { useAcpClientStore } from "../stores/acpClientStore";
 import { useAcpExt } from "../hooks/useAcpExt";
 import { readConfigFromUrl } from "../config";
 import { navigate } from "../router";
@@ -81,12 +83,40 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
 
   const adapter = useAcpPageAdapter(gateway);
 
+  // Fire GET /api/config in parallel with the SSE auto-connect inside the
+  // adapter. Neither request waits for the other: config data renders the UI
+  // immediately (theme, language, agent list), while SSE connects in the
+  // background and transitions the status to "online" once established.
+  const loadConfig = useConfigStore((s) => s.loadConfig);
+  useEffect(() => {
+    if (!gateway) return;
+    try {
+      const origin = new URL(gateway.url).origin;
+      void loadConfig(origin);
+    } catch {
+      // Malformed gateway URL — skip config fetch; SSE proceeds independently.
+    }
+  }, [gateway?.id, gateway?.url, loadConfig]);
+
   // ACP extension: multi-agent management (only active when feature flag is on).
   const acpExtEnabled = useSettingsStore((s) => s.acpExt);
   // Activate the ext hook once the transport (SSE) is connected — do NOT wait
   // for `initialize`. The gateway handles `_agent/*` requests independently of
   // the agent process, so the agent switcher can appear before ACP is ready.
   const transportReady = adapter.gatewayStatus === "connected";
+
+  // Register the live AcpClient + connection state into the shared store so
+  // other parts of the UI (e.g. SettingsLayout > AgentsSection) can reuse this
+  // connection instead of creating their own SSE transport.
+  const setSharedClient = useAcpClientStore((s) => s.setClient);
+  const setSharedConnectionState = useAcpClientStore((s) => s.setConnectionState);
+  useEffect(() => {
+    setSharedClient(adapter.client);
+  }, [adapter.client, setSharedClient]);
+  useEffect(() => {
+    setSharedConnectionState(adapter.gatewayStatus ?? "disconnected");
+  }, [adapter.gatewayStatus, setSharedConnectionState]);
+
   const {
     agents: extAgents,
     currentAgentId: extCurrentAgentId,
