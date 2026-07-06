@@ -519,7 +519,7 @@ describe("AcpGatewayServer agent process events", () => {
     }
   });
 
-  test("closes connections when the process exits with a code", async () => {
+  test("broadcasts error and keeps SSE alive when the process exits with a code", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
       command: JS.command,
@@ -532,18 +532,21 @@ describe("AcpGatewayServer agent process events", () => {
 
     const { url, stop } = await server.start();
     try {
-      // The process emits "ready" then exits. The stdout stream closes
-      // before the exit event, so the SSE connection is torn down once the
-      // process is gone. We assert that we received the marker and that the
-      // connection was terminated by the server.
-      const events = await consumeSse(url, () => false);
+      // The process emits "ready" then exits. The SSE connection should stay
+      // open (the gateway can respawn) but an error event should be broadcast.
+      const events = await consumeSse(
+        url,
+        (evts) => evts.some((e) => e.event === "error" && /code 2/.test(e.data ?? "")),
+        3000,
+      );
       expect(events.some((e) => e.data === "ready")).toBe(true);
+      expect(events.some((e) => e.event === "error" && /code 2/.test(e.data ?? ""))).toBe(true);
     } finally {
       await stop();
     }
-  });
+  }, 10000);
 
-  test("closes connections when the process exits via signal", async () => {
+  test("broadcasts error and keeps SSE alive when the process exits via signal", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
       command: JS.command,
@@ -556,12 +559,17 @@ describe("AcpGatewayServer agent process events", () => {
 
     const { url, stop } = await server.start();
     try {
-      const events = await consumeSse(url, () => false);
+      const events = await consumeSse(
+        url,
+        (evts) => evts.some((e) => e.event === "error" && /signal SIGINT/.test(e.data ?? "")),
+        3000,
+      );
       expect(events.some((e) => e.data === "ready")).toBe(true);
+      expect(events.some((e) => e.event === "error" && /signal SIGINT/.test(e.data ?? ""))).toBe(true);
     } finally {
       await stop();
     }
-  });
+  }, 10000);
 
   test("handles a spawn error without crashing the gateway", async () => {
     const port = await getFreePort();
@@ -580,7 +588,7 @@ describe("AcpGatewayServer agent process events", () => {
 });
 
 describe("AcpGatewayServer /send endpoint", () => {
-  test("returns 503 when the agent process cannot be spawned", async () => {
+  test("returns 202 (queued) when the agent process cannot be spawned", async () => {
     const port = await getFreePort();
     const server = new AcpGatewayServer({
       command: "this-command-does-not-exist-xyz",
@@ -594,11 +602,13 @@ describe("AcpGatewayServer /send endpoint", () => {
     try {
       // Wait for the initial spawn error to surface.
       await new Promise((resolve) => setTimeout(resolve, 300));
+      // The process failed to spawn, but /send should still accept the data
+      // (queued) because the gateway is alive and can retry.
       const response = await post(sendUrl, "hello\n");
-      expect(response.status).toBe(503);
+      expect(response.status).toBe(202);
       const body = await response.json();
-      expect(body.ok).toBe(false);
-      expect(body.error).toMatch(/not running/);
+      expect(body.ok).toBe(true);
+      expect(body.queued).toBe(true);
     } finally {
       await stop();
     }
@@ -769,8 +779,10 @@ describe("AcpGatewayServer idle timeout", () => {
       expect(closed).toBe(true);
 
       // After the agent was stopped, a new /send should respawn it and still work.
+      // The response may be 200 (immediate write) or 202 (queued, flushed on
+      // next tick) depending on timing — either way the data is delivered.
       const second = await post(sendUrl, "second\n");
-      expect(second.status).toBe(200);
+      expect([200, 202]).toContain(second.status);
     } finally {
       await stop();
     }
@@ -857,4 +869,115 @@ describe("AcpGatewayServer idle timeout", () => {
       await stop();
     }
   }, 3000);
+});
+
+describe("AcpGatewayServer non-blocking /send", () => {
+  test("accepts data immediately and delivers it via SSE", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [
+        JS.evalFlag,
+        // Delay startup, then echo stdin.
+        "setTimeout(() => {"
+          + "  process.stdout.write('agent-started\\n');"
+          + "  process.stdin.on('data', d => process.stdout.write(d));"
+          + "  process.stdin.resume();"
+          + "}, 200);"
+          + "setInterval(() => {}, 1000);",
+      ],
+      port,
+      sendEndpoint: "/send",
+    });
+
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Start consuming SSE.
+      const ssePromise = consumeSse(
+        url,
+        (evts) => evts.some((e) => e.data === "echo-back"),
+        5000,
+      );
+
+      // /send — response is 200 (immediate) or 202 (queued), but either way
+      // the gateway accepts the data without blocking on agent readiness.
+      const response = await post(sendUrl, "echo-back\n");
+      expect([200, 202]).toContain(response.status);
+
+      // The data should arrive via SSE once the agent is ready.
+      const events = await ssePromise;
+      expect(events.some((e) => e.data === "echo-back")).toBe(true);
+    } finally {
+      await stop();
+    }
+  }, 10000);
+});
+
+describe("AcpGatewayServer agent auto-fallback", () => {
+  test("falls back to the next agent when the first fails to spawn", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "bad",
+          name: "Bad Agent",
+          command: "this-command-does-not-exist-xyz",
+          args: [],
+        },
+        {
+          id: "good",
+          name: "Good Agent",
+          command: JS.command,
+          args: [
+            JS.evalFlag,
+            "process.stdout.write('good-agent-ready\\n');"
+              + "process.stdin.on('data', d => process.stdout.write(d));"
+              + "process.stdin.resume();"
+              + "setInterval(() => {}, 1000);",
+          ],
+        },
+      ],
+      activeAgentId: "good",
+    });
+
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Connect SSE so the gateway has active connections.
+      const ssePromise = consumeSse(
+        url,
+        (evts) => evts.some((e) => e.data === "good-agent-ready"),
+        8000,
+      );
+
+      // Request a switch to the bad agent — should fail and fall back to good.
+      const switchReq = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "_agent/switch",
+        params: { agentId: "bad" },
+      });
+      const switchRes = await post(sendUrl, switchReq);
+      expect(switchRes.status).toBe(200);
+
+      // The good agent should have started — verify via SSE.
+      const events = await ssePromise;
+      expect(events.some((e) => e.data === "good-agent-ready")).toBe(true);
+      // Should also have an error about the bad agent failing.
+      expect(
+        events.some(
+          (e) => e.event === "error" && /failed to start/.test(e.data ?? ""),
+        ),
+      ).toBe(true);
+    } finally {
+      await stop();
+    }
+  }, 15000);
 });

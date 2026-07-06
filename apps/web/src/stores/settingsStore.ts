@@ -105,6 +105,9 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       ...FEATURE_FLAG_DEFAULTS,
+      // acpExt toggle lives in the Agent Management section, not in the
+      // general features list, so its default is set here directly.
+      acpExt: false,
       thoughtPreviewLines: DEFAULT_THOUGHT_PREVIEW_LINES,
       setThoughtPreviewLines: (lines) =>
         set({

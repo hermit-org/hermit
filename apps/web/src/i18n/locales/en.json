@@ -44,6 +44,7 @@
     "disabled": "Disabled",
     "enable": "Enable",
     "disable": "Disable",
+    "experimental": "Experimental",
     "today": "Today",
     "yesterday": "Yesterday",
     "noResults": "No matching results",

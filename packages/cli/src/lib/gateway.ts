@@ -11,6 +11,7 @@ import {
   corsPreflightHeaders,
   corsOriginHeaders,
 } from "./cors";
+import { expandTilde } from "./config";
 
 /**
  * Configuration for `AcpGatewayServer`.
@@ -109,6 +110,10 @@ export class AcpGatewayServer {
   private agentStoppedIntentionally = false;
   private agents: AgentConfig[] = [];
   private currentAgentId: string | null = null;
+  /** Stdin data received while the agent process is not yet ready. */
+  private pendingStdinBuffers: Buffer[] = [];
+  /** True once the current agent process has emitted at least one stdout line. */
+  private procReady = false;
 
   constructor(private readonly options: AcpGatewayServerOptions) {}
 
@@ -217,12 +222,23 @@ export class AcpGatewayServer {
 
     this.proc = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
-      ...(cwd ? { cwd } : {}),
+      ...(cwd ? { cwd: expandTilde(cwd) } : {}),
     });
 
     this.procExited = false;
+    this.procReady = false;
     this.agentStoppedIntentionally = false;
     this.recordActivity();
+
+    // Mark the process as "ready" on the next event-loop tick. Async spawn
+    // errors (ENOENT) fire on the next tick; if the process is still alive
+    // at that point, it's safe to write.
+    setImmediate(() => {
+      if (this.proc && !this.procExited && !this.proc.killed) {
+        this.procReady = true;
+        this.flushPendingStdin();
+      }
+    });
 
     this.proc.once("error", (error) => {
       this.procExited = true;
@@ -238,7 +254,8 @@ export class AcpGatewayServer {
             : `Agent process exited with code ${code ?? "unknown"}`,
         );
       }
-      this.closeAllConnections();
+      // Do NOT close SSE connections — the gateway stays alive and can
+      // respawn the agent on the next request.
       this.stopIdleCheck();
     });
 
@@ -249,12 +266,16 @@ export class AcpGatewayServer {
 
     rl.on("line", (line) => {
       this.recordActivity();
+      // Mark ready on first stdout line (covers the case where the grace
+      // timer hasn't fired yet but the process is already producing output).
+      this.procReady = true;
+      this.flushPendingStdin();
       this.handleAgentStdoutLine(line);
       this.broadcast(line);
     });
 
     rl.once("close", () => {
-      this.closeAllConnections();
+      // stdout closed (process exited). Keep SSE alive for respawn.
     });
 
     this.proc.stderr!.on("data", (chunk: Buffer) => {
@@ -321,18 +342,27 @@ export class AcpGatewayServer {
 
       // Forward standard lines to the agent.
       if (stdLines.length > 0) {
-        await this.ensureAgentRunning();
-        if (!this.proc || this.proc.killed || !this.proc.stdin || this.proc.stdin.destroyed || this.procExited) {
-          this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, req.headers.origin);
-          return;
-        }
-        this.recordActivity();
+        // Kick off spawn if needed — do NOT await. The gateway accepts the
+        // data immediately and flushes it once the process is ready.
+        this.ensureAgentRunning();
+
         const stdBuffer = Buffer.from(stdLines.join("\n") + "\n", "utf-8");
         this.trackPromptRequestFromBody(stdBuffer);
-        await this.writeToStdin(stdBuffer);
-      }
 
-      this.sendJson(res, 200, { ok: true }, req.headers.origin);
+        if (this.isStdinReady()) {
+          // Process is alive and stdin is writable — write immediately.
+          this.recordActivity();
+          await this.writeToStdin(stdBuffer);
+          this.sendJson(res, 200, { ok: true }, req.headers.origin);
+        } else {
+          // Process not ready yet — buffer the data for flush on first stdout.
+          this.pendingStdinBuffers.push(stdBuffer);
+          this.recordActivity();
+          this.sendJson(res, 202, { ok: true, queued: true }, req.headers.origin);
+        }
+      } else {
+        this.sendJson(res, 200, { ok: true }, req.headers.origin);
+      }
     } catch {
       this.sendJson(res, 503, { ok: false, error: "Agent process is not running" }, req.headers.origin);
     }
@@ -486,23 +516,48 @@ export class AcpGatewayServer {
 
   /**
    * Switch the active agent: stop the current process, update the command,
-   * and respawn.
+   * and respawn. If the target agent fails to start, automatically try the
+   * remaining agents in order until one succeeds (or all fail).
    */
   private async doSwitchAgent(agent: AgentConfig | null): Promise<void> {
     if (!agent) {
       await this.stopAgent();
       return;
     }
-    await this.stopAgent();
-    this.agentCommand = agent.command;
-    this.agentArgs = agent.args ?? [];
-    this.agentCwd = agent.cwd;
-    this.currentAgentId = agent.id;
-    this.notifyAgentChanged();
-    // Respawn immediately if there are active connections.
-    if (this.connections.size > 0) {
-      await this.ensureAgentRunning();
+
+    // Build the candidate list: start from the requested agent, then wrap
+    // around to try every other agent.
+    const idx = this.agents.findIndex((a) => a.id === agent.id);
+    const candidates =
+      idx >= 0
+        ? [...this.agents.slice(idx), ...this.agents.slice(0, idx)]
+        : [agent];
+
+    // Keep SSE connections alive during agent switching.
+    await this.stopAgent(false);
+
+    for (const candidate of candidates) {
+      this.agentCommand = candidate.command;
+      this.agentArgs = candidate.args ?? [];
+      this.agentCwd = candidate.cwd;
+      this.currentAgentId = candidate.id;
+      this.notifyAgentChanged();
+
+      if (this.connections.size > 0) {
+        const ok = await this.trySpawnAgent();
+        if (ok) return; // Success — done.
+        // Spawn failed — broadcast and try the next candidate.
+        this.broadcastError(
+          `Agent "${candidate.name}" failed to start, trying next...`,
+        );
+        await this.stopAgent(false);
+      } else {
+        return; // No connections — don't spawn now.
+      }
     }
+
+    // All candidates failed.
+    this.broadcastError("All agents failed to start.");
   }
 
   /** Broadcast `_agent/changed` notification and fire the callback. */
@@ -627,13 +682,82 @@ export class AcpGatewayServer {
     return this.spawnPromise;
   }
 
-  private async stopAgent(): Promise<void> {
+  /** Check if the agent process stdin is ready to accept writes. */
+  private isStdinReady(): boolean {
+    return !!(
+      this.proc &&
+      !this.proc.killed &&
+      !this.procExited &&
+      this.proc.stdin &&
+      !this.proc.stdin.destroyed &&
+      this.procReady
+    );
+  }
+
+  /** Flush any stdin data buffered while the agent was not yet ready. */
+  private flushPendingStdin(): void {
+    if (this.pendingStdinBuffers.length === 0) return;
+    const buffers = this.pendingStdinBuffers;
+    this.pendingStdinBuffers = [];
+    const combined = Buffer.concat(buffers);
+    if (this.isStdinReady()) {
+      this.writeToStdin(combined).catch(() => {
+        this.broadcastError("Failed to flush pending stdin data");
+      });
+    }
+  }
+
+  /**
+   * Spawn the agent and wait until it produces its first stdout line (success)
+   * or errors/exits (failure). Used during agent switching to decide whether
+   * to try the next candidate.
+   */
+  private trySpawnAgent(timeoutMs = 10000): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      this.spawnAgent(this.agentCommand, this.agentArgs, this.agentCwd);
+
+      const proc = this.proc;
+      if (!proc) {
+        resolve(false);
+        return;
+      }
+
+      let settled = false;
+      const finish = (ok: boolean): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(ok);
+      };
+
+      // Success: process emits at least one stdout line.
+      const rl = createInterface({
+        input: proc.stdout!,
+        crlfDelay: Infinity,
+      });
+      rl.once("line", () => finish(true));
+
+      // Failure: process errors or exits before producing output.
+      proc.once("error", () => finish(false));
+      proc.once("exit", () => finish(false));
+
+      const timer = setTimeout(() => finish(false), timeoutMs);
+    });
+  }
+
+  private async stopAgent(closeConnections = true): Promise<void> {
+    // Always clean up idle check and (optionally) connections, even if the
+    // process already exited.
+    this.stopIdleCheck();
+    if (closeConnections) {
+      this.closeAllConnections();
+    }
+    this.pendingStdinBuffers = [];
+
     if (!this.proc || this.procExited) return;
 
     this.agentStoppedIntentionally = true;
     this.activePrompts.clear();
-    this.closeAllConnections();
-    this.stopIdleCheck();
 
     if (!this.proc.killed) {
       this.proc.kill();

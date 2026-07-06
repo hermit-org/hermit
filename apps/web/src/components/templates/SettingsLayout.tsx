@@ -49,6 +49,7 @@ import { changeAppLanguage } from "@/i18n";
 import {
   FEATURE_FLAGS,
   FEATURE_FLAG_BY_KEY,
+  ACP_EXT_FLAG,
   type FeatureFlagKey,
 } from "@/lib/feature-flags";
 import {
@@ -677,6 +678,15 @@ function TypewriterSettings(): React.JSX.Element {
   );
 }
 
+function ExperimentalBadge(): React.JSX.Element {
+  const { t } = useTranslation();
+  return (
+    <Badge variant="secondary" className="ml-2 shrink-0">
+      {t("common.experimental")}
+    </Badge>
+  );
+}
+
 function FeatureSwitch({
   featureKey,
 }: {
@@ -689,8 +699,11 @@ function FeatureSwitch({
 
   return (
     <div className="flex items-center justify-between rounded-lg border border-border p-3">
-      <div>
-        <Label htmlFor={featureKey}>{t(def.labelKey)}</Label>
+      <div className="min-w-0">
+        <div className="flex items-center">
+          <Label htmlFor={featureKey}>{t(def.labelKey)}</Label>
+          {def.experimental ? <ExperimentalBadge /> : null}
+        </div>
         <p className="text-xs text-muted-foreground">{t(def.hintKey)}</p>
       </div>
       <Switch
@@ -724,6 +737,7 @@ function FeaturesSection(): React.JSX.Element {
 function AgentsSection(): React.JSX.Element {
   const { t } = useTranslation();
   const acpExtEnabled = useFeatureFlag("acpExt");
+  const setAcpExt = useSetFeatureFlag("acpExt");
   const activeGateway = useGatewayStore((s) => {
     const id = s.activeGatewayId;
     return id ? s.gateways.find((g) => g.id === id) ?? null : s.gateways[0] ?? null;
@@ -841,7 +855,7 @@ function AgentsSection(): React.JSX.Element {
     }
   };
 
-  // --- Feature flag off: show a hint ---
+  // --- Feature flag off: show toggle + hint ---
   if (!acpExtEnabled) {
     return (
       <div className="mx-auto max-w-xl space-y-6 p-6">
@@ -849,11 +863,22 @@ function AgentsSection(): React.JSX.Element {
           <h3 className="text-sm font-semibold">{t("agents.title")}</h3>
           <p className="text-xs text-muted-foreground">{t("agents.hint")}</p>
         </div>
-        <EmptyState
-          icon={Bot}
-          title={t("features.acpExt")}
-          description={t("features.acpExtHint")}
-        />
+        <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+          <div className="space-y-1">
+            <div className="flex items-center">
+              <Label htmlFor="acpExt">{t("features.acpExt")}</Label>
+              {ACP_EXT_FLAG.experimental ? <ExperimentalBadge /> : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("features.acpExtHint")}
+            </p>
+          </div>
+          <Switch
+            id="acpExt"
+            checked={acpExtEnabled}
+            onCheckedChange={setAcpExt}
+          />
+        </div>
       </div>
     );
   }
@@ -932,6 +957,22 @@ function AgentsSection(): React.JSX.Element {
   // --- List view ---
   return (
     <div className="mx-auto max-w-xl space-y-6 p-6">
+      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+        <div className="space-y-1">
+          <div className="flex items-center">
+            <Label htmlFor="acpExt-list">{t("features.acpExt")}</Label>
+            {ACP_EXT_FLAG.experimental ? <ExperimentalBadge /> : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("features.acpExtHint")}
+          </p>
+        </div>
+        <Switch
+          id="acpExt-list"
+          checked={acpExtEnabled}
+          onCheckedChange={setAcpExt}
+        />
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold">{t("agents.title")}</h3>

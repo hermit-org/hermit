@@ -6,6 +6,23 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.13] - 2026-07-06
+
+### 新增
+
+- **多 Agent 自动 fallback**：切换 agent 失败时自动尝试下一个 agent，从目标 agent 开始遍历全部配置，全部失败才报错
+
+- **非阻塞 `/send`**：网关收到消息后立即返回 `202 { queued: true }`，数据在 agent 进程未就绪时缓存到 `pendingStdinBuffers`，进程就绪后自动 flush，不再等待连接成功
+
+- **SSE 连接持久化**：agent 进程退出时 SSE 连接保持不断开，切换 agent 时也保持连接
+
+- **实验标识**：多 Agent 功能在设置页标记为「实验」badge（浅色主题色），ACP 扩展开关从「功能」页面移至「Agent 管理」页面
+
+### 修复
+
+- **CI 构建失败（文件名大小写不一致）**：macOS 不区分大小写但 Linux CI 区分。Git 中跟踪的是小写文件名（`badge.tsx`、`button.tsx` 等），但 import 用 PascalCase（`@/components/ui/Badge`）。将 16 个组件文件统一重命名为 PascalCase
+- **agent cwd `~` 不展开**：`spawnAgent` 中对 cwd 调用 `expandTilde()` 展开 `~` 为 home 目录
+
 ## [0.0.6-alpha.12] - 2026-07-03
 
 ### 新增

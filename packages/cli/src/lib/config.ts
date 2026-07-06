@@ -126,7 +126,7 @@ function mergeConfig(base: HermitConfig, override: HermitConfig): HermitConfig {
  * Expand a leading `~` to the user's home directory.
  * Handles `~`, `~/path`, and `~user/path` (current user only).
  */
-function expandTilde(path: string): string {
+export function expandTilde(path: string): string {
   if (path === "~") return homedir();
   if (path.startsWith("~/")) return join(homedir(), path.slice(2));
   return path;
