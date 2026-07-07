@@ -748,6 +748,11 @@ export class AcpGatewayServer {
    * Spawn the agent and wait until it produces its first stdout line (success)
    * or errors/exits (failure). Used during agent switching to decide whether
    * to try the next candidate.
+   *
+   * Relies on the `procReady` flag set by `spawnAgent` (via `setImmediate` or
+   * the first stdout line) rather than creating a second readline interface on
+   * the same stdout stream — which would compete with the one `spawnAgent`
+   * already created and could silently swallow the first line.
    */
   private trySpawnAgent(timeoutMs = 10000): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
@@ -763,18 +768,19 @@ export class AcpGatewayServer {
       const finish = (ok: boolean): void => {
         if (settled) return;
         settled = true;
+        clearInterval(poll);
         clearTimeout(timer);
+        this.log(`trySpawnAgent: ${ok ? "success" : "failed"} (procReady=${this.procReady})`);
         resolve(ok);
       };
 
-      // Success: process emits at least one stdout line.
-      const rl = createInterface({
-        input: proc.stdout!,
-        crlfDelay: Infinity,
-      });
-      rl.once("line", () => finish(true));
+      // Poll for procReady — set by spawnAgent's setImmediate or first stdout
+      // line handler. This avoids a second readline on the same stream.
+      const poll = setInterval(() => {
+        if (this.procReady) finish(true);
+      }, 50);
 
-      // Failure: process errors or exits before producing output.
+      // Failure: process errors or exits before becoming ready.
       proc.once("error", () => finish(false));
       proc.once("exit", () => finish(false));
 
