@@ -1,0 +1,5 @@
+[test]
+# Mobile tests are written for Jest + React Native's Babel/Flow transforms.
+# Bun cannot parse RN 0.76's Flow-typed entry file, so exclude them here.
+# Use `cd apps/mobile && bun run test` (Jest) for mobile tests.
+pathIgnorePatterns = ["apps/mobile/**"]
