@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.15] - 2026-07-06
+
+### 新增
+
+- **网关诊断日志**：在 gateway 的关键路径增加结构化终端日志，包括 agent spawn（命令、pid、cwd）、agent exit（code、signal）、stderr 输出、SSE 连接/断开、`/send` 请求路由（ext vs standard 方法）、stdin 写入/缓冲/flush、agent stop/idle timeout，便于排查 agent 连接问题
+
 ## [0.0.6-alpha.14] - 2026-07-06
 
 ### 新增
