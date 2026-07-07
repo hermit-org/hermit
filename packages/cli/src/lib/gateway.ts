@@ -117,6 +117,11 @@ export class AcpGatewayServer {
 
   constructor(private readonly options: AcpGatewayServerOptions) {}
 
+  /** Structured log to stdout for diagnostics. */
+  private log(message: string): void {
+    console.log(`[gateway] ${new Date().toISOString()} ${message}`);
+  }
+
   async start(): Promise<AcpGatewayServerState> {
     if (this.started) {
       throw new Error("AcpGatewayServer is already started");
@@ -220,10 +225,14 @@ export class AcpGatewayServer {
     this.agentArgs = args;
     this.agentCwd = cwd;
 
+    this.log(`spawning agent: ${command} ${args.join(" ")} (cwd: ${cwd ?? "inherit"})`);
+
     this.proc = spawn(command, args, {
       stdio: ["pipe", "pipe", "pipe"],
       ...(cwd ? { cwd: expandTilde(cwd) } : {}),
     });
+
+    this.log(`agent pid: ${this.proc.pid}`);
 
     this.procExited = false;
     this.procReady = false;
@@ -236,17 +245,20 @@ export class AcpGatewayServer {
     setImmediate(() => {
       if (this.proc && !this.procExited && !this.proc.killed) {
         this.procReady = true;
+        this.log(`agent ready (procReady=true), flushing ${this.pendingStdinBuffers.length} pending buffer(s)`);
         this.flushPendingStdin();
       }
     });
 
     this.proc.once("error", (error) => {
       this.procExited = true;
+      this.log(`agent spawn error: ${error.message}`);
       this.broadcastError(error.message);
     });
 
     this.proc.once("exit", (code, signal) => {
       this.procExited = true;
+      this.log(`agent exited: code=${code} signal=${signal} intentional=${this.agentStoppedIntentionally}`);
       if (!this.agentStoppedIntentionally) {
         this.broadcastError(
           signal
@@ -268,6 +280,9 @@ export class AcpGatewayServer {
       this.recordActivity();
       // Mark ready on first stdout line (covers the case where the grace
       // timer hasn't fired yet but the process is already producing output).
+      if (!this.procReady) {
+        this.log("agent first stdout line received — marking procReady=true");
+      }
       this.procReady = true;
       this.flushPendingStdin();
       this.handleAgentStdoutLine(line);
@@ -284,6 +299,7 @@ export class AcpGatewayServer {
       if (text) {
         for (const line of text.split("\n")) {
           if (line.trim()) {
+            this.log(`agent stderr: ${line}`);
             this.broadcastError(line);
           }
         }
@@ -317,6 +333,7 @@ export class AcpGatewayServer {
 
     const connection: ActiveConnection = { res, heartbeatId };
     this.connections.add(connection);
+    this.log(`SSE client connected (total: ${this.connections.size})`);
 
     res.once("close", () => {
       this.removeConnection(connection);
@@ -335,6 +352,16 @@ export class AcpGatewayServer {
       // forwarded to the agent stdin as usual.
       const { extLines, stdLines } = this.splitExtLines(body);
 
+      if (extLines.length > 0 || stdLines.length > 0) {
+        const extMethods = extLines.map((l) => {
+          try { return (JSON.parse(l) as { method?: string }).method; } catch { return "?"; }
+        });
+        const stdMethods = stdLines.map((l) => {
+          try { return (JSON.parse(l) as { method?: string }).method; } catch { return "?"; }
+        });
+        this.log(`/send: ext=[${extMethods.join(",")}] std=[${stdMethods.join(",")}] procReady=${this.procReady} procExited=${this.procExited}`);
+      }
+
       // Handle extension requests first.
       for (const line of extLines) {
         await this.handleExtRequest(line);
@@ -352,12 +379,14 @@ export class AcpGatewayServer {
         if (this.isStdinReady()) {
           // Process is alive and stdin is writable — write immediately.
           this.recordActivity();
+          this.log(`writing ${stdBuffer.length} bytes to agent stdin`);
           await this.writeToStdin(stdBuffer);
           this.sendJson(res, 200, { ok: true }, req.headers.origin);
         } else {
           // Process not ready yet — buffer the data for flush on first stdout.
           this.pendingStdinBuffers.push(stdBuffer);
           this.recordActivity();
+          this.log(`agent not ready — buffered ${stdBuffer.length} bytes (pending: ${this.pendingStdinBuffers.length} buffers)`);
           this.sendJson(res, 202, { ok: true, queued: true }, req.headers.origin);
         }
       } else {
@@ -655,6 +684,7 @@ export class AcpGatewayServer {
     this.idleCheckTimer = setInterval(() => {
       if (this.activePrompts.size > 0) return;
       if (Date.now() - this.lastActivityAt > this.idleTimeout) {
+        this.log(`idle timeout (${this.idleTimeout}ms) — stopping agent`);
         this.stopAgent();
       }
     }, checkInterval);
@@ -674,6 +704,7 @@ export class AcpGatewayServer {
     if (this.spawnPromise) {
       return this.spawnPromise;
     }
+    this.log(`agent not running (proc=${!!this.proc} exited=${this.procExited}) — respawning`);
     this.spawnPromise = (async () => {
       try {
         this.spawnAgent(this.agentCommand, this.agentArgs, this.agentCwd);
@@ -703,9 +734,13 @@ export class AcpGatewayServer {
     this.pendingStdinBuffers = [];
     const combined = Buffer.concat(buffers);
     if (this.isStdinReady()) {
+      this.log(`flushing ${combined.length} bytes of pending stdin data`);
       this.writeToStdin(combined).catch(() => {
         this.broadcastError("Failed to flush pending stdin data");
       });
+    } else {
+      this.log(`flush skipped — stdin not ready, re-buffering ${combined.length} bytes`);
+      this.pendingStdinBuffers.push(combined);
     }
   }
 
@@ -748,6 +783,7 @@ export class AcpGatewayServer {
   }
 
   private async stopAgent(closeConnections = true): Promise<void> {
+    this.log(`stopAgent (closeConnections=${closeConnections})`);
     // Always clean up idle check and (optionally) connections, even if the
     // process already exited.
     this.stopIdleCheck();
@@ -840,6 +876,7 @@ export class AcpGatewayServer {
 
   private removeConnection(connection: ActiveConnection): void {
     this.connections.delete(connection);
+    this.log(`SSE client disconnected (total: ${this.connections.size})`);
     clearInterval(connection.heartbeatId);
     if (!connection.res.writableEnded) {
       connection.res.end();
