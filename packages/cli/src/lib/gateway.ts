@@ -114,6 +114,8 @@ export class AcpGatewayServer {
   private pendingStdinBuffers: Buffer[] = [];
   /** True once the current agent process has emitted at least one stdout line. */
   private procReady = false;
+  /** Serializes concurrent agent switch/reload operations. */
+  private switchPromise: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: AcpGatewayServerOptions) {}
 
@@ -464,7 +466,14 @@ export class AcpGatewayServer {
             cwd: input.cwd,
           };
           this.agents = [...this.agents, newAgent];
-          if (this.currentAgentId === null) this.currentAgentId = newAgent.id;
+          // Auto-activate the first agent created — also set the command so
+          // that the next /send or SSE request spawns the right process.
+          if (this.currentAgentId === null) {
+            this.currentAgentId = newAgent.id;
+            this.agentCommand = newAgent.command;
+            this.agentArgs = newAgent.args ?? [];
+            this.agentCwd = newAgent.cwd;
+          }
           this.notifyAgentChanged();
           result = { agent: newAgent };
           break;
@@ -484,11 +493,22 @@ export class AcpGatewayServer {
           const p = params as { agentId?: string };
           const agentId = p?.agentId;
           if (!agentId) throw new Error("agentId is required");
+          const wasActive = this.currentAgentId === agentId;
           this.agents = this.agents.filter((a) => a.id !== agentId);
           if (this.currentAgentId === agentId) {
             this.currentAgentId = this.agents[0]?.id ?? null;
           }
           this.notifyAgentChanged();
+          // If we deleted the active agent, stop its process and switch to
+          // the next available one (or just stop if none remain).
+          if (wasActive) {
+            const next = this.agents[0] ?? null;
+            if (next) {
+              void this.doSwitchAgentSerialized(next).catch(() => {});
+            } else {
+              void this.stopAgent(false).catch(() => {});
+            }
+          }
           result = null;
           break;
         }
@@ -502,7 +522,7 @@ export class AcpGatewayServer {
           // background. Progress (agent changed, spawn errors) is delivered
           // via `_agent/changed` and error broadcasts over SSE.
           result = { agentId };
-          void this.doSwitchAgent(agent).catch(() => {});
+          void this.doSwitchAgentSerialized(agent).catch(() => {});
           break;
         }
         case AcpExtMethod.AgentReload: {
@@ -510,7 +530,7 @@ export class AcpGatewayServer {
           if (!agentId) throw new Error("No active agent to reload");
           const agent = this.agents.find((a) => a.id === agentId) ?? null;
           result = { agentId };
-          void this.doSwitchAgent(agent).catch(() => {});
+          void this.doSwitchAgentSerialized(agent).catch(() => {});
           break;
         }
         case AcpExtMethod.AgentCurrent:
@@ -546,6 +566,18 @@ export class AcpGatewayServer {
   }
 
   /**
+   * Serialize concurrent switch/reload operations. Multiple rapid switch
+   * requests are queued and executed one at a time to avoid race conditions
+   * (e.g. two switches interleaving their stop/respawn cycles).
+   */
+  private doSwitchAgentSerialized(agent: AgentConfig | null): Promise<void> {
+    this.switchPromise = this.switchPromise.then(() =>
+      this.doSwitchAgent(agent),
+    );
+    return this.switchPromise;
+  }
+
+  /**
    * Switch the active agent: stop the current process, update the command,
    * and respawn. If the target agent fails to start, automatically try the
    * remaining agents in order until one succeeds (or all fail).
@@ -564,30 +596,45 @@ export class AcpGatewayServer {
         ? [...this.agents.slice(idx), ...this.agents.slice(0, idx)]
         : [agent];
 
+    // Remember the original active agent so we can restore it if all candidates
+    // fail. We update command/args/cwd per candidate but only commit
+    // currentAgentId after a successful spawn.
+    const originalAgentId = this.currentAgentId;
+
     // Keep SSE connections alive during agent switching.
     await this.stopAgent(false);
 
     for (const candidate of candidates) {
+      // Set up the command to try, but DON'T commit currentAgentId yet.
       this.agentCommand = candidate.command;
       this.agentArgs = candidate.args ?? [];
       this.agentCwd = candidate.cwd;
-      this.currentAgentId = candidate.id;
-      this.notifyAgentChanged();
 
       if (this.connections.size > 0) {
         const ok = await this.trySpawnAgent();
-        if (ok) return; // Success — done.
+        if (ok) {
+          // Success — now commit the active agent and notify.
+          this.currentAgentId = candidate.id;
+          this.notifyAgentChanged();
+          this.startIdleCheck();
+          return;
+        }
         // Spawn failed — broadcast and try the next candidate.
         this.broadcastError(
           `Agent "${candidate.name}" failed to start, trying next...`,
         );
         await this.stopAgent(false);
       } else {
-        return; // No connections — don't spawn now.
+        // No connections — just update state without spawning.
+        this.currentAgentId = candidate.id;
+        this.notifyAgentChanged();
+        return;
       }
     }
 
-    // All candidates failed.
+    // All candidates failed — restore the original agent ID and broadcast error.
+    this.currentAgentId = originalAgentId;
+    this.notifyAgentChanged();
     this.broadcastError("All agents failed to start.");
   }
 
@@ -708,6 +755,8 @@ export class AcpGatewayServer {
     this.spawnPromise = (async () => {
       try {
         this.spawnAgent(this.agentCommand, this.agentArgs, this.agentCwd);
+        // Restart idle check after respawn — stopAgent clears it.
+        this.startIdleCheck();
       } finally {
         this.spawnPromise = undefined;
       }
@@ -798,7 +847,12 @@ export class AcpGatewayServer {
     }
     this.pendingStdinBuffers = [];
 
-    if (!this.proc || this.procExited) return;
+    if (!this.proc || this.procExited) {
+      // Clean up stale references so ensureAgentRunning can respawn cleanly.
+      this.proc = undefined;
+      this.procReady = false;
+      return;
+    }
 
     this.agentStoppedIntentionally = true;
     this.activePrompts.clear();

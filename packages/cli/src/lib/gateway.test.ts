@@ -981,3 +981,728 @@ describe("AcpGatewayServer agent auto-fallback", () => {
     }
   }, 15000);
 });
+
+// ─── Multi-agent extension protocol helpers ───────────────────────────
+
+/** Agent script that prints a unique marker on startup and echoes stdin. */
+function echoAgentScript(marker: string): string {
+  return (
+    `process.stdout.write('${marker}\\n');`
+    + "process.stdin.on('data', d => process.stdout.write(d));"
+    + "process.stdin.resume();"
+    + "setInterval(() => {}, 1000);"
+  );
+}
+
+/** Build a JSON-RPC extension request body for POST /send. */
+function extRequestBody(id: number, method: string, params?: unknown): string {
+  return JSON.stringify({
+    jsonrpc: "2.0",
+    id,
+    method,
+    ...(params !== undefined ? { params } : {}),
+  });
+}
+
+/** Find a JSON-RPC response in SSE events by request id. */
+function findRpcResponse(
+  events: SseEvent[],
+  id: number,
+): { result?: unknown; error?: { code: number; message: string } } | undefined {
+  for (const evt of events) {
+    if (!evt.data) continue;
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.id === id && (msg.result !== undefined || msg.error !== undefined)) {
+        return msg;
+      }
+    } catch {
+      /* not JSON */
+    }
+  }
+  return undefined;
+}
+
+/** Open a persistent SSE connection that collects events until closed. */
+function openSse(
+  url: string,
+  timeoutMs = 15000,
+): { events: SseEvent[]; close: () => void } {
+  const events: SseEvent[] = [];
+  const parsed = new URL(url);
+  let buffer = "";
+  const req: ClientRequest = request(
+    {
+      hostname: parsed.hostname,
+      port: parsed.port,
+      path: parsed.pathname,
+      method: "POST",
+    },
+    (res) => {
+      res.setEncoding("utf-8");
+      res.on("data", (chunk: string) => {
+        buffer += chunk;
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const evt: SseEvent = {};
+          for (const line of part.split("\n")) {
+            if (line.startsWith("event: ")) evt.event = line.slice(7);
+            else if (line.startsWith("data: "))
+              evt.data = evt.data ? `${evt.data}\n${line.slice(6)}` : line.slice(6);
+          }
+          events.push(evt);
+        }
+      });
+    },
+  );
+  req.end();
+  const timer = setTimeout(() => req.destroy(), timeoutMs);
+  return {
+    events,
+    close: () => {
+      clearTimeout(timer);
+      req.destroy();
+    },
+  };
+}
+
+/** Wait until collected events satisfy a predicate, or timeout. */
+async function waitFor(
+  events: SseEvent[],
+  predicate: (events: SseEvent[]) => boolean,
+  timeoutMs = 8000,
+): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (predicate(events)) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return predicate(events);
+}
+
+// ─── _agent/list, _agent/get, _agent/current ──────────────────────────
+
+describe("_agent/list, _agent/get, _agent/current", () => {
+  test("_agent/list returns configured agents and currentAgentId", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        { id: "a", name: "Agent A", command: JS.command, args: [] },
+        { id: "b", name: "Agent B", command: JS.command, args: [] },
+      ],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) =>
+        evts.some((e) => e.data && e.data.includes('"id":1') && e.data.includes('"agents"')),
+      );
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(1, "_agent/list"));
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 1);
+      expect(resp?.result).toEqual({
+        agents: [
+          { id: "a", name: "Agent A", command: JS.command, args: [] },
+          { id: "b", name: "Agent B", command: JS.command, args: [] },
+        ],
+        currentAgentId: "a",
+      });
+    } finally {
+      await stop();
+    }
+  });
+
+  test("_agent/get returns a specific agent", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [{ id: "a", name: "Agent A", command: JS.command, args: [] }],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 2));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(2, "_agent/get", { agentId: "a" }));
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 2);
+      expect(resp?.result).toEqual({
+        agent: { id: "a", name: "Agent A", command: JS.command, args: [] },
+      });
+    } finally {
+      await stop();
+    }
+  });
+
+  test("_agent/get with unknown id returns error", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [{ id: "a", name: "Agent A", command: JS.command, args: [] }],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 3));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(3, "_agent/get", { agentId: "nonexistent" }));
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 3);
+      expect(resp?.error?.message).toMatch(/not found/i);
+    } finally {
+      await stop();
+    }
+  });
+
+  test("_agent/current returns the active agent id", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [{ id: "a", name: "Agent A", command: JS.command, args: [] }],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 4));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(4, "_agent/current"));
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 4);
+      expect(resp?.result).toEqual({ agentId: "a" });
+    } finally {
+      await stop();
+    }
+  });
+});
+
+// ─── _agent/switch ────────────────────────────────────────────────────
+
+describe("_agent/switch", () => {
+  test("switches to the target agent process", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "a",
+          name: "Agent A",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-a-ready")],
+        },
+        {
+          id: "b",
+          name: "Agent B",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-b-ready")],
+        },
+      ],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(
+        url,
+        (evts) => evts.some((e) => e.data === "agent-b-ready"),
+        12000,
+      );
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Switch to agent B — POST returns immediately.
+      const start = Date.now();
+      const res = await post(sendUrl, extRequestBody(1, "_agent/switch", { agentId: "b" }));
+      const elapsed = Date.now() - start;
+      expect(res.status).toBe(200);
+      // POST response should be fast (< 1s), not waiting for spawn.
+      expect(elapsed).toBeLessThan(1000);
+
+      const events = await ssePromise;
+      // Agent B's marker should appear on SSE.
+      expect(events.some((e) => e.data === "agent-b-ready")).toBe(true);
+    } finally {
+      await stop();
+    }
+  }, 15000);
+
+  test("switch to non-existent agent returns error", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [{ id: "a", name: "Agent A", command: JS.command, args: [] }],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 1));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(1, "_agent/switch", { agentId: "nonexistent" }));
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 1);
+      expect(resp?.error?.message).toMatch(/not found/i);
+    } finally {
+      await stop();
+    }
+  });
+
+  test("concurrent switches are serialized", async () => {
+    const changes: { agents: { id: string }[]; currentAgentId: string | null }[] = [];
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "a",
+          name: "Agent A",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-a-ready")],
+        },
+        {
+          id: "b",
+          name: "Agent B",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-b-ready")],
+        },
+        {
+          id: "c",
+          name: "Agent C",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-c-ready")],
+        },
+      ],
+      activeAgentId: "a",
+      onAgentChanged: (agents, currentAgentId) =>
+        changes.push({ agents: [...agents], currentAgentId }),
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const sse = openSse(url);
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Fire two rapid switches without awaiting the first to finish.
+      await post(sendUrl, extRequestBody(1, "_agent/switch", { agentId: "b" }));
+      await post(sendUrl, extRequestBody(2, "_agent/switch", { agentId: "c" }));
+
+      // Wait for agent C's marker — final state should be C.
+      const found = await waitFor(
+        sse.events,
+        (evts) => evts.some((e) => e.data === "agent-c-ready"),
+        15000,
+      );
+      expect(found).toBe(true);
+
+      // Give a moment for the last _agent/changed to fire.
+      await new Promise((r) => setTimeout(r, 500));
+      sse.close();
+
+      // Final state should be agent C.
+      const last = changes[changes.length - 1];
+      expect(last?.currentAgentId).toBe("c");
+    } finally {
+      await stop();
+    }
+  }, 20000);
+});
+
+// ─── _agent/reload ────────────────────────────────────────────────────
+
+describe("_agent/reload", () => {
+  test("restarts the current agent process", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "a",
+          name: "Agent A",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-a-ready")],
+        },
+      ],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Switch to agent A to trigger initial spawn.
+      const sse1 = consumeSse(
+        url,
+        (evts) => evts.some((e) => e.data === "agent-a-ready"),
+        10000,
+      );
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(1, "_agent/switch", { agentId: "a" }));
+      await sse1;
+
+      // Now reload — agent process restarts (marker appears again).
+      const sse2 = consumeSse(
+        url,
+        (evts) => evts.some((e) => e.data === "agent-a-ready"),
+        10000,
+      );
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(2, "_agent/reload"));
+      const events = await sse2;
+      expect(events.some((e) => e.data === "agent-a-ready")).toBe(true);
+    } finally {
+      await stop();
+    }
+  }, 15000);
+});
+
+// ─── _agent/create ────────────────────────────────────────────────────
+
+describe("_agent/create", () => {
+  test("adds a new agent and broadcasts _agent/changed", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [{ id: "a", name: "Agent A", command: JS.command, args: [] }],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 1));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(
+        sendUrl,
+        extRequestBody(1, "_agent/create", {
+          agent: { id: "b", name: "Agent B", command: JS.command, args: [] },
+        }),
+      );
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 1);
+      expect(resp?.result).toEqual({
+        agent: { id: "b", name: "Agent B", command: JS.command, args: [] },
+      });
+    } finally {
+      await stop();
+    }
+  });
+
+  test("auto-activates when no active agent is set", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [],
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Create an agent — should auto-activate.
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 1));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(
+        sendUrl,
+        extRequestBody(1, "_agent/create", {
+          agent: { id: "auto", name: "Auto Agent", command: JS.command, args: [] },
+        }),
+      );
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 1);
+      expect(resp?.result).toBeDefined();
+
+      // Verify it was auto-activated via _agent/current.
+      const sse2 = consumeSse(url, (evts) => !!findRpcResponse(evts, 2));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(2, "_agent/current"));
+      const events2 = await sse2;
+      const resp2 = findRpcResponse(events2, 2);
+      expect(resp2?.result).toEqual({ agentId: "auto" });
+    } finally {
+      await stop();
+    }
+  });
+});
+
+// ─── _agent/update ────────────────────────────────────────────────────
+
+describe("_agent/update", () => {
+  test("updates agent metadata", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [{ id: "a", name: "Agent A", command: JS.command, args: [] }],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const ssePromise = consumeSse(url, (evts) => !!findRpcResponse(evts, 1));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(
+        sendUrl,
+        extRequestBody(1, "_agent/update", {
+          agent: { id: "a", name: "Renamed Agent", command: JS.command, args: ["updated"] },
+        }),
+      );
+      const events = await ssePromise;
+      const resp = findRpcResponse(events, 1);
+      expect(resp?.result).toEqual({
+        agent: { id: "a", name: "Renamed Agent", command: JS.command, args: ["updated"] },
+      });
+    } finally {
+      await stop();
+    }
+  });
+});
+
+// ─── _agent/delete ────────────────────────────────────────────────────
+
+describe("_agent/delete", () => {
+  test("removes a non-active agent without affecting the active process", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "a",
+          name: "Agent A",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-a-ready")],
+        },
+        { id: "b", name: "Agent B", command: JS.command, args: [] },
+      ],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      // Switch to A to start its process.
+      const sse1 = consumeSse(
+        url,
+        (evts) => evts.some((e) => e.data === "agent-a-ready"),
+        10000,
+      );
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(1, "_agent/switch", { agentId: "a" }));
+      await sse1;
+
+      // Delete the non-active agent B.
+      const sse2 = consumeSse(url, (evts) => !!findRpcResponse(evts, 2));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(2, "_agent/delete", { agentId: "b" }));
+      const events = await sse2;
+      const resp = findRpcResponse(events, 2);
+      expect(resp?.result).toBeNull();
+
+      // Verify agent list only has A.
+      const sse3 = consumeSse(url, (evts) => !!findRpcResponse(evts, 3));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(3, "_agent/list"));
+      const events3 = await sse3;
+      const resp3 = findRpcResponse(events3, 3);
+      const listResult = resp3?.result as { agents: { id: string }[]; currentAgentId: string };
+      expect(listResult.agents).toHaveLength(1);
+      expect(listResult.agents[0].id).toBe("a");
+      expect(listResult.currentAgentId).toBe("a");
+    } finally {
+      await stop();
+    }
+  }, 15000);
+
+  test("switches to the next agent when deleting the active one", async () => {
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "a",
+          name: "Agent A",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-a-ready")],
+        },
+        {
+          id: "b",
+          name: "Agent B",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-b-ready")],
+        },
+      ],
+      activeAgentId: "a",
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const sse = openSse(url);
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Delete the active agent A — should trigger switch to B.
+      await post(sendUrl, extRequestBody(1, "_agent/delete", { agentId: "a" }));
+
+      // Agent B should start automatically.
+      const found = await waitFor(
+        sse.events,
+        (evts) => evts.some((e) => e.data === "agent-b-ready"),
+        12000,
+      );
+      expect(found).toBe(true);
+
+      // Verify current agent is B.
+      const sse2 = consumeSse(url, (evts) => !!findRpcResponse(evts, 2));
+      await new Promise((r) => setTimeout(r, 100));
+      await post(sendUrl, extRequestBody(2, "_agent/current"));
+      const events2 = await sse2;
+      const resp = findRpcResponse(events2, 2);
+      expect(resp?.result).toEqual({ agentId: "b" });
+
+      sse.close();
+    } finally {
+      await stop();
+    }
+  }, 20000);
+
+  test("stops the process when deleting the last agent", async () => {
+    const changes: { agents: { id: string }[]; currentAgentId: string | null }[] = [];
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        {
+          id: "a",
+          name: "Agent A",
+          command: JS.command,
+          args: [JS.evalFlag, echoAgentScript("agent-a-ready")],
+        },
+      ],
+      activeAgentId: "a",
+      onAgentChanged: (agents, currentAgentId) =>
+        changes.push({ agents: [...agents], currentAgentId }),
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const sse = openSse(url);
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Delete the only agent.
+      await post(sendUrl, extRequestBody(1, "_agent/delete", { agentId: "a" }));
+
+      // Wait for state to settle.
+      await new Promise((r) => setTimeout(r, 1000));
+      sse.close();
+
+      // Verify agents list is empty and currentAgentId is null.
+      const last = changes[changes.length - 1];
+      expect(last.agents).toHaveLength(0);
+      expect(last.currentAgentId).toBeNull();
+    } finally {
+      await stop();
+    }
+  }, 10000);
+});
+
+// ─── switch all-fail restores original agent ──────────────────────────
+
+describe("switch all-fail restores original agent", () => {
+  test("restores currentAgentId when all candidates fail to spawn", async () => {
+    const changes: { agents: { id: string }[]; currentAgentId: string | null }[] = [];
+    const port = await getFreePort();
+    const server = new AcpGatewayServer({
+      command: JS.command,
+      args: [JS.evalFlag, "setInterval(() => {}, 1000);"],
+      port,
+      sendEndpoint: "/send",
+      agents: [
+        { id: "a", name: "Agent A", command: "this-command-does-not-exist-xyz", args: [] },
+        { id: "b", name: "Agent B", command: "this-command-does-not-exist-xyz2", args: [] },
+      ],
+      activeAgentId: "a",
+      onAgentChanged: (agents, currentAgentId) =>
+        changes.push({ agents: [...agents], currentAgentId }),
+    });
+    const { url, stop } = await server.start();
+    const sendUrl = `${url.replace(/\/$/, "")}/send`;
+
+    try {
+      const sse = openSse(url);
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Switch to agent B — both will fail, original (A) should be restored.
+      await post(sendUrl, extRequestBody(1, "_agent/switch", { agentId: "b" }));
+
+      // Wait for "All agents failed" error broadcast.
+      const found = await waitFor(
+        sse.events,
+        (evts) => evts.some((e) => e.event === "error" && /All agents failed/.test(e.data ?? "")),
+        25000,
+      );
+      expect(found).toBe(true);
+
+      // Give a moment for the final _agent/changed to fire.
+      await new Promise((r) => setTimeout(r, 500));
+      sse.close();
+
+      // currentAgentId should be restored to "a".
+      const last = changes[changes.length - 1];
+      expect(last?.currentAgentId).toBe("a");
+    } finally {
+      await stop();
+    }
+  }, 30000);
+});
