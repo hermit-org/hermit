@@ -141,12 +141,14 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
   const corsConfig = normalizeCors(gateway!.cors);
 
   // Resolve agents: prefer persisted runtime state, then config, then the
-  // legacy single `agent` field.
+  // legacy single `agent` field. These are kept as mutable `let` bindings so
+  // the `onAgentChanged` callback can update the `/api/config` snapshot at
+  // runtime (B3).
   const configAgents = resolveAgents(config);
   const persisted = await readAgentsState();
-  const agents = persisted?.agents ?? configAgents.agents;
-  const activeAgentId = persisted?.activeAgentId ?? configAgents.activeAgentId;
-  const activeAgent = agents.find((a) => a.id === activeAgentId) ?? agents[0] ?? null;
+  let agents = persisted?.agents ?? configAgents.agents;
+  let activeAgentId = persisted?.activeAgentId ?? configAgents.activeAgentId;
+  let activeAgent = agents.find((a) => a.id === activeAgentId) ?? agents[0] ?? null;
 
   // Create a persistent bearer token for QR/auto-connect.
   const token = generateToken();
@@ -166,6 +168,10 @@ async function startServer(config: HermitConfig, webClientUrl?: string): Promise
     agents,
     activeAgentId: activeAgent?.id ?? null,
     onAgentChanged: (updatedAgents, updatedActiveId) => {
+      // B3: Update the local snapshot so `/api/config` returns current data.
+      agents = updatedAgents;
+      activeAgentId = updatedActiveId;
+      activeAgent = agents.find((a) => a.id === updatedActiveId) ?? agents[0] ?? null;
       writeAgentsState({ agents: updatedAgents, activeAgentId: updatedActiveId }).catch(() => {
         // Persistence failures are non-fatal; the change is still live in memory.
       });

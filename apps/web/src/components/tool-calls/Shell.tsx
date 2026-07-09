@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useDebugMode } from "@/hooks/useDebugMode";
 import type { ToolCallState } from "@/components/domain";
 import { getKindMeta } from "./meta";
-import { CollapseChevron, STATUS_TONE, RawBlock } from "./parts";
+import { CollapseChevron, STATUS_TONE, RawBlock } from "./Parts";
 import { renderRaw } from "./helpers";
 
 export interface ToolCallShellProps {

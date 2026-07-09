@@ -6,6 +6,33 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.18] - 2026-07-09
+
+### 修复
+
+- **B1: 切换 agent 时 prompt 静默丢弃**：`stopAgent` 在杀死进程前为所有 in-flight prompt 广播 JSON-RPC error 响应（`code: -32001`），客户端可将未完成消息标记为 `interrupted` 状态
+- **B2: transcript 无 agent 切换标记**：新增 `divider` 类型 ChatItem，agent 切换时自动在聊天记录插入分隔线标注 "已切换到 Agent X"
+- **B3: `/api/config` agents 列表运行时过期**：`onAgentChanged` 回调同步更新 CLI 层的 `agents`/`activeAgent` 变量，`/api/config` 始终返回最新数据
+- **B4: 快速连续切换浪费 stop/spawn**：客户端 `switchAgent` 添加 500ms 防抖，快速连续切换只执行最后一次
+- **B5: `_agent/create` auto-activate 不 spawn**：创建第一个 agent 并 auto-activate 时，若有 SSE 连接则立即 spawn 进程
+- **B6: Settings args 含逗号值解析错误**：args 输入从逗号分隔改为换行分隔的 Textarea，解决含逗号参数值被误切分的问题
+- **D4: candidates fallback 不完整**：`doSwitchAgent` 在目标 agent 不在已注册列表时也包含所有 agents 作为 fallback
+- **E1: switch 到当前 agent 无跳过**：切换到当前活跃 agent（command/args 完全一致）时跳过 stop/respawn；reload 通过 `force` 参数绕过
+- **E2: 删除最后 agent 后 command 残留**：删除最后一个 agent 后清空 `agentCommand/agentArgs/agentCwd`
+
+### 变更
+
+- **D1: acpExt 默认值源头统一**：`acpExt` 纳入 `FEATURE_FLAGS` 数组，统一默认值来源；UI 渲染按 section 分组过滤
+- **D2: useAcpExt 重复实例化**：Agent 数据通过 `acpClientStore` 共享，`AgentsSection` 不再重复调用 `useAcpExt`（消除 2x `_agent/list` 请求和通知订阅）
+- **D3: agent 切换 UI 无 loading 状态**：`useAcpExt` 新增 `switching` 状态，switcher dropdown 和 reload 按钮切换时显示 spinner 并禁用
+- **E3: showConfigBar 隐藏关键配置**：`ConfigOptionBar` 不再被 feature flag 门控，始终显示 agent 配置选项
+
+## [0.0.6-alpha.17] - 2026-07-09
+
+### 变更
+
+- **统一 tool-call 卡片样式**：重构所有工具调用渲染组件，统一使用 `ToolCallShell` + `Parts` 组合，隐藏原始 I/O 默认展示精简视图
+
 ## [0.0.6-alpha.16] - 2026-07-09
 
 ### 修复

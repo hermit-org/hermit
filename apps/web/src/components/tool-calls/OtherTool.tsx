@@ -1,8 +1,8 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
-import { ToolCallContentItem } from "./parts";
+import { ToolCallShell } from "./Shell";
+import { ToolCallContentItem } from "./Parts";
 
 /**
  * Generic fallback renderer for `other` tool kinds (and any unrecognized kind).

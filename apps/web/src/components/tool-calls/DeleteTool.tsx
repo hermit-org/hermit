@@ -2,10 +2,10 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { FileIcon } from "@/components/atoms";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 import { extractDeletedPaths, basename } from "./helpers";
 
 /**

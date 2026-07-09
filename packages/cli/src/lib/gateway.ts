@@ -473,6 +473,12 @@ export class AcpGatewayServer {
             this.agentCommand = newAgent.command;
             this.agentArgs = newAgent.args ?? [];
             this.agentCwd = newAgent.cwd;
+            // B5: If there are active SSE connections, eagerly spawn the agent
+            // so it's immediately ready. Without this the agent only starts on
+            // the next /send, causing a visible delay for the user.
+            if (this.connections.size > 0) {
+              this.ensureAgentRunning();
+            }
           }
           this.notifyAgentChanged();
           result = { agent: newAgent };
@@ -506,6 +512,11 @@ export class AcpGatewayServer {
             if (next) {
               void this.doSwitchAgentSerialized(next).catch(() => {});
             } else {
+              // E2: Clear stale command data so a subsequent `_agent/create`
+              // doesn't inherit the deleted agent's command/args/cwd.
+              this.agentCommand = "";
+              this.agentArgs = [];
+              this.agentCwd = undefined;
               void this.stopAgent(false).catch(() => {});
             }
           }
@@ -530,7 +541,7 @@ export class AcpGatewayServer {
           if (!agentId) throw new Error("No active agent to reload");
           const agent = this.agents.find((a) => a.id === agentId) ?? null;
           result = { agentId };
-          void this.doSwitchAgentSerialized(agent).catch(() => {});
+          void this.doSwitchAgentSerialized(agent, true).catch(() => {});
           break;
         }
         case AcpExtMethod.AgentCurrent:
@@ -570,9 +581,9 @@ export class AcpGatewayServer {
    * requests are queued and executed one at a time to avoid race conditions
    * (e.g. two switches interleaving their stop/respawn cycles).
    */
-  private doSwitchAgentSerialized(agent: AgentConfig | null): Promise<void> {
+  private doSwitchAgentSerialized(agent: AgentConfig | null, force = false): Promise<void> {
     this.switchPromise = this.switchPromise.then(() =>
-      this.doSwitchAgent(agent),
+      this.doSwitchAgent(agent, force),
     );
     return this.switchPromise;
   }
@@ -582,19 +593,36 @@ export class AcpGatewayServer {
    * and respawn. If the target agent fails to start, automatically try the
    * remaining agents in order until one succeeds (or all fail).
    */
-  private async doSwitchAgent(agent: AgentConfig | null): Promise<void> {
+  private async doSwitchAgent(agent: AgentConfig | null, force = false): Promise<void> {
     if (!agent) {
       await this.stopAgent();
       return;
     }
 
+    // E1: Switching to the currently active agent is a no-op — skip the
+    // unnecessary stop/respawn cycle. Only skip when the process is running
+    // and the command/args match (so a config change to the same id still
+    // triggers a respawn). `force` is used by `_agent/reload` to bypass this.
+    if (
+      !force &&
+      this.currentAgentId === agent.id &&
+      this.proc &&
+      !this.procExited &&
+      this.agentCommand === agent.command &&
+      JSON.stringify(this.agentArgs) === JSON.stringify(agent.args ?? [])
+    ) {
+      this.notifyAgentChanged();
+      return;
+    }
+
     // Build the candidate list: start from the requested agent, then wrap
-    // around to try every other agent.
+    // around to try every other agent. If the target isn't in the list
+    // (defensive case), prepend it and fall back through all registered agents.
     const idx = this.agents.findIndex((a) => a.id === agent.id);
     const candidates =
       idx >= 0
         ? [...this.agents.slice(idx), ...this.agents.slice(0, idx)]
-        : [agent];
+        : [agent, ...this.agents];
 
     // Remember the original active agent so we can restore it if all candidates
     // fail. We update command/args/cwd per candidate but only commit
@@ -852,6 +880,23 @@ export class AcpGatewayServer {
       this.proc = undefined;
       this.procReady = false;
       return;
+    }
+
+    // Broadcast JSON-RPC errors for any in-flight prompts before killing the
+    // process, so the client can mark them as interrupted instead of waiting
+    // forever for a response that will never arrive.
+    if (this.activePrompts.size > 0) {
+      for (const promptId of this.activePrompts) {
+        const errorResponse = {
+          jsonrpc: "2.0",
+          id: promptId,
+          error: {
+            code: -32001,
+            message: "Prompt interrupted: agent is switching or stopping",
+          },
+        };
+        this.broadcast(JSON.stringify(errorResponse));
+      }
     }
 
     this.agentStoppedIntentionally = true;

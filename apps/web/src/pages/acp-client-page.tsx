@@ -116,6 +116,8 @@ export interface ACPClientPageProps {
   onSwitchAgent?: (agentId: string) => void;
   /** Reload (restart) the current agent (ACP extension). */
   onReloadAgent?: () => void;
+  /** Whether an agent switch/reload is in progress (D3). */
+  agentSwitching?: boolean;
   /** Images currently attached to the draft. */
   attachments?: PendingAttachment[];
   /** Add image files to the draft. */
@@ -216,6 +218,7 @@ export function ACPClientPage({
   currentAgentId,
   onSwitchAgent,
   onReloadAgent,
+  agentSwitching = false,
   attachments,
   onAttachImages,
   onRemoveAttachment,
@@ -413,8 +416,15 @@ export function ACPClientPage({
                   >
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <SelectTrigger className="ml-auto h-7 w-auto gap-1 border-none px-2 text-xs">
-                          <Bot className="h-3.5 w-3.5" />
+                        <SelectTrigger
+                          className="ml-auto h-7 w-auto gap-1 border-none px-2 text-xs"
+                          disabled={agentSwitching}
+                        >
+                          {agentSwitching ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Bot className="h-3.5 w-3.5" />
+                          )}
                           <SelectValue />
                         </SelectTrigger>
                       </TooltipTrigger>
@@ -438,10 +448,15 @@ export function ACPClientPage({
                         variant="ghost"
                         size="icon-sm"
                         className="h-7 w-7"
+                        disabled={agentSwitching}
                         aria-label={t("agents.reload")}
                         onClick={onReloadAgent}
                       >
-                        <RotateCw className="h-4 w-4" />
+                        {agentSwitching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RotateCw className="h-4 w-4" />
+                        )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{t("agents.reload")}</TooltipContent>
@@ -481,7 +496,11 @@ export function ACPClientPage({
                   }
                 />
               </div>
-              <GatedConfigOptionBar
+              {/* E3: Always render config options — hiding them would prevent
+                  users from configuring critical agent settings like model
+                  selection. The showConfigBar flag is no longer used to gate
+                  this component. */}
+              <ConfigOptionBar
                 options={configOptions}
                 onArchive={
                   activeSessionId && onArchiveSession
@@ -620,8 +639,6 @@ function ConfigOptionBar({
     </div>
   );
 }
-
-const GatedConfigOptionBar = withFeatureGate(ConfigOptionBar, "showConfigBar");
 
 /**
  * Dismissable inline error banner. Mirrors the legacy ChatScreen's in-chat

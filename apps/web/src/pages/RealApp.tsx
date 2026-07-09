@@ -9,7 +9,7 @@
  * When no gateway is configured it shows a minimal inline connect form rather
  * than reaching into the legacy `screens/`.
  */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ACPClientPage } from "./acp-client-page";
@@ -120,9 +120,91 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
   const {
     agents: extAgents,
     currentAgentId: extCurrentAgentId,
+    switching: extSwitching,
+    loading: extLoading,
+    error: extError,
     switchAgent: extSwitchAgent,
     reloadAgent: extReloadAgent,
+    createAgent: extCreateAgent,
+    updateAgent: extUpdateAgent,
+    deleteAgent: extDeleteAgent,
+    refresh: extRefresh,
   } = useAcpExt(adapter.client, acpExtEnabled, transportReady);
+
+  // D2: Register agent ext data into the shared store so AgentsSection can
+  // consume it without calling `useAcpExt` a second time.
+  const setExtData = useAcpClientStore((s) => s.setExtData);
+  useEffect(() => {
+    if (!acpExtEnabled) return;
+    setExtData({
+      agents: extAgents,
+      currentAgentId: extCurrentAgentId,
+      loading: extLoading,
+      error: extError,
+      switching: extSwitching,
+      createAgent: extCreateAgent,
+      updateAgent: extUpdateAgent,
+      deleteAgent: extDeleteAgent,
+      switchAgent: extSwitchAgent,
+      reloadAgent: extReloadAgent,
+      refresh: extRefresh,
+    });
+  }, [
+    acpExtEnabled,
+    extAgents,
+    extCurrentAgentId,
+    extLoading,
+    extError,
+    extSwitching,
+    extCreateAgent,
+    extUpdateAgent,
+    extDeleteAgent,
+    extSwitchAgent,
+    extReloadAgent,
+    extRefresh,
+    setExtData,
+  ]);
+
+  // B2: When the active agent changes (and we had a previous agent), inject a
+  // divider ChatItem so the transcript shows where the switch happened.
+  const prevAgentIdRef = useRef<string | null>(null);
+  const [agentSwitchLabels, setAgentSwitchLabels] = useState<
+    { key: string; label: string; createdAt: number }[]
+  >([]);
+  useEffect(() => {
+    if (!acpExtEnabled) return;
+    const prevId = prevAgentIdRef.current;
+    // Only inject when transitioning from one agent to a different one.
+    if (
+      prevId !== null &&
+      extCurrentAgentId !== null &&
+      prevId !== extCurrentAgentId
+    ) {
+      const switchedAgent = extAgents.find((a) => a.id === extCurrentAgentId);
+      const name = switchedAgent?.name ?? extCurrentAgentId;
+      setAgentSwitchLabels((prev) => [
+        ...prev,
+        {
+          key: `agent-switch-${Date.now()}`,
+          label: t("agents.switchDivider", { name }),
+          createdAt: Date.now(),
+        },
+      ]);
+    }
+    prevAgentIdRef.current = extCurrentAgentId;
+  }, [extCurrentAgentId, extAgents, acpExtEnabled, t]);
+
+  // Merge agent-switch dividers into the chat items from the adapter.
+  const chatItemsWithDividers = useMemo(() => {
+    if (agentSwitchLabels.length === 0) return adapter.chatItems;
+    const dividers = agentSwitchLabels.map((d) => ({
+      kind: "divider" as const,
+      key: d.key,
+      label: d.label,
+      createdAt: d.createdAt,
+    }));
+    return [...adapter.chatItems, ...dividers];
+  }, [adapter.chatItems, agentSwitchLabels]);
 
   const handleGatewayAdded = useCallback(
     (id: string) => {
@@ -142,10 +224,12 @@ export function RealApp({ gatewayId }: RealAppProps): React.JSX.Element {
     <ACPClientPage
       {...rest}
       activeSessionId={activeSessionId ?? undefined}
+      chatItems={chatItemsWithDividers}
       agents={acpExtEnabled ? extAgents : []}
       currentAgentId={acpExtEnabled ? extCurrentAgentId : undefined}
       onSwitchAgent={acpExtEnabled ? extSwitchAgent : undefined}
       onReloadAgent={acpExtEnabled ? extReloadAgent : undefined}
+      agentSwitching={acpExtEnabled ? extSwitching : false}
       onOpenSettings={() => navigate("/settings")}
     />
   );

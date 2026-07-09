@@ -43,6 +43,13 @@ export type ChatItem =
       content: string;
       streaming?: boolean;
       messageId?: string;
+    }
+  | {
+      kind: "divider";
+      key: string;
+      /** Label text for the divider (e.g. "Switched to Agent B"). */
+      label: string;
+      createdAt: number;
     };
 
 export interface ChatAreaProps {
@@ -192,6 +199,10 @@ export function ChatArea({
                     ) : item.kind === "tool_call" ? (
                       <div className="px-4 py-1.5">
                         <ToolCallRenderer call={item.call} />
+                      </div>
+                    ) : item.kind === "divider" ? (
+                      <div className="px-4 py-2">
+                        <Divider label={item.label} />
                       </div>
                     ) : (
                       <GatedThoughtBlock

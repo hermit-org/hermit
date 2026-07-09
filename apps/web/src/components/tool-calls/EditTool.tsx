@@ -1,15 +1,15 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { FileIcon } from "@/components/atoms";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallContent, ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 import {
   DiffView,
   computeDiffLines,
   countDiff,
-} from "./parts";
+} from "./Parts";
 import { asObject, firstString, basename } from "./helpers";
 
 /** Collect every diff source (content blocks + rawInput) for an edit call. */

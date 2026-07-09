@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 import { FileIcon } from "@/components/atoms";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 import { extractMovePaths, basename } from "./helpers";
 
 /**

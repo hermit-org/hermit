@@ -28,6 +28,8 @@ export interface UseAcpExtResult {
   loading: boolean;
   /** Error from the last failed operation, if any. */
   error: string | null;
+  /** Whether an agent switch or reload is in progress (D3). */
+  switching: boolean;
   /** Typed extension client for direct method calls. */
   ext: AcpExtClient | null;
   /** Refresh the agent list from the gateway. */
@@ -62,7 +64,12 @@ export function useAcpExt(
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [switching, setSwitching] = useState(false);
   const extRef = useRef<AcpExtClient | null>(null);
+  // B4: Debounce timer ref for rapid consecutive switch requests.
+  const switchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // D3: Track whether a switch is pending so the UI can show a loading state.
+  const switchingRef = useRef(false);
 
   // Build the typed extension client whenever the underlying AcpClient changes
   // AND the transport is ready. We gate on `transportReady` because
@@ -139,12 +146,43 @@ export function useAcpExt(
 
   const switchAgent = useCallback(async (agentId: string) => {
     if (!extRef.current) return;
-    await extRef.current.agentSwitch(agentId);
+    // B4: Debounce rapid consecutive switch calls (500ms). The last call wins;
+    // earlier queued switches are cancelled, avoiding wasted stop/spawn cycles.
+    if (switchDebounceRef.current) {
+      clearTimeout(switchDebounceRef.current);
+    }
+    setSwitching(true);
+    switchingRef.current = true;
+    return new Promise<void>((resolve) => {
+      switchDebounceRef.current = setTimeout(async () => {
+        switchDebounceRef.current = null;
+        try {
+          await extRef.current?.agentSwitch(agentId);
+        } catch (e) {
+          setError(e instanceof Error ? e.message : String(e));
+        } finally {
+          switchingRef.current = false;
+          // Small delay to let the gateway broadcast _agent/changed before
+          // clearing the switching state.
+          setTimeout(() => setSwitching(false), 500);
+          resolve();
+        }
+      }, 500);
+    });
   }, []);
 
   const reloadAgent = useCallback(async () => {
     if (!extRef.current) return;
-    await extRef.current.agentReload();
+    setSwitching(true);
+    switchingRef.current = true;
+    try {
+      await extRef.current.agentReload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      switchingRef.current = false;
+      setTimeout(() => setSwitching(false), 500);
+    }
   }, []);
 
   return {
@@ -152,6 +190,7 @@ export function useAcpExt(
     currentAgentId,
     loading,
     error,
+    switching,
     ext: extRef.current,
     refresh,
     createAgent,

@@ -1,10 +1,10 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
-import { CodeBlock } from "./parts";
+import { ToolCallShell } from "./Shell";
+import { CodeBlock } from "./Parts";
 import { asObject, firstString, getNumber, renderRaw } from "./helpers";
 
 /** Reconstruct a command string from rawInput { command, args } or rawInput.command. */

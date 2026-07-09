@@ -127,6 +127,13 @@ export type ChatItem =
       content: string;
       streaming?: boolean;
       messageId?: string;
+    }
+  | {
+      kind: "divider";
+      key: string;
+      /** Label text for the divider (e.g. "Switched to Agent B"). */
+      label: string;
+      createdAt: number;
     };
 
 /**

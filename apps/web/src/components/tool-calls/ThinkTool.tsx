@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 
 /**
  * Specialized renderer for `think` tool calls. Renders the agent's reasoning as

@@ -1,10 +1,10 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 import { asObject, firstString } from "./helpers";
 
 /** Capitalize a mode id for display (e.g. "code" -> "Code"). */

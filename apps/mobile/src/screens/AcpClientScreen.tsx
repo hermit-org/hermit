@@ -84,6 +84,14 @@ function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
     );
   }
 
+  if (item.kind === "divider") {
+    return (
+      <View style={styles.dividerContainer}>
+        <Text style={styles.dividerText}>— {item.label} —</Text>
+      </View>
+    );
+  }
+
   // tool_call
   return (
     <View style={styles.toolCallContainer}>
@@ -344,6 +352,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     marginTop: 2,
+  },
+  dividerContainer: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  dividerText: {
+    fontSize: 12,
+    color: "#999",
+    fontStyle: "italic",
   },
   dividerContainer: {
     paddingVertical: 8,

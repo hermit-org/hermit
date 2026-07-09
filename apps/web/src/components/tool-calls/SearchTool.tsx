@@ -1,9 +1,9 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/Badge";
 import { FileIcon } from "@/components/atoms";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 import { asObject, extractMatches, firstString, basename } from "./helpers";
 
 /**

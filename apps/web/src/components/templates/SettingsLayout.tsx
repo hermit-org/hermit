@@ -57,7 +57,6 @@ import {
   useSetFeatureFlag,
 } from "@/components/FeatureGate";
 import { useAcpClientStore } from "@/stores";
-import { useAcpExt } from "@/hooks/useAcpExt";
 import type { Gateway, QuickCommand } from "@/types";
 import {
   buildShareUrl,
@@ -717,6 +716,10 @@ function FeatureSwitch({
 
 function FeaturesSection(): React.JSX.Element {
   const { t } = useTranslation();
+  // D1: `acpExt` has its toggle in the "Agent Management" section, so filter
+  // it out of the general features list even though it's in FEATURE_FLAGS for
+  // default-value unification.
+  const visibleFlags = FEATURE_FLAGS.filter((f) => f.key !== "acpExt");
   return (
     <div className="mx-auto max-w-xl space-y-6 p-6">
       <div>
@@ -726,7 +729,7 @@ function FeaturesSection(): React.JSX.Element {
         </p>
       </div>
       <div className="space-y-3">
-        {FEATURE_FLAGS.map((flag) => (
+        {visibleFlags.map((flag) => (
           <FeatureSwitch key={flag.key} featureKey={flag.key} />
         ))}
       </div>
@@ -739,22 +742,19 @@ function AgentsSection(): React.JSX.Element {
   const acpExtEnabled = useFeatureFlag("acpExt");
   const setAcpExt = useSetFeatureFlag("acpExt");
 
-  // Reuse the RealApp's live AcpClient from the shared store instead of
-  // creating a second SSE connection. The client and transport state are
-  // registered by RealApp via `useAcpClientStore`.
-  const client = useAcpClientStore((s) => s.client);
-  const transportReady = useAcpClientStore((s) => s.transportReady);
-  const {
-    agents,
-    currentAgentId,
-    loading,
-    error,
-    createAgent,
-    updateAgent,
-    deleteAgent,
-    switchAgent,
-    reloadAgent,
-  } = useAcpExt(client, acpExtEnabled, transportReady);
+  // D2: Read agent data from the shared store (registered by RealApp) instead
+  // of calling `useAcpExt` a second time, which would duplicate `_agent/list`
+  // requests and `_agent/changed` subscriptions.
+  const agents = useAcpClientStore((s) => s.extAgents);
+  const currentAgentId = useAcpClientStore((s) => s.extCurrentAgentId);
+  const loading = useAcpClientStore((s) => s.extLoading);
+  const error = useAcpClientStore((s) => s.extError);
+  const switching = useAcpClientStore((s) => s.extSwitching);
+  const createAgent = useAcpClientStore((s) => s.extCreateAgent);
+  const updateAgent = useAcpClientStore((s) => s.extUpdateAgent);
+  const deleteAgent = useAcpClientStore((s) => s.extDeleteAgent);
+  const switchAgent = useAcpClientStore((s) => s.extSwitchAgent);
+  const reloadAgent = useAcpClientStore((s) => s.extReloadAgent);
 
   const [view, setView] = React.useState<"list" | "add" | "edit">("list");
   const [form, setForm] = React.useState({
@@ -784,7 +784,7 @@ function AgentsSection(): React.JSX.Element {
       id: agent.id,
       name: agent.name,
       command: agent.command,
-      args: agent.args.join(", "),
+      args: agent.args.join("\n"),
       cwd: agent.cwd ?? "",
     });
     setView("edit");
@@ -795,13 +795,15 @@ function AgentsSection(): React.JSX.Element {
       setNotice(t("agents.requiredError"));
       return;
     }
+    // B6: Parse args by newline instead of comma, so values containing commas
+    // (e.g. --prompt "Hello, World") are not incorrectly split.
     const args = form.args
-      .split(",")
+      .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
     try {
       if (view === "edit" && editingId) {
-        await updateAgent({
+        await updateAgent?.({
           id: editingId,
           name: form.name.trim(),
           command: form.command.trim(),
@@ -809,7 +811,7 @@ function AgentsSection(): React.JSX.Element {
           cwd: form.cwd.trim() || undefined,
         });
       } else {
-        await createAgent({
+        await createAgent?.({
           id: form.id.trim() || undefined,
           name: form.name.trim(),
           command: form.command.trim(),
@@ -827,7 +829,7 @@ function AgentsSection(): React.JSX.Element {
   const handleDelete = async (agentId: string): Promise<void> => {
     if (!window.confirm(t("agents.deleteConfirm"))) return;
     try {
-      await deleteAgent(agentId);
+      await deleteAgent?.(agentId);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));
     }
@@ -836,7 +838,7 @@ function AgentsSection(): React.JSX.Element {
   const handleSwitch = async (agentId: string): Promise<void> => {
     if (!window.confirm(t("agents.switchConfirm"))) return;
     try {
-      await switchAgent(agentId);
+      await switchAgent?.(agentId);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));
     }
@@ -845,7 +847,7 @@ function AgentsSection(): React.JSX.Element {
   const handleReload = async (): Promise<void> => {
     if (!window.confirm(t("agents.reloadConfirm"))) return;
     try {
-      await reloadAgent();
+      await reloadAgent?.();
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));
     }
@@ -921,11 +923,12 @@ function AgentsSection(): React.JSX.Element {
               placeholder={t("agents.command")}
               autoCapitalize="none"
             />
-            <Input
+            <Textarea
               value={form.args}
               onChange={(e) => setForm((f) => ({ ...f, args: e.target.value }))}
-              placeholder={t("agents.args")}
+              placeholder={t("agents.argsHint")}
               autoCapitalize="none"
+              rows={2}
             />
             <Input
               value={form.cwd}

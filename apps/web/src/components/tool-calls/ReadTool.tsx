@@ -2,12 +2,12 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { FileIcon } from "@/components/atoms";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./shell";
+import { ToolCallShell } from "./Shell";
 import {
   CodeBlock,
   ToolCallContentItem,
   MetaRow,
-} from "./parts";
+} from "./Parts";
 import { asObject, firstString, getNumber, basename } from "./helpers";
 
 /**
