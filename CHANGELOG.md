@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.0.6-alpha.16] - 2026-07-09
+
+### 修复
+
+- **并发 agent 切换串行化**：对 `_agent/switch`、`_agent/reload`、删除 active agent 后的自动切换进行序列化，避免多个 stop/spawn 操作交错导致状态不一致
+- **idle check 在切换后未重启**：agent 切换完成后重新启动 idle timeout 检查，防止新进程因无活动被异常停止
+- **`_agent/create` 空列表时未自动激活**：创建第一个 agent 时自动设置为 current agent，并同步 command/args/cwd
+- **`_agent/delete` 边界问题**：删除 active agent 后正确切换到下一个可用 agent；删除最后一个 agent 时停止当前进程并将 currentAgentId 置空
+- **`trySpawnAgent` double-readline 竞态**：避免在 agent stdout 上创建第二个 readline 实例竞争首行，修复偶发的 spawn 失败误判
+
+### 变更
+
+- **测试运行器**：通过 `bunfig.toml` 配置排除 `apps/mobile` 的 Jest 测试，避免与 Bun test runner 冲突
+
 ## [0.0.6-alpha.15] - 2026-07-06
 
 ### 新增
