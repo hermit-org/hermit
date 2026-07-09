@@ -30,7 +30,8 @@
     "sending": "发送中...",
     "connecting": "连接中...",
     "stop": "停止",
-    "dismiss": "忽略"
+    "menu": "菜单",
+    "newSession": "新建会话"
   },
   "gateways": {
     "title": "网关",
@@ -41,11 +42,8 @@
     "add": "添加网关",
     "connect": "连接",
     "delete": "删除",
-    "editTitle": "编辑网关",
-    "editMessage": "输入新的名称",
     "error": "错误",
     "urlRequired": "请输入网关 URL。",
-    "urlInvalid": "请输入有效的 HTTP 或 HTTPS URL。",
     "empty": "暂无网关，添加一个开始。"
   },
   "chat": {
@@ -61,7 +59,10 @@
     "gatewayNotFoundMessage": "该会话对应的网关已不存在。",
     "connectingMessage": "正在连接网关...",
     "errorPrefix": "\n\n错误: {{message}}",
-    "answeredHistory": "已回答 ({{count}})"
+    "thinking": "💭 思考中",
+    "toolCall": "🔧 {{title}}",
+    "toolCallFallback": "工具调用",
+    "toolCallRunning": "运行中"
   },
   "settings": {
     "title": "设置",
@@ -69,46 +70,16 @@
     "chat": "聊天",
     "theme": "主题",
     "language": "语言",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "themeSystem": "跟随系统",
+    "languageEn": "English",
+    "languageZh": "中文",
+    "languageSystem": "跟随系统",
     "thoughtPreviewLines": "思考预览行数",
     "autoArchiveThreshold": "自动归档阈值",
     "autoArchivePlaceholder": "例如 3d",
-    "autoAuthenticate": "自动认证",
-    "features": "功能开关",
-    "archive": "归档",
-    "showArchivedSessions": "显示已归档会话",
-    "about": "关于",
-    "version": "版本"
-  },
-  "features": {
-    "showThoughts": "显示思考过程",
-    "showThoughtsHint": "展示 agent 的推理思考块",
-    "showPlan": "显示计划栏",
-    "showPlanHint": "展示待办/计划进度条",
-    "showUsageStats": "显示用量统计",
-    "showUsageStatsHint": "展示 token 用量和费用",
-    "showConfigBar": "显示配置栏",
-    "showConfigBarHint": "展示 agent 配置选项（模型、模式等）",
-    "showRightPanel": "显示工具面板",
-    "showRightPanelHint": "展示工具调用面板",
-    "acpExt": "多 Agent 管理",
-    "acpExtHint": "启用 ACP 扩展以在多个 agent 间切换"
-  },
-  "permission": {
-    "notePlaceholder": "添加备注（可选）",
-    "questionBadge": "问题 {{n}}",
-    "skipped": "已跳过"
-  },
-  "plan": {
-    "title": "计划"
-  },
-  "session": {
-    "list": "会话列表",
-    "archived": "已归档"
-  },
-  "sessionItem": {
-    "archive": "归档",
-    "unarchive": "取消归档",
-    "untitled": "未命名"
+    "autoAuthenticate": "自动认证"
   },
   "qrScanner": {
     "invalidQrTitle": "无效的二维码",

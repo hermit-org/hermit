@@ -25,7 +25,7 @@ export function Loading({
   if (variant === "inline") {
     return (
       <View style={[localStyles.inline, style]} testID="loading-inline">
-        <ActivityIndicator size={size} color={color} />
+        <ActivityIndicator size={size} color={color} accessibilityLabel="Loading" />
       </View>
     );
   }

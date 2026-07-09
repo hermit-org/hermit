@@ -1,11 +1,10 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { FileIcon } from "@/components/atoms";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./Shell";
-import { RawBlock } from "./Parts";
-import { asObject, extractMatches, firstString, renderRaw, basename } from "./helpers";
+import { ToolCallShell } from "./shell";
+import { asObject, extractMatches, firstString, basename } from "./helpers";
 
 /**
  * Specialized renderer for `search` tool calls. Summarizes the match count in
@@ -25,14 +24,7 @@ export function SearchTool({
     () => extractMatches(call.rawOutput ?? call.rawInput),
     [call.rawOutput, call.rawInput],
   );
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
-  const hasBody =
-    matches.length > 0 ||
-    !!query ||
-    !!rawInput ||
-    !!rawOutput ||
-    call.content.length > 0;
+  const hasBody = matches.length > 0 || !!query || call.content.length > 0;
 
   const summary = (
     <span className="hidden items-center gap-1.5 sm:flex">
@@ -78,9 +70,7 @@ export function SearchTool({
           ))}
         </div>
       ) : (
-        call.content.length === 0 &&
-        !rawInput &&
-        !rawOutput && (
+        call.content.length === 0 && (
           <div className="text-xs text-muted-foreground">
             {t("tool.search.noMatches")}
           </div>
@@ -98,8 +88,6 @@ export function SearchTool({
           })}
         </div>
       ) : null}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

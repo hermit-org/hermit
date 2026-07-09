@@ -2,12 +2,11 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { FileIcon } from "@/components/atoms";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./Shell";
-import { RawBlock } from "./Parts";
-import { extractDeletedPaths, renderRaw, basename } from "./helpers";
+import { ToolCallShell } from "./shell";
+import { extractDeletedPaths, basename } from "./helpers";
 
 /**
  * Specialized renderer for `delete` tool calls. Summarizes the number of
@@ -20,10 +19,7 @@ export function DeleteTool({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const { paths } = React.useMemo(() => extractDeletedPaths(call), [call]);
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
-  const hasBody =
-    paths.length > 0 || !!rawInput || !!rawOutput || call.content.length > 0;
+  const hasBody = paths.length > 0 || call.content.length > 0;
 
   const summary = paths.length > 0 ? (
     <Badge
@@ -71,8 +67,6 @@ export function DeleteTool({
           })}
         </div>
       ) : null}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

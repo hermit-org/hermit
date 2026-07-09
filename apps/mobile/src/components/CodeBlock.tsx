@@ -27,7 +27,12 @@ export function CodeBlock({ code, language }: CodeBlockProps): React.JSX.Element
     <View style={localStyles.container}>
       <View style={localStyles.header}>
         <Text style={localStyles.language}>{language || "text"}</Text>
-        <TouchableOpacity onPress={handleCopy}>
+        <TouchableOpacity
+          onPress={handleCopy}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t("common.copy")}
+        >
           <Text style={localStyles.copy}>{t("common.copy")}</Text>
         </TouchableOpacity>
       </View>
@@ -54,14 +59,15 @@ const localStyles = StyleSheet.create({
     backgroundColor: "#21252b",
   },
   language: {
-    color: "#abb2bf",
+    color: "#c8ccd4",
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
   },
   copy: {
-    color: "#61afef",
+    color: "#e5e5e5",
     fontSize: 12,
+    fontWeight: "500",
   },
   highlighter: {
     padding: 12,
@@ -70,5 +76,6 @@ const localStyles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontFamily: "monospace",
+    color: "#abb2bf",
   },
 });

@@ -86,7 +86,13 @@ export function QrScannerScreen(): React.JSX.Element {
     return (
       <View style={localStyles.center}>
         <Text style={localStyles.message}>{t("qrScanner.permissionDenied")}</Text>
-        <TouchableOpacity style={localStyles.button} onPress={() => setPermissionDenied(false)}>
+        <TouchableOpacity
+          style={localStyles.button}
+          onPress={() => setPermissionDenied(false)}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t("common.retry")}
+        >
           <Text style={localStyles.buttonText}>{t("common.retry")}</Text>
         </TouchableOpacity>
       </View>
@@ -103,10 +109,16 @@ export function QrScannerScreen(): React.JSX.Element {
         showFrame
         frameColor="#007AFF"
         laserColor="#007AFF"
+        accessibilityLabel={t("qrScanner.hint")}
       />
       <View style={localStyles.overlay}>
         <Text style={localStyles.hint}>{t("qrScanner.hint")}</Text>
-        {!scanning && <ActivityIndicator style={localStyles.spinner} />}
+        {!scanning && (
+          <ActivityIndicator
+            style={localStyles.spinner}
+            accessibilityLabel={t("common.loading")}
+          />
+        )}
       </View>
     </View>
   );
@@ -130,7 +142,7 @@ const localStyles = StyleSheet.create({
   hint: {
     color: "#fff",
     fontSize: 16,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -152,8 +164,9 @@ const localStyles = StyleSheet.create({
   button: {
     backgroundColor: "#007AFF",
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 8,
+    minHeight: 44,
   },
   buttonText: {
     color: "#fff",

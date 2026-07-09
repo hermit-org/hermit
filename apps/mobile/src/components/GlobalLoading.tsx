@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useLoadingStore } from "../stores/loadingStore";
+import { useTranslation } from "react-i18next";
 
 /**
  * Global loading overlay rendered at the app root.
@@ -15,8 +16,10 @@ import { useLoadingStore } from "../stores/loadingStore";
  * Uses a transparent Modal so it always sits above every screen.
  */
 export function GlobalLoading(): React.JSX.Element | null {
+  const { t } = useTranslation();
   const visible = useLoadingStore((s) => s.visible);
   const text = useLoadingStore((s) => s.text);
+  const hide = useLoadingStore((s) => s.hide);
 
   if (!visible) return null;
 
@@ -25,11 +28,15 @@ export function GlobalLoading(): React.JSX.Element | null {
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={() => {}}
+      onRequestClose={hide}
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator
+            size="large"
+            color="#007AFF"
+            accessibilityLabel={text || "Loading"}
+          />
           {text ? <Text style={styles.text}>{text}</Text> : null}
         </View>
       </View>

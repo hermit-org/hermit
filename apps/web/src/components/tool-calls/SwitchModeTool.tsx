@@ -1,12 +1,11 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
-import { ToolCallShell } from "./Shell";
-import { RawBlock } from "./Parts";
-import { asObject, firstString, renderRaw } from "./helpers";
+import { ToolCallShell } from "./shell";
+import { asObject, firstString } from "./helpers";
 
 /** Capitalize a mode id for display (e.g. "code" -> "Code"). */
 function prettifyMode(id?: string): string | undefined {
@@ -30,9 +29,7 @@ export function SwitchModeTool({
     undefined;
   const prev = firstString(output, "previousModeId", "previousMode", "oldMode");
 
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
-  const hasBody = !!next || !!prev || !!rawInput || !!rawOutput;
+  const hasBody = !!next || !!prev;
 
   const transition = (
     <div className="flex items-center justify-center gap-2 rounded-md border border-border bg-secondary/30 px-3 py-2">
@@ -92,8 +89,6 @@ export function SwitchModeTool({
       defaultCollapsed={false}
     >
       {transition}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

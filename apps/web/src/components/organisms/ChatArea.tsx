@@ -1,8 +1,8 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { MessagesSquare, BrainCog } from "lucide-react";
+import { MessagesSquare } from "lucide-react";
 import { MessageBubble } from "@/components/molecules";
-import { ToolCallRenderer } from "@/components/tool-calls";
+import { ToolCallRenderer, ToolCallShell } from "@/components/tool-calls";
 import {
   ScrollToBottomButton,
   EmptyState,
@@ -228,8 +228,9 @@ export function ChatArea({
 }
 
 /**
- * An agent reasoning/thought block embedded in the transcript. Collapsed by
- * default; auto-expands while streaming. Click to toggle.
+ * An agent reasoning/thought block embedded in the transcript. Rendered as a
+ * tool-call-style card (consistent with execute/bash tool calls) and collapsed
+ * by default.
  */
 const GatedThoughtBlock = withFeatureGate(ThoughtBlock, "showThoughts");
 
@@ -241,33 +242,25 @@ function ThoughtBlock({
   streaming?: boolean;
 }): React.JSX.Element {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = React.useState(false);
-  const open = expanded || (streaming ?? false);
+  const call = React.useMemo<ToolCallState>(
+    () => ({
+      toolCallId: "thought",
+      kind: "think",
+      status: streaming ? "in_progress" : "completed",
+      title: t("common.thinking"),
+      content: [],
+      locations: [],
+    }),
+    [streaming, t],
+  );
+
   return (
     <div className="mx-auto my-1 w-full max-w-3xl px-4">
-      <div className="rounded-r-md border-l-2 border-border bg-muted/40 px-3 py-2 text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <BrainCog className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-semibold uppercase tracking-wide">
-            {t("common.thinking")}
-          </span>
-          {streaming ? (
-            <span className="animate-pulse text-xs">…</span>
-          ) : null}
-          <button
-            type="button"
-            className="ml-auto text-[11px] font-medium text-primary hover:underline"
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {open ? t("common.collapse") : t("common.expand")}
-          </button>
+      <ToolCallShell call={call} hasBody={!!content}>
+        <div className="markdown-body text-xs text-muted-foreground">
+          <MarkdownRenderer content={content} />
         </div>
-        {open ? (
-          <div className="markdown-body mt-1 text-xs text-muted-foreground">
-            <MarkdownRenderer content={content} />
-          </div>
-        ) : null}
-      </div>
+      </ToolCallShell>
     </div>
   );
 }

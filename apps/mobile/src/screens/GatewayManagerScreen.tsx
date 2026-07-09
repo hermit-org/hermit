@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,11 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
-  type ListRenderItem,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useGatewayStore } from "../stores";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/RootNavigator";
-import type { Gateway } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "GatewayManager">;
 
@@ -23,12 +21,18 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
   const gateways = useGatewayStore((s) => s.gateways);
   const addGateway = useGatewayStore((s) => s.addGateway);
   const removeGateway = useGatewayStore((s) => s.removeGateway);
-  const updateGateway = useGatewayStore((s) => s.updateGateway);
+  const activeGatewayId = useGatewayStore((s) => s.activeGatewayId);
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Auto-navigate to AcpClient if there's an active gateway
+  useEffect(() => {
+    if (activeGatewayId && gateways.length > 0) {
+      navigation.navigate("AcpClient", { gatewayId: activeGatewayId });
+    }
+  }, [activeGatewayId, gateways, navigation]);
 
   const handleAdd = () => {
     const trimmedUrl = url.trim();
@@ -37,153 +41,89 @@ export function GatewayManagerScreen({ navigation }: Props): React.JSX.Element {
       Alert.alert(t("gateways.error"), t("gateways.urlRequired"));
       return;
     }
-    if (!/^https?:\/\//i.test(trimmedUrl)) {
-      Alert.alert(t("gateways.error"), t("gateways.urlInvalid"));
-      return;
-    }
-    try {
-      if (editingId) {
-        updateGateway(editingId, {
-          name: trimmedName || trimmedUrl,
-          url: trimmedUrl,
-          token: token.trim(),
-        });
-        setEditingId(null);
-      } else {
-        addGateway({
-          name: trimmedName || trimmedUrl,
-          url: trimmedUrl,
-          sendUrl: "",
-          token: token.trim(),
-        });
-      }
-      setName("");
-      setUrl("");
-      setToken("");
-    } catch (e) {
-      console.error("[GatewayManager] failed to save gateway:", e);
-      Alert.alert(
-        t("gateways.error"),
-        e instanceof Error ? e.message : String(e),
-      );
-    }
-  };
-
-  const handleEdit = (item: Gateway) => {
-    setEditingId(item.id);
-    setName(item.name);
-    setUrl(item.url);
-    setToken(item.token);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingId(null);
+    addGateway({
+      name: trimmedName || trimmedUrl,
+      url: trimmedUrl,
+      sendUrl: "",
+      token: token.trim(),
+    });
     setName("");
     setUrl("");
     setToken("");
   };
 
-  const renderItem: ListRenderItem<Gateway> = useCallback(
-    ({ item }) => (
-      <View style={styles.gatewayItem}>
-        <TouchableOpacity
-          style={styles.gatewayInfo}
-          onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
-          onLongPress={() => handleEdit(item)}
-        >
-          <Text style={styles.gatewayName}>{item.name}</Text>
-          <Text style={styles.gatewayUrl}>{item.url}</Text>
-        </TouchableOpacity>
-        <View style={styles.gatewayActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
-          >
-            <Text style={styles.actionText}>{t("gateways.connect")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => removeGateway(item.id)}
-          >
-            <Text style={styles.actionText}>{t("gateways.delete")}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    ),
-    [navigation, t, removeGateway, updateGateway],
-  );
-
-  const keyExtractor = useCallback((item: Gateway) => item.id, []);
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with settings + QR scan buttons */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.topBarButton}
-          onPress={() => navigation.navigate("QrScanner")}
-        >
-          <Text style={styles.topBarIcon}>⌗</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>{t("gateways.title")}</Text>
-        <TouchableOpacity
-          style={styles.topBarButton}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <Text style={styles.topBarIcon}>⚙</Text>
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.title}>{t("gateways.title")}</Text>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
           placeholder={t("gateways.namePlaceholder")}
-          placeholderTextColor="#999"
           value={name}
           onChangeText={setName}
+          accessibilityLabel={t("gateways.namePlaceholder")}
         />
         <TextInput
           style={styles.input}
           placeholder={t("gateways.urlPlaceholder")}
-          placeholderTextColor="#999"
           value={url}
           onChangeText={setUrl}
           autoCapitalize="none"
           keyboardType="url"
+          accessibilityLabel={t("gateways.urlPlaceholder")}
         />
         <TextInput
           style={styles.input}
           placeholder={t("gateways.tokenPlaceholder")}
-          placeholderTextColor="#999"
           value={token}
           onChangeText={setToken}
           autoCapitalize="none"
           secureTextEntry
+          accessibilityLabel={t("gateways.tokenPlaceholder")}
         />
-        <View style={styles.formActions}>
-          <TouchableOpacity
-            style={[styles.addButton, { flex: 1 }]}
-            onPress={handleAdd}
-          >
-            <Text style={styles.addButtonText}>
-              {editingId ? t("common.save") : t("gateways.add")}
-            </Text>
-          </TouchableOpacity>
-          {editingId ? (
-            <TouchableOpacity
-              style={[styles.addButton, styles.cancelEditButton, { flex: 1 }]}
-              onPress={handleCancelEdit}
-            >
-              <Text style={styles.cancelEditText}>{t("common.cancel")}</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAdd}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t("gateways.add")}
+        >
+          <Text style={styles.addButtonText}>{t("gateways.add")}</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
         data={gateways}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.gatewayItem}>
+            <View style={styles.gatewayInfo}>
+              <Text style={styles.gatewayName}>{item.name}</Text>
+              <Text style={styles.gatewayUrl}>{item.url}</Text>
+            </View>
+            <View style={styles.gatewayActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate("AcpClient", { gatewayId: item.id })}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={t("gateways.connect") + " " + item.name}
+              >
+                <Text style={styles.actionText}>{t("gateways.connect")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.deleteButton]}
+                onPress={() => removeGateway(item.id)}
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={t("gateways.delete") + " " + item.name}
+              >
+                <Text style={styles.actionText}>{t("gateways.delete")}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         ListEmptyComponent={
           <Text style={styles.emptyText}>{t("gateways.empty")}</Text>
         }
@@ -198,26 +138,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 16,
   },
-  topBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  topBarButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: "#f0f0f0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  topBarIcon: {
-    fontSize: 20,
-  },
   title: {
     fontSize: 22,
     fontWeight: "700",
+    marginBottom: 16,
   },
   form: {
     marginBottom: 16,
@@ -234,20 +158,9 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: "#007AFF",
     borderRadius: 8,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
-  },
-  formActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  cancelEditButton: {
-    backgroundColor: "#f0f0f0",
-  },
-  cancelEditText: {
-    color: "#666",
-    fontWeight: "600",
-    fontSize: 16,
+    minHeight: 44,
   },
   addButtonText: {
     color: "#fff",
@@ -283,7 +196,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#007AFF",
     borderRadius: 6,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
   },
   deleteButton: {
     backgroundColor: "#ff3b30",
@@ -294,7 +209,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
-    color: "#999",
+    color: "#666",
     marginTop: 32,
   },
 });
