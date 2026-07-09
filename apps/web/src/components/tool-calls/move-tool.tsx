@@ -4,8 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { FileIcon } from "@/components/atoms";
 import type { ToolCallState } from "@/components/domain";
 import { ToolCallShell } from "./shell";
-import { RawBlock } from "./parts";
-import { extractMovePaths, renderRaw, basename } from "./helpers";
+import { extractMovePaths, basename } from "./helpers";
 
 /**
  * Specialized renderer for `move` tool calls. Shows source → target in the
@@ -14,14 +13,7 @@ import { extractMovePaths, renderRaw, basename } from "./helpers";
 export function MoveTool({ call }: { call: ToolCallState }): React.JSX.Element {
   const { t } = useTranslation();
   const { source, target } = React.useMemo(() => extractMovePaths(call), [call]);
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
-  const hasBody =
-    !!source ||
-    !!target ||
-    !!rawInput ||
-    !!rawOutput ||
-    call.content.length > 0;
+  const hasBody = !!source || !!target || call.content.length > 0;
 
   const summary =
     source || target ? (
@@ -68,8 +60,6 @@ export function MoveTool({ call }: { call: ToolCallState }): React.JSX.Element {
           ) : null}
         </div>
       )}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

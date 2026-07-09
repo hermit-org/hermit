@@ -2,9 +2,11 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { ToolStatusIcon } from "@/components/atoms";
 import { cn } from "@/lib/utils";
+import { useDebugMode } from "@/hooks/useDebugMode";
 import type { ToolCallState } from "@/components/domain";
 import { getKindMeta } from "./meta";
-import { CollapseChevron, STATUS_TONE } from "./parts";
+import { CollapseChevron, STATUS_TONE, RawBlock } from "./parts";
+import { renderRaw } from "./helpers";
 
 export interface ToolCallShellProps {
   /** Accumulated tool-call state. */
@@ -47,6 +49,7 @@ export function ToolCallShell({
   className,
 }: ToolCallShellProps): React.JSX.Element {
   const { t } = useTranslation();
+  const debug = useDebugMode();
   const [internal, setInternal] = React.useState(defaultCollapsed);
   const isControlled = collapsed !== undefined;
   const isCollapsed = isControlled ? collapsed : internal;
@@ -54,7 +57,11 @@ export function ToolCallShell({
   const meta = getKindMeta(call.kind);
   const { Icon, tone } = meta;
 
-  const canToggle = hasBody;
+  const rawInput = renderRaw(call.rawInput);
+  const rawOutput = renderRaw(call.rawOutput);
+  const effectiveHasBody = hasBody || (debug && (!!rawInput || !!rawOutput));
+
+  const canToggle = effectiveHasBody;
   const toggle = React.useCallback(() => {
     if (!canToggle) return;
     if (isControlled) {
@@ -119,9 +126,15 @@ export function ToolCallShell({
         ) : null}
       </div>
 
-      {!isCollapsed && hasBody ? (
+      {!isCollapsed && effectiveHasBody ? (
         <div className="space-y-2 border-t border-border px-3 py-2 text-sm">
           {children}
+          {debug && rawInput ? (
+            <RawBlock label={t("tool.input")} value={rawInput} />
+          ) : null}
+          {debug && rawOutput ? (
+            <RawBlock label={t("tool.output")} value={rawOutput} />
+          ) : null}
         </div>
       ) : null}
     </div>

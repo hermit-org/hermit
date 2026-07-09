@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
 import { ToolCallShell } from "./shell";
-import { CodeBlock, RawBlock } from "./parts";
+import { CodeBlock } from "./parts";
 import { asObject, firstString, getNumber, renderRaw } from "./helpers";
 
 /** Reconstruct a command string from rawInput { command, args } or rawInput.command. */
@@ -56,15 +56,11 @@ export function ExecuteTool({
     .map((c) => (c.content as { text: string }).text)
     .join("\n");
 
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
   const hasBody =
     !!command ||
     !!outputText ||
     !!textOutput ||
     terminalIds.length > 0 ||
-    !!rawInput ||
-    !!rawOutput ||
     call.content.length > 0;
 
   const exitBadge =
@@ -127,8 +123,6 @@ export function ExecuteTool({
       {outputText && !textOutput ? (
         <CodeBlock value={outputText} label={t("tool.execute.output")} />
       ) : null}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

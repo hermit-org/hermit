@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
 import { ToolCallShell } from "./shell";
-import { CodeBlock, RawBlock } from "./parts";
-import { asObject, firstString, getNumber, renderRaw } from "./helpers";
+import { CodeBlock } from "./parts";
+import { asObject, firstString, getNumber } from "./helpers";
 
 /** Tone an HTTP status code badge by its class. */
 function statusTone(status: number): string {
@@ -52,13 +52,9 @@ export function FetchTool({
       .map((c) => (c.content as { text: string }).text)
       .join("\n");
 
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
   const hasBody =
     !!url ||
     !!responseText ||
-    !!rawInput ||
-    !!rawOutput ||
     call.content.length > 0;
 
   const summary = (
@@ -107,8 +103,6 @@ export function FetchTool({
       {responseText ? (
         <CodeBlock value={responseText} label={t("tool.fetch.response")} />
       ) : null}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

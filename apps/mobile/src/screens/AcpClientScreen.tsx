@@ -20,6 +20,30 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<RootStackParamList, "AcpClient">;
 
+function ThoughtItemView({
+  item,
+}: {
+  item: Extract<ChatItem, { kind: "thought" }>;
+}): React.JSX.Element {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => setExpanded((v) => !v)}
+      style={styles.toolCallContainer}
+    >
+      <View style={styles.thoughtHeader}>
+        <Text style={styles.toolCallTitle}>{t("chat.thinking")}</Text>
+        {item.streaming ? (
+          <Text style={styles.toolCallStatus}>{t("chat.toolCallRunning")}</Text>
+        ) : null}
+      </View>
+      {expanded ? <Text style={styles.thoughtText}>{item.content}</Text> : null}
+    </TouchableOpacity>
+  );
+}
+
 function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
   const { t } = useTranslation();
 
@@ -49,12 +73,7 @@ function ChatItemView({ item }: { item: ChatItem }): React.JSX.Element {
   }
 
   if (item.kind === "thought") {
-    return (
-      <View style={styles.thoughtContainer}>
-        <Text style={styles.thoughtLabel}>{t("chat.thinking")}</Text>
-        <Text style={styles.thoughtText}>{item.content}</Text>
-      </View>
-    );
+    return <ThoughtItemView item={item} />;
   }
 
   // tool_call
@@ -290,24 +309,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
-  thoughtContainer: {
-    marginHorizontal: 12,
-    marginVertical: 6,
-    padding: 10,
-    backgroundColor: "#f8f8f8",
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: "#aaa",
-  },
-  thoughtLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 4,
+  thoughtHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   thoughtText: {
     fontSize: 14,
     color: "#555",
+    marginTop: 4,
   },
   toolCallContainer: {
     marginHorizontal: 12,

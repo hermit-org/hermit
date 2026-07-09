@@ -5,6 +5,7 @@ import { ToolStatusIcon, CopyButton } from "@/components/atoms";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { cn } from "@/lib/utils";
+import { useDebugMode } from "@/hooks/useDebugMode";
 import type {
   ToolCallState,
   ToolCallContent,
@@ -46,6 +47,7 @@ export function ToolCallCard({
   className,
 }: ToolCallCardProps): React.JSX.Element {
   const { t } = useTranslation();
+  const debug = useDebugMode();
   const [internal, setInternal] = React.useState(defaultCollapsed);
   const isControlled = collapsed !== undefined;
   const isCollapsed = isControlled ? collapsed : internal;
@@ -53,10 +55,9 @@ export function ToolCallCard({
   const input = renderRaw(call.rawInput);
   const output = renderRaw(call.rawOutput);
   const hasBody =
-    !!input ||
-    !!output ||
     call.content.length > 0 ||
-    call.locations.length > 0;
+    call.locations.length > 0 ||
+    (debug && (!!input || !!output));
 
   const toggle = React.useCallback(() => {
     if (!hasBody) return;
@@ -132,7 +133,7 @@ export function ToolCallCard({
 
       {!isCollapsed && hasBody ? (
         <div className="space-y-2 border-t border-border px-3 py-2 text-sm">
-          {input ? (
+          {debug && input ? (
             <RawBlock label={t("tool.input")} value={input} />
           ) : null}
           {call.content.length > 0 ? (
@@ -155,7 +156,7 @@ export function ToolCallCard({
               ))}
             </div>
           ) : null}
-          {output ? (
+          {debug && output ? (
             <RawBlock label={t("tool.output")} value={output} />
           ) : null}
         </div>

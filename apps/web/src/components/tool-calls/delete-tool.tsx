@@ -6,8 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ToolCallState } from "@/components/domain";
 import { ToolCallShell } from "./shell";
-import { RawBlock } from "./parts";
-import { extractDeletedPaths, renderRaw, basename } from "./helpers";
+import { extractDeletedPaths, basename } from "./helpers";
 
 /**
  * Specialized renderer for `delete` tool calls. Summarizes the number of
@@ -20,10 +19,7 @@ export function DeleteTool({
 }): React.JSX.Element {
   const { t } = useTranslation();
   const { paths } = React.useMemo(() => extractDeletedPaths(call), [call]);
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
-  const hasBody =
-    paths.length > 0 || !!rawInput || !!rawOutput || call.content.length > 0;
+  const hasBody = paths.length > 0 || call.content.length > 0;
 
   const summary = paths.length > 0 ? (
     <Badge
@@ -71,8 +67,6 @@ export function DeleteTool({
           })}
         </div>
       ) : null}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }

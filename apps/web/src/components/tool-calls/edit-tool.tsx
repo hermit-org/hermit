@@ -7,11 +7,10 @@ import type { ToolCallContent, ToolCallState } from "@/components/domain";
 import { ToolCallShell } from "./shell";
 import {
   DiffView,
-  RawBlock,
   computeDiffLines,
   countDiff,
 } from "./parts";
-import { asObject, firstString, renderRaw, basename } from "./helpers";
+import { asObject, firstString, basename } from "./helpers";
 
 /** Collect every diff source (content blocks + rawInput) for an edit call. */
 function collectDiffs(call: ToolCallState): {
@@ -94,10 +93,7 @@ export function EditTool({ call }: { call: ToolCallState }): React.JSX.Element {
     return { added, removed };
   }, [diffs]);
 
-  const rawInput = renderRaw(call.rawInput);
-  const rawOutput = renderRaw(call.rawOutput);
-  const hasBody =
-    diffs.length > 0 || !!rawInput || !!rawOutput || call.content.length > 0;
+  const hasBody = diffs.length > 0 || call.content.length > 0;
 
   const summary = (
     <span className="hidden min-w-0 items-center gap-1.5 sm:flex">
@@ -145,8 +141,6 @@ export function EditTool({ call }: { call: ToolCallState }): React.JSX.Element {
           ))}
         </div>
       ) : null}
-      {rawInput ? <RawBlock label={t("tool.input")} value={rawInput} /> : null}
-      {rawOutput ? <RawBlock label={t("tool.output")} value={rawOutput} /> : null}
     </ToolCallShell>
   );
 }
