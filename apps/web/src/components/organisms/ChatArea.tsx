@@ -2,14 +2,14 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { MessagesSquare } from "lucide-react";
 import { MessageBubble } from "@/components/molecules";
-import { ToolCallRenderer, ToolCallShell } from "@/components/tool-calls";
+import { ThoughtBlock } from "@/components/molecules/ThoughtBlock";
+import { ToolCallTimeline } from "@/components/organisms/ToolCallTimeline";
 import {
   ScrollToBottomButton,
   EmptyState,
   Divider,
 } from "@/components/atoms";
 import { ScrollArea } from "@/components/ui/ScrollArea";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { cn } from "@/lib/utils";
 import { withFeatureGate } from "@/components/FeatureGate";
 import type { ToolCallState } from "@/components/domain";
@@ -155,7 +155,50 @@ export function ChatArea({
 
   const showEmpty = empty || items.length === 0;
   const resolvedEmptyTitle = emptyTitle ?? t("chat.noMessages");
-  const resolvedEmptyDescription = emptyDescription ?? t("chat.startConversation");
+  const resolvedEmptyDescription =
+    emptyDescription ?? t("chat.startConversation");
+
+  // Group consecutive tool_call/thought items into a single timeline panel.
+  // Messages are rendered individually as bubbles and dividers remain as
+  // standalone separators.
+  const groups = React.useMemo(() => {
+    const result: (
+      | { type: "message"; item: ChatItem & { kind: "message" }; index: number }
+      | {
+          type: "timeline";
+          items: (ChatItem & { kind: "tool_call" | "thought" })[];
+          startIndex: number;
+        }
+      | { type: "divider"; item: ChatItem & { kind: "divider" }; index: number }
+    )[] = [];
+    const timeline: (ChatItem & { kind: "tool_call" | "thought" })[] = [];
+
+    const flushTimeline = (beforeIndex: number) => {
+      if (timeline.length === 0) return;
+      result.push({
+        type: "timeline",
+        items: [...timeline],
+        startIndex: beforeIndex - timeline.length,
+      });
+      timeline.length = 0;
+    };
+
+    items.forEach((item, index) => {
+      if (item.kind === "message") {
+        flushTimeline(index);
+        result.push({ type: "message", item, index });
+      } else if (item.kind === "tool_call" || item.kind === "thought") {
+        timeline.push(item);
+      } else if (item.kind === "divider") {
+        flushTimeline(index);
+        result.push({ type: "divider", item, index });
+      }
+    });
+
+    flushTimeline(items.length);
+
+    return result;
+  }, [items]);
 
   return (
     <div className={cn("relative flex h-full flex-col", className)} data-testid="chat-area">
@@ -170,16 +213,17 @@ export function ChatArea({
             />
           ) : (
             <div className="mx-auto max-w-3xl space-y-1">
-              {items.map((item, i) => {
-                const showTodayDivider = i === todayDividerIndex;
-                return (
-                  <React.Fragment key={item.key}>
-                    {showTodayDivider ? (
-                      <div className="px-4 py-2">
-                        <Divider label={t("common.today")} />
-                      </div>
-                    ) : null}
-                    {item.kind === "message" ? (
+              {groups.map((group) => {
+                if (group.type === "message") {
+                  const { item, index } = group;
+                  const showTodayDivider = index === todayDividerIndex;
+                  return (
+                    <React.Fragment key={item.key}>
+                      {showTodayDivider ? (
+                        <div className="px-4 py-2">
+                          <Divider label={t("common.today")} />
+                        </div>
+                      ) : null}
                       <MessageBubble
                         id={item.key}
                         role={item.role}
@@ -196,21 +240,25 @@ export function ChatArea({
                         }
                         createdAt={item.createdAt}
                       />
-                    ) : item.kind === "tool_call" ? (
-                      <div className="px-4 py-1.5">
-                        <ToolCallRenderer call={item.call} />
-                      </div>
-                    ) : item.kind === "divider" ? (
-                      <div className="px-4 py-2">
-                        <Divider label={item.label} />
-                      </div>
-                    ) : (
-                      <GatedThoughtBlock
-                        content={item.content}
-                        streaming={item.streaming}
-                      />
-                    )}
-                  </React.Fragment>
+                    </React.Fragment>
+                  );
+                }
+
+                if (group.type === "divider") {
+                  const { item } = group;
+                  return (
+                    <div key={item.key} className="px-4 py-2">
+                      <Divider label={item.label} />
+                    </div>
+                  );
+                }
+
+                return (
+                  <ToolCallTimeline
+                    key={`timeline-${group.startIndex}`}
+                    items={group.items}
+                    thoughtComponent={GatedThoughtBlock}
+                  />
                 );
               })}
             </div>
@@ -239,39 +287,6 @@ export function ChatArea({
 }
 
 /**
- * An agent reasoning/thought block embedded in the transcript. Rendered as a
- * tool-call-style card (consistent with execute/bash tool calls) and collapsed
- * by default.
+ * Agent reasoning/thought block gated behind the `showThoughts` feature flag.
  */
 const GatedThoughtBlock = withFeatureGate(ThoughtBlock, "showThoughts");
-
-function ThoughtBlock({
-  content,
-  streaming,
-}: {
-  content: string;
-  streaming?: boolean;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const call = React.useMemo<ToolCallState>(
-    () => ({
-      toolCallId: "thought",
-      kind: "think",
-      status: streaming ? "in_progress" : "completed",
-      title: t("common.thinking"),
-      content: [],
-      locations: [],
-    }),
-    [streaming, t],
-  );
-
-  return (
-    <div className="mx-auto my-1 w-full max-w-3xl px-4">
-      <ToolCallShell call={call} hasBody={!!content}>
-        <div className="markdown-body text-xs text-muted-foreground">
-          <MarkdownRenderer content={content} />
-        </div>
-      </ToolCallShell>
-    </div>
-  );
-}

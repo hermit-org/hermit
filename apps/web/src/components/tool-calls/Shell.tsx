@@ -8,6 +8,9 @@ import { getKindMeta } from "./meta";
 import { CollapseChevron, STATUS_TONE, RawBlock } from "./Parts";
 import { renderRaw } from "./helpers";
 
+/** When true, ToolCallShell renders in a flat timeline row style. */
+export const TimelineContext = React.createContext(false);
+
 export interface ToolCallShellProps {
   /** Accumulated tool-call state. */
   call: ToolCallState;
@@ -50,6 +53,7 @@ export function ToolCallShell({
 }: ToolCallShellProps): React.JSX.Element {
   const { t } = useTranslation();
   const debug = useDebugMode();
+  const inTimeline = React.useContext(TimelineContext);
   const [internal, setInternal] = React.useState(defaultCollapsed);
   const isControlled = collapsed !== undefined;
   const isCollapsed = isControlled ? collapsed : internal;
@@ -78,7 +82,9 @@ export function ToolCallShell({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
+        !inTimeline &&
+          "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
+        inTimeline && "border-b border-border last:border-b-0",
         className,
       )}
     >
@@ -127,7 +133,12 @@ export function ToolCallShell({
       </div>
 
       {!isCollapsed && effectiveHasBody ? (
-        <div className="space-y-2 border-t border-border px-3 py-2 text-sm">
+        <div
+          className={cn(
+            "space-y-2 px-3 py-2 text-sm",
+            !inTimeline && "border-t border-border",
+          )}
+        >
           {children}
           {debug && rawInput ? (
             <RawBlock label={t("tool.input")} value={rawInput} />

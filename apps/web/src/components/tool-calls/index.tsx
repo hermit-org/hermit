@@ -12,7 +12,11 @@ import { SwitchModeTool } from "./SwitchModeTool";
 import { OtherTool } from "./OtherTool";
 
 export { TOOL_KIND_META, getKindMeta, type ToolKindMeta } from "./meta";
-export { ToolCallShell, type ToolCallShellProps } from "./Shell";
+export {
+  ToolCallShell,
+  TimelineContext,
+  type ToolCallShellProps,
+} from "./Shell";
 export {
   DiffView,
   CodeBlock,
