@@ -2,47 +2,15 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { MessagesSquare } from "lucide-react";
 import { MessageBubble } from "@/components/molecules";
-import { ToolCallRenderer, ToolCallShell } from "@/components/tool-calls";
+import { ToolCallTimeline } from "@/components/organisms/tool-call-timeline";
 import {
   ScrollToBottomButton,
   EmptyState,
   Divider,
 } from "@/components/atoms";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { cn } from "@/lib/utils";
-import type { ToolCallState } from "@/components/domain";
-import type { AvatarRole } from "@/components/atoms";
-
-/** A renderable item in the chat transcript. */
-export type ChatItem =
-  | {
-      kind: "message";
-      key: string;
-      role: AvatarRole;
-      content: string;
-      /** Images attached to the message (base64 data + mime type). */
-      images?: { data: string; mimeType: string }[];
-      streaming?: boolean;
-      pending?: boolean;
-      authorName?: string;
-      createdAt: number;
-      /** ACP messageId — used to merge consecutive chunks of the same message. */
-      messageId?: string;
-    }
-  | {
-      kind: "tool_call";
-      key: string;
-      call: ToolCallState;
-      createdAt: number;
-    }
-  | {
-      kind: "thought";
-      key: string;
-      content: string;
-      streaming?: boolean;
-      messageId?: string;
-    };
+import type { ChatItem } from "@hermit-org/acp-hooks";
 
 export interface ChatAreaProps {
   /** Ordered transcript items (messages + tool calls interleaved). */
@@ -147,7 +115,48 @@ export function ChatArea({
 
   const showEmpty = empty || items.length === 0;
   const resolvedEmptyTitle = emptyTitle ?? t("chat.noMessages");
-  const resolvedEmptyDescription = emptyDescription ?? t("chat.startConversation");
+  const resolvedEmptyDescription =
+    emptyDescription ?? t("chat.startConversation");
+
+  // Group consecutive non-message items (tool calls and thoughts) into a single
+  // timeline panel. Messages are rendered individually as bubbles.
+  const groups = React.useMemo(() => {
+    const result: (
+      | { type: "message"; item: ChatItem & { kind: "message" }; index: number }
+      | {
+          type: "timeline";
+          items: (ChatItem & { kind: "tool_call" | "thought" })[];
+          startIndex: number;
+        }
+    )[] = [];
+    const timeline: (ChatItem & { kind: "tool_call" | "thought" })[] = [];
+
+    items.forEach((item, index) => {
+      if (item.kind === "message") {
+        if (timeline.length > 0) {
+          result.push({
+            type: "timeline",
+            items: [...timeline],
+            startIndex: index - timeline.length,
+          });
+          timeline.length = 0;
+        }
+        result.push({ type: "message", item, index });
+      } else {
+        timeline.push(item);
+      }
+    });
+
+    if (timeline.length > 0) {
+      result.push({
+        type: "timeline",
+        items: [...timeline],
+        startIndex: items.length - timeline.length,
+      });
+    }
+
+    return result;
+  }, [items]);
 
   return (
     <div className={cn("relative flex h-full flex-col", className)}>
@@ -162,16 +171,17 @@ export function ChatArea({
             />
           ) : (
             <div className="mx-auto max-w-3xl space-y-1">
-              {items.map((item, i) => {
-                const showTodayDivider = i === todayDividerIndex;
-                return (
-                  <React.Fragment key={item.key}>
-                    {showTodayDivider ? (
-                      <div className="px-4 py-2">
-                        <Divider label={t("common.today")} />
-                      </div>
-                    ) : null}
-                    {item.kind === "message" ? (
+              {groups.map((group) => {
+                if (group.type === "message") {
+                  const { item, index } = group;
+                  const showTodayDivider = index === todayDividerIndex;
+                  return (
+                    <React.Fragment key={item.key}>
+                      {showTodayDivider ? (
+                        <div className="px-4 py-2">
+                          <Divider label={t("common.today")} />
+                        </div>
+                      ) : null}
                       <MessageBubble
                         id={item.key}
                         role={item.role}
@@ -188,17 +198,15 @@ export function ChatArea({
                         }
                         createdAt={item.createdAt}
                       />
-                    ) : item.kind === "tool_call" ? (
-                      <div className="px-4 py-1.5">
-                        <ToolCallRenderer call={item.call} />
-                      </div>
-                    ) : (
-                      <ThoughtBlock
-                        content={item.content}
-                        streaming={item.streaming}
-                      />
-                    )}
-                  </React.Fragment>
+                    </React.Fragment>
+                  );
+                }
+
+                return (
+                  <ToolCallTimeline
+                    key={`timeline-${group.startIndex}`}
+                    items={group.items}
+                  />
                 );
               })}
             </div>
@@ -226,38 +234,4 @@ export function ChatArea({
   );
 }
 
-/**
- * An agent reasoning/thought block embedded in the transcript. Rendered as a
- * tool-call-style card (consistent with execute/bash tool calls) and collapsed
- * by default.
- */
-function ThoughtBlock({
-  content,
-  streaming,
-}: {
-  content: string;
-  streaming?: boolean;
-}): React.JSX.Element {
-  const { t } = useTranslation();
-  const call = React.useMemo<ToolCallState>(
-    () => ({
-      toolCallId: "thought",
-      kind: "think",
-      status: streaming ? "in_progress" : "completed",
-      title: t("common.thinking"),
-      content: [],
-      locations: [],
-    }),
-    [streaming, t],
-  );
 
-  return (
-    <div className="mx-auto my-1 w-full max-w-3xl px-4">
-      <ToolCallShell call={call} hasBody={!!content}>
-        <div className="markdown-body text-xs text-muted-foreground">
-          <MarkdownRenderer content={content} />
-        </div>
-      </ToolCallShell>
-    </div>
-  );
-}

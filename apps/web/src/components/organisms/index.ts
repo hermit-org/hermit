@@ -1,6 +1,6 @@
 export { ConnectionBar, type ConnectionBarProps } from "./connection-bar";
 export { SessionSidebar, type SessionSidebarProps, type SessionSummary } from "./session-sidebar";
-export { ChatArea, type ChatAreaProps, type ChatItem } from "./chat-area";
+export { ChatArea, type ChatAreaProps } from "./chat-area";
 export { ToolCallPanel, type ToolCallPanelProps } from "./tool-call-panel";
 export {
   ToolQuestionsPanel,
